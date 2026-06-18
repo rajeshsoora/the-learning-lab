@@ -80,14 +80,20 @@ nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-fil
 .cc-body{font-size:13px;color:var(--muted);line-height:1.6}
 
 /* ── CODE BLOCKS ── */
-.code-block{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:16px 18px;font-family:var(--mo);font-size:12px;line-height:1.9;overflow-x:auto;margin:14px 0}
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:14px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:1.95;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
 .code-block .c{color:var(--faint)}
 .code-block .k{color:var(--violet)}
 .code-block .s{color:var(--amber)}
 .code-block .f{color:var(--teal)}
 .code-block .n{color:var(--green)}
 .code-block .co{color:var(--faint);font-style:italic}
-.code-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
 
 /* ── NOTES & CALLOUTS ── */
 .note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0}
@@ -445,8 +451,12 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   <h3><span class="bar"></span>Your StandardizationPlugin in PySpark</h3>
   <p>This maps directly to what your plugin YAML config controls. Each step below corresponds to a plugin config key:</p>
 
-  <div class="code-label">PySpark — StandardizationPlugin transform method</div>
-  <div class="code-block">
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — StandardizationPlugin transform method</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
 <span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
 <span class="k">import</span> re
 
@@ -486,6 +496,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
     df = df.withColumn(col_name,
         F.<span class="f">trim</span>(F.<span class="f">lower</span>(F.col(col_name))))
     <span class="k">return</span> df
+  </div>
   </div>
 
   <hr class="divider">
@@ -555,7 +566,12 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   <h3><span class="bar"></span>Normalized Levenshtein → Similarity Score</h3>
   <p>Raw Levenshtein distance is an integer — not directly comparable across different-length strings. "kitten"→"sitting" is distance 3 out of a max of 7, which is very different from distance 3 between two 4-letter words. Always normalize:</p>
 
-  <div class="code-block">
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">Normalized Levenshtein — Python + PySpark</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
 <span class="co"># Normalized Levenshtein: 0.0 = totally different, 1.0 = identical</span>
 <span class="k">def</span> <span class="f">lev_similarity</span>(a, b):
     dist = <span class="f">levenshtein_distance</span>(a, b)
@@ -574,6 +590,7 @@ pairs = pairs.withColumn(<span class="s">"name_lev_sim"</span>,
         F.<span class="f">length</span>(F.col(<span class="s">"a.name_std"</span>)),
         F.<span class="f">length</span>(F.col(<span class="s">"b.name_std"</span>))
     )))
+    </div>
   </div>
 
   <hr class="divider">
@@ -695,8 +712,12 @@ pairs = pairs.withColumn(<span class="s">"name_lev_sim"</span>,
 
   <h3><span class="bar"></span>Jaro-Winkler in Your ScoringPlugin</h3>
 
-  <div class="code-label">PySpark UDF — Jaro-Winkler scoring</div>
-  <div class="code-block">
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark UDF — Jaro-Winkler scoring</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
 <span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
 <span class="k">from</span> pyspark.sql.types <span class="k">import</span> FloatType
 <span class="k">import</span> jellyfish  <span class="co"># pip install jellyfish</span>
@@ -720,6 +741,7 @@ pairs = pairs.withColumn(
     F.col(<span class="s">"name_jw_sim"</span>) * <span class="n">0.7</span> +      <span class="co"># Jaro-Winkler carries most weight</span>
     F.col(<span class="s">"name_lev_sim"</span>) * <span class="n">0.3</span>       <span class="co"># Levenshtein as secondary signal</span>
 )
+  </div>
   </div>
 
   <div class="warn"><strong>UDF performance note:</strong> Python UDFs break Spark's Catalyst optimizer — each row crosses the JVM→Python boundary. For production, use Spark's built-in <code>levenshtein()</code> for edit distance. For Jaro-Winkler, either use a Scala UDF or batch the computation with <code>pandas_udf</code> (vectorized). The naive UDF above will be 10–50× slower on large candidate pair sets.</div>
@@ -811,8 +833,12 @@ pairs = pairs.withColumn(
 
   <h3><span class="bar"></span>Adding Phonetic Blocking to Your Pipeline</h3>
 
-  <div class="code-label">PySpark — generating Soundex block keys</div>
-  <div class="code-block">
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — generating Soundex block keys</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
 <span class="k">from</span> pyspark.sql.functions <span class="k">import</span> soundex, col
 
 <span class="co"># Add soundex block key on last name</span>
@@ -839,6 +865,7 @@ pairs = df_blocked.alias(<span class="s">"a"</span>).join(
     (col(<span class="s">"a.block_key"</span>) == col(<span class="s">"b.block_key"</span>)) &amp;
     (col(<span class="s">"a.id"</span>) &lt; col(<span class="s">"b.id"</span>))   <span class="co"># a.id &lt; b.id eliminates (A,B) + (B,A) duplicates</span>
 ).dropDuplicates([<span class="s">"a.id"</span>, <span class="s">"b.id"</span>])
+  </div>
   </div>
 
   <div class="note"><strong>Why multi-key blocking?</strong> A single Soundex key misses pairs that share an exact phone number but have very different names (e.g., family members). Multi-key blocking casts a wider net — then scoring filters the false positives. More candidate pairs = higher recall; better scoring = higher precision.</div>
@@ -896,8 +923,12 @@ pairs = df_blocked.alias(<span class="s">"a"</span>).join(
   <h3><span class="bar"></span>Your ScoringPlugin — Putting It Together</h3>
   <p>In your MDM pipeline, the scoring plugin computes a weighted composite. Here's a realistic config-to-code mapping:</p>
 
-  <div class="code-label">Scoring config (YAML) → PySpark implementation</div>
-  <div class="code-block">
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">Scoring config (YAML) → PySpark implementation</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
 <span class="co"># YAML plugin config</span>
 <span class="co"># scoring:</span>
 <span class="co">#   fields:</span>
@@ -947,6 +978,7 @@ pairs = df_blocked.alias(<span class="s">"a"</span>).join(
          .when(F.col(<span class="s">"composite_score"</span>) >= <span class="n">0.70</span>, <span class="s">"REVIEW"</span>)
          .otherwise(<span class="s">"NO_MATCH"</span>))
 
+  </div>
   </div>
 
   <div class="trap"><strong>Null handling trap:</strong> If a field is null for one record, using <code>coalesce(score, 0.0)</code> penalizes the pair for missing data — a record with no phone number scores 0 on phone, dragging down the composite. Instead, re-weight on the fly: compute the composite only over available fields and renormalize weights to sum to 1.0 among non-null pairs. This is what enterprise MDM platforms do under the hood.</div>
@@ -1367,6 +1399,16 @@ function checkQ(i) {
   fb.className = 'q-fb ' + (correct?'fb-ok':'fb-no');
   fb.textContent = (correct?'✓ ' : '✗ ') + q.explain;
   fb.style.display='block';
+}
+
+
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
 }
 
 /* ── INIT ── */
