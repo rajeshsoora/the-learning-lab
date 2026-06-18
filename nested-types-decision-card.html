@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arrays vs Structs vs Maps — Decision Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surface:#1C2430;--surface-2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --array:#5EC8C2;--struct:#E6B450;--map:#A78BFA;
+  --pos:#5BD68B;--neg:#F2789F;
+  --display:'Space Grotesk',system-ui,sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased;padding:28px 20px 60px}
+.wrap{max-width:980px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--map);margin:0 0 8px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(23px,4vw,32px);line-height:1.1;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;max-width:64ch;margin:0 0 26px}
+h2{font-family:var(--display);font-weight:600;font-size:16px;margin:34px 0 14px;display:flex;align-items:center;gap:9px}
+h2 .bar{width:3px;height:17px;border-radius:2px;flex-shrink:0}
+
+.rule{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--map);border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:24px}
+.rule-title{font-family:var(--display);font-weight:600;font-size:14px;margin:0 0 4px}
+.rule-body{font-size:13px;color:var(--muted);margin:0}
+.rule-body strong{color:var(--ink)}
+
+/* Decision tree */
+.dtree{display:flex;flex-direction:column;gap:10px;margin:14px 0}
+.dnode{display:flex;gap:14px;align-items:flex-start}
+.dq-num{font-family:var(--mono);font-size:11px;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;flex-shrink:0;margin-top:2px}
+.dq-body{flex:1}
+.dq-text{font-size:13px;font-weight:500;margin-bottom:6px}
+.dq-branches{display:flex;gap:8px;flex-wrap:wrap}
+.branch{font-size:12px;padding:3px 10px;border-radius:4px;font-family:var(--mono)}
+.b-yes-array{background:#0D2B2A;color:var(--array);border:1px solid #1A5550}
+.b-yes-struct{background:#2B230A;color:var(--struct);border:1px solid #5A4A15}
+.b-yes-map{background:#1E1A2E;color:var(--map);border:1px solid #3A3060}
+.b-no{background:var(--surface);color:var(--muted);border:1px solid var(--line)}
+
+/* Type cards */
+.type-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:14px 0}
+.type-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;position:relative;overflow:hidden}
+.type-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.tc-array::before{background:var(--array)}
+.tc-struct::before{background:var(--struct)}
+.tc-map::before{background:var(--map)}
+.tc-name{font-family:var(--display);font-weight:700;font-size:18px;margin:0 0 4px}
+.tc-array .tc-name{color:var(--array)}
+.tc-struct .tc-name{color:var(--struct)}
+.tc-map .tc-name{color:var(--map)}
+.tc-tagline{font-size:12px;color:var(--muted);margin:0 0 14px}
+.tc-signal{font-size:13px;margin-bottom:8px}
+.tc-example{font-family:var(--mono);font-size:11px;background:var(--surface);border-radius:4px;padding:8px 10px;margin:10px 0;color:var(--muted)}
+.tc-example span{color:var(--ink)}
+.tc-ops{font-size:11px;font-family:var(--mono);color:var(--faint)}
+.tc-ops strong{color:var(--muted)}
+
+/* Comparison table */
+.tbl-wrap{overflow-x:auto;margin:14px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--surface-2);color:var(--muted);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;text-align:left;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:var(--surface)}
+.arr{color:var(--array);font-weight:600}.str{color:var(--struct);font-weight:600}.map{color:var(--map);font-weight:600}
+
+/* Self-test */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:14px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+.qcard-prompt{font-size:13px;margin-bottom:12px;line-height:1.5}
+.qcard-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.qbtn{border:1px solid var(--line);background:var(--surface);color:var(--muted);font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:5px;cursor:pointer;transition:all .15s}
+.qbtn:hover{border-color:var(--ink);color:var(--ink)}
+.qfeedback{font-size:12px;padding:6px 10px;border-radius:5px;display:none}
+.fb-right{background:#0D2B1A;color:var(--pos);border:1px solid #1E5A35}
+.fb-wrong{background:#2B0D12;color:var(--neg);border:1px solid #5A1A20}
+
+code{font-family:var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;font-size:12px}
+.note{background:var(--surface);border-left:3px solid var(--faint);padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;color:var(--muted);margin:12px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Module 01 · Complex Types</p>
+  <h1>Arrays vs Structs vs Maps</h1>
+  <p class="sub">Quick-reference decision card for your MDM pipeline. The type call is always about the key set — never the value type.</p>
+
+  <div class="rule">
+    <div class="rule-title">The Golden Rule</div>
+    <div class="rule-body"><strong>Fixed named parts → Struct</strong> · <strong>Variable count of same-type things → Array</strong> · <strong>Open-ended growing key set → Map</strong><br>The value type is a red herring. Ask about the <em>keys</em>.</div>
+  </div>
+
+  <h2><span class="bar" style="background:var(--map)"></span>Decision Tree</h2>
+  <div class="dtree">
+    <div class="dnode">
+      <span class="dq-num">Q1</span>
+      <div class="dq-body">
+        <div class="dq-text">Is the key set fixed, named, and known at schema-design time?</div>
+        <div class="dq-branches">
+          <span class="branch b-yes-struct">YES → Struct</span>
+          <span class="branch b-no">NO → Q2</span>
+        </div>
+      </div>
+    </div>
+    <div class="dnode">
+      <span class="dq-num">Q2</span>
+      <div class="dq-body">
+        <div class="dq-text">Is it a variable-count collection of the same type of thing (no named parts)?</div>
+        <div class="dq-branches">
+          <span class="branch b-yes-array">YES → Array</span>
+          <span class="branch b-no">NO → Q3</span>
+        </div>
+      </div>
+    </div>
+    <div class="dnode">
+      <span class="dq-num">Q3</span>
+      <div class="dq-body">
+        <div class="dq-text">Open-ended key set, all values same type, keys unknown at schema time?</div>
+        <div class="dq-branches">
+          <span class="branch b-yes-map">YES → Map</span>
+          <span class="branch b-no">NO → reconsider model</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="bar" style="background:var(--array)"></span>Type Reference</h2>
+  <div class="type-grid">
+    <div class="type-card tc-array">
+      <div class="tc-name">Array</div>
+      <div class="tc-tagline">Variable-count, same-type items</div>
+      <div class="tc-signal">📍 Signal: "could be 0, 1, or many of the same thing"</div>
+      <div class="tc-example"><span>phones</span>: array&lt;string&gt;<br>["555-1234", "555-9000"]</div>
+      <div class="tc-ops"><strong>Key ops:</strong> explode · explode_outer · filter · transform · size · array_contains</div>
+    </div>
+    <div class="type-card tc-struct">
+      <div class="tc-name">Struct</div>
+      <div class="tc-tagline">Fixed named parts — a contract</div>
+      <div class="tc-signal">📍 Signal: "has a street, a city, a zip" — each field has a name and meaning</div>
+      <div class="tc-example"><span>address</span>: struct&lt;street,city,zip,country&gt;<br>{street:"1 Main St", city:"NY", zip:"10001"}</div>
+      <div class="tc-ops"><strong>Key ops:</strong> dot access (address.city) · struct() rebuild · withColumn on nested field</div>
+    </div>
+    <div class="type-card tc-map">
+      <div class="tc-name">Map</div>
+      <div class="tc-tagline">Open-ended key set, same-type values</div>
+      <div class="tc-signal">📍 Signal: "keys grow as we add signals/plugins" — can't enumerate at schema time</div>
+      <div class="tc-example"><span>signal_scores</span>: map&lt;string,double&gt;<br>{"name_match":0.9, "email_match":0.7}</div>
+      <div class="tc-ops"><strong>Key ops:</strong> col["key"] · map_keys · map_values · explode (→ key, value rows)</div>
+    </div>
+  </div>
+
+  <h2><span class="bar" style="background:var(--faint)"></span>Comparison Table</h2>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Dimension</th><th class="arr">Array</th><th class="str">Struct</th><th class="map">Map</th></tr>
+      <tr><td>Key set</td><td>positional (no keys)</td><td>fixed, named</td><td>open-ended strings</td></tr>
+      <tr><td>Value types</td><td>all same</td><td>can differ per field</td><td>all same</td></tr>
+      <tr><td>Schema evolution</td><td>add items freely</td><td>adding field = schema change</td><td>add keys freely</td></tr>
+      <tr><td>Access syntax</td><td><code>explode / [0]</code></td><td><code>col.field</code></td><td><code>col["key"]</code></td></tr>
+      <tr><td>MDM example</td><td>phones list</td><td>address, name parts</td><td>signal scores</td></tr>
+      <tr><td>Explode output</td><td>one row per element</td><td>not typically exploded</td><td>one row per key-value pair</td></tr>
+    </table>
+  </div>
+
+  <h2><span class="bar" style="background:var(--pos)"></span>Self-Test — Pick the Type</h2>
+  <div class="quiz-grid" id="quiz"></div>
+</div>
+
+<script>
+const questions=[
+  {prompt:"A customer's mailing address — street, city, state, zip, country.",answer:"struct",explain:"Fixed named parts known at design time → Struct. Classic Q1 yes."},
+  {prompt:"A list of phone numbers a customer has provided over time — could be 1, could be 7.",answer:"array",explain:"Variable count, all strings, no named parts → Array."},
+  {prompt:"Similarity signal scores from your plugins — name_match, email_match, phone_match — and you'll add more signals later.",answer:"map",explain:"Keys grow with new plugins, values all double, key set unknown at schema time → Map."},
+  {prompt:"Lat/lng coordinates for a location. Both values are double.",answer:"struct",explain:"lat and lng are fixed named parts. Double values is the red herring — the key set decides. → Struct."},
+  {prompt:"Boolean flags for each data quality check — name_valid, email_valid, phone_valid — with more checks added each sprint.",answer:"map",explain:"Growing open-ended key set, all boolean values → Map. Same as signal_scores but boolean values."},
+  {prompt:"Each customer record has zero or more email addresses.",answer:"array",explain:"Variable count, same type (string), no named parts → Array."},
+  {prompt:"A phone entry in your MDM that carries number, type (mobile/home), and verified (boolean).",answer:"struct",explain:"Fixed named parts with different types → Struct. This is one element inside an array<struct<...>>."},
+  {prompt:"All the raw source system IDs that contributed to a golden record — could be 1 to 20 IDs.",answer:"array",explain:"Variable count of same-type strings, no named parts → Array."},
+];
+
+const grid=document.getElementById('quiz');
+questions.forEach((q,i)=>{
+  const div=document.createElement('div');
+  div.className='qcard';
+  div.innerHTML=`
+    <div class="qcard-prompt">${q.prompt}</div>
+    <div class="qcard-btns">
+      <button class="qbtn" onclick="check(${i},'array',this)">Array</button>
+      <button class="qbtn" onclick="check(${i},'struct',this)">Struct</button>
+      <button class="qbtn" onclick="check(${i},'map',this)">Map</button>
+    </div>
+    <div class="qfeedback" id="fb-${i}"></div>
+  `;
+  grid.appendChild(div);
+});
+
+function check(i,choice,btn){
+  const q=questions[i];
+  const fb=document.getElementById('fb-'+i);
+  const right=choice===q.answer;
+  fb.className='qfeedback '+(right?'fb-right':'fb-wrong');
+  fb.textContent=(right?'✓ Correct — ':'✗ Answer: '+q.answer+' — ')+q.explain;
+  fb.style.display='block';
+  btn.closest('.qcard').querySelectorAll('.qbtn').forEach(b=>{b.disabled=true;b.style.opacity='.5'});
+  btn.style.opacity='1';
+  btn.style.borderColor=right?'var(--pos)':'var(--neg)';
+  btn.style.color=right?'var(--pos)':'var(--neg)';
+}
+</script>
+</body>
+</html>

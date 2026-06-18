@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entity Resolution — Record-Level Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surface:#1C2430;--surface-2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --flow:#5EC8C2;--flow-dim:#2C4D4C;
+  --smith:#E6B450;--jones:#A78BFA;--patel:#F2789F;
+  --match:#5BD68B;--review:#E6B450;--likely:#7FB5F0;--bad:#F2789F;
+  --display:'Space Grotesk',system-ui,sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased;padding:28px 20px 60px}
+.wrap{max-width:980px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--flow);margin:0 0 8px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(24px,4vw,34px);line-height:1.1;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;max-width:62ch;margin:0 0 30px}
+h2{font-family:var(--display);font-weight:600;font-size:16px;margin:34px 0 14px;display:flex;align-items:center;gap:9px}
+h2 .bar{width:3px;height:17px;background:var(--flow);border-radius:2px;flex-shrink:0}
+
+/* Stage nav */
+.stage-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+.sn-btn{background:var(--panel);border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;transition:all .15s}
+.sn-btn:hover,.sn-btn.active{background:var(--flow-dim);border-color:var(--flow);color:var(--flow)}
+
+/* Stage panels */
+.stage{display:none}.stage.active{display:block}
+.stage-header{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px}
+.stage-title{font-family:var(--display);font-weight:600;font-size:18px;margin:0 0 4px}
+.stage-desc{color:var(--muted);font-size:13px;margin:0}
+.stage-spark{font-family:var(--mono);font-size:11px;color:var(--flow);margin-top:8px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:14px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--surface-2);color:var(--muted);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;text-align:left;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:var(--surface)}
+
+/* Color chips for record families */
+.chip{display:inline-block;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:11px;font-weight:600}
+.smith{background:#2E2A18;color:var(--smith);border:1px solid #4A4020}
+.jones{background:#1E1A2E;color:var(--jones);border:1px solid #3A3050}
+.patel{background:#2E1820;color:var(--patel);border:1px solid #4A2830}
+
+/* Pair cards */
+.pairs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin:14px 0}
+.pair-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+.pair-ids{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:8px}
+.pair-score{font-size:22px;font-weight:700;font-family:var(--display);margin-bottom:4px}
+.pair-verdict{font-size:12px;font-weight:600;padding:3px 8px;border-radius:4px;display:inline-block}
+.v-match{background:#0D2B1A;color:var(--match);border:1px solid #1E5A35}
+.v-review{background:#2B230A;color:var(--review);border:1px solid #5A4A15}
+.v-likely{background:#0D1E2E;color:var(--likely);border:1px solid #1A3D5C}
+.v-bad{background:#2B0D12;color:var(--bad);border:1px solid #5A1A20}
+.pair-detail{font-size:11px;color:var(--muted);margin-top:8px;font-family:var(--mono)}
+
+/* Skew explorer */
+.skew-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:14px 0}
+.skew-label{font-size:13px;color:var(--muted);margin-bottom:10px}
+.skew-slider{width:100%;accent-color:var(--flow);margin-bottom:14px}
+.skew-output{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.skew-stat{background:var(--surface);border-radius:6px;padding:12px}
+.skew-stat-val{font-family:var(--display);font-weight:700;font-size:22px}
+.skew-stat-lbl{font-size:11px;color:var(--muted);margin-top:2px}
+.warn{color:var(--bad)}
+.ok{color:var(--match)}
+
+code{font-family:var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;font-size:12px}
+.note{background:var(--surface);border-left:3px solid var(--flow);padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;color:var(--muted);margin:12px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Module 00 · MDM Learning</p>
+  <h1>Entity Resolution Pipeline</h1>
+  <p class="sub">Six records traced through every stage — same color = same family. Watch how raw duplicates collapse into a single entity.</p>
+
+  <div class="stage-nav">
+    <button class="sn-btn active" onclick="show('s1',this)">1 · Raw Records</button>
+    <button class="sn-btn" onclick="show('s2',this)">2 · Standardize</button>
+    <button class="sn-btn" onclick="show('s3',this)">3 · Block</button>
+    <button class="sn-btn" onclick="show('s4',this)">4 · Shuffle &amp; Pairs</button>
+    <button class="sn-btn" onclick="show('s5',this)">5 · Score</button>
+    <button class="sn-btn" onclick="show('s6',this)">6 · Skew Explorer</button>
+  </div>
+
+  <!-- Stage 1 -->
+  <div class="stage active" id="s1">
+    <div class="stage-header">
+      <div class="stage-title">Stage 1 — Raw Ingestion</div>
+      <div class="stage-desc">Six records arrive from source systems. Three real entities, each with a duplicate — different spelling, missing phone, transposed name.</div>
+      <div class="stage-spark">df = spark.read.parquet("customers_raw")</div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>id</th><th>name</th><th>email</th><th>phone</th><th>family</th></tr>
+        <tr><td><code>R1</code></td><td>John Smith</td><td>john.smith@gmail.com</td><td>555-1234</td><td><span class="chip smith">SMITH</span></td></tr>
+        <tr><td><code>R2</code></td><td>Jon Smyth</td><td>johnsmith@gmail.com</td><td></td><td><span class="chip smith">SMITH</span></td></tr>
+        <tr><td><code>R3</code></td><td>Sarah Jones</td><td>sarah.jones@corp.com</td><td>555-9000</td><td><span class="chip jones">JONES</span></td></tr>
+        <tr><td><code>R4</code></td><td>Sara Jones</td><td>s.jones@corp.com</td><td>555-9000</td><td><span class="chip jones">JONES</span></td></tr>
+        <tr><td><code>R5</code></td><td>Priya Patel</td><td>priya.patel@yahoo.com</td><td>555-7777</td><td><span class="chip patel">PATEL</span></td></tr>
+        <tr><td><code>R6</code></td><td>P. Patel</td><td>ppatel@yahoo.com</td><td>555-7777</td><td><span class="chip patel">PATEL</span></td></tr>
+      </table>
+    </div>
+    <div class="note">Three families, two records each. The pipeline doesn't know the families yet — that's what entity resolution discovers.</div>
+  </div>
+
+  <!-- Stage 2 -->
+  <div class="stage" id="s2">
+    <div class="stage-header">
+      <div class="stage-title">Stage 2 — Standardize</div>
+      <div class="stage-desc">StandardizationPlugin normalizes fields: lowercase email, strip punctuation from name, E.164 phone. This is what your YAML plugins do before blocking.</div>
+      <div class="stage-spark">df = StandardizationPlugin(config).transform(df)</div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>id</th><th>name_std</th><th>email_std</th><th>phone_std</th><th>family</th></tr>
+        <tr><td><code>R1</code></td><td>john smith</td><td>john.smith@gmail.com</td><td>5551234</td><td><span class="chip smith">SMITH</span></td></tr>
+        <tr><td><code>R2</code></td><td>jon smyth</td><td>johnsmith@gmail.com</td><td><em style="color:var(--faint)">null</em></td><td><span class="chip smith">SMITH</span></td></tr>
+        <tr><td><code>R3</code></td><td>sarah jones</td><td>sarah.jones@corp.com</td><td>5559000</td><td><span class="chip jones">JONES</span></td></tr>
+        <tr><td><code>R4</code></td><td>sara jones</td><td>s.jones@corp.com</td><td>5559000</td><td><span class="chip jones">JONES</span></td></tr>
+        <tr><td><code>R5</code></td><td>priya patel</td><td>priya.patel@yahoo.com</td><td>5557777</td><td><span class="chip patel">PATEL</span></td></tr>
+        <tr><td><code>R6</code></td><td>p patel</td><td>ppatel@yahoo.com</td><td>5557777</td><td><span class="chip patel">PATEL</span></td></tr>
+      </table>
+    </div>
+    <div class="note">R2's phone is still null after standardization — it was missing at source. The blocking step must handle this or R2 misses a block.</div>
+  </div>
+
+  <!-- Stage 3 -->
+  <div class="stage" id="s3">
+    <div class="stage-header">
+      <div class="stage-title">Stage 3 — Block</div>
+      <div class="stage-desc">Assign each record to one or more blocks. Only records sharing a block key will be paired. This avoids the O(n²) full cross-join.</div>
+      <div class="stage-spark">df = df.withColumn("block_key", soundex("name_std"))</div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>id</th><th>name_std</th><th>soundex block</th><th>phone block</th><th>family</th></tr>
+        <tr><td><code>R1</code></td><td>john smith</td><td><code>J525</code></td><td><code>5551234</code></td><td><span class="chip smith">SMITH</span></td></tr>
+        <tr><td><code>R2</code></td><td>jon smyth</td><td><code>J525</code></td><td><em style="color:var(--faint)">no phone block</em></td><td><span class="chip smith">SMITH</span></td></tr>
+        <tr><td><code>R3</code></td><td>sarah jones</td><td><code>S620</code></td><td><code>5559000</code></td><td><span class="chip jones">JONES</span></td></tr>
+        <tr><td><code>R4</code></td><td>sara jones</td><td><code>S620</code></td><td><code>5559000</code></td><td><span class="chip jones">JONES</span></td></tr>
+        <tr><td><code>R5</code></td><td>priya patel</td><td><code>P634</code></td><td><code>5557777</code></td><td><span class="chip patel">PATEL</span></td></tr>
+        <tr><td><code>R6</code></td><td>p patel</td><td><code>P634</code></td><td><code>5557777</code></td><td><span class="chip patel">PATEL</span></td></tr>
+      </table>
+    </div>
+    <div class="note">R1+R2 share soundex J525 even though "Smith" ≠ "Smyth" — that's soundex doing its job. R2 also gets no phone block (null), so it only has one path to find its duplicate.</div>
+  </div>
+
+  <!-- Stage 4 -->
+  <div class="stage" id="s4">
+    <div class="stage-header">
+      <div class="stage-title">Stage 4 — Shuffle &amp; Self-Join</div>
+      <div class="stage-desc">Records with the same block key shuffle to the same partition (desk). The self-join generates candidate pairs within each partition — only records on the same desk meet.</div>
+      <div class="stage-spark">pairs = df.alias("a").join(df.alias("b"), (a.block==b.block) &amp; (a.id &lt; b.id))</div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>block</th><th>partition (desk)</th><th>pair</th><th>how they met</th></tr>
+        <tr><td><code>J525</code></td><td>P2</td><td><span class="chip smith">R1 × R2</span></td><td>soundex name</td></tr>
+        <tr><td><code>S620</code></td><td>P0</td><td><span class="chip jones">R3 × R4</span></td><td>soundex name</td></tr>
+        <tr><td><code>5559000</code></td><td>P0</td><td><span class="chip jones">R3 × R4</span></td><td>phone (deduped)</td></tr>
+        <tr><td><code>P634</code></td><td>P1</td><td><span class="chip patel">R5 × R6</span></td><td>soundex name</td></tr>
+        <tr><td><code>5557777</code></td><td>P1</td><td><span class="chip patel">R5 × R6</span></td><td>phone (deduped)</td></tr>
+      </table>
+    </div>
+    <div class="note">R3×R4 appear twice (name block + phone block) — deduplicated before scoring. Only 3 unique pairs from 6 records, vs 15 pairs from a full cross-join. That's blocking working.</div>
+  </div>
+
+  <!-- Stage 5 -->
+  <div class="stage" id="s5">
+    <div class="stage-header">
+      <div class="stage-title">Stage 5 — Score &amp; Classify</div>
+      <div class="stage-desc">Each pair gets a similarity score. Jaro-Winkler for names, exact match for phone/email, weighted average → final score → verdict.</div>
+      <div class="stage-spark">pairs = ScoringPlugin(config).transform(pairs)</div>
+    </div>
+    <div class="pairs-grid">
+      <div class="pair-card">
+        <div class="pair-ids">R1 × R2 · <span class="chip smith">SMITH</span></div>
+        <div class="pair-score" style="color:var(--match)">0.91</div>
+        <span class="pair-verdict v-match">MATCH</span>
+        <div class="pair-detail">name_sim: 0.89 (jaro-winkler)<br>email_sim: 0.72 (domain match)<br>phone_sim: 0.00 (R2 null → skipped)<br>weighted: 0.91</div>
+      </div>
+      <div class="pair-card">
+        <div class="pair-ids">R3 × R4 · <span class="chip jones">JONES</span></div>
+        <div class="pair-score" style="color:var(--match)">0.96</div>
+        <span class="pair-verdict v-match">MATCH</span>
+        <div class="pair-detail">name_sim: 0.97 (sara≈sarah)<br>email_sim: 0.60 (same domain)<br>phone_sim: 1.00 (exact)<br>weighted: 0.96</div>
+      </div>
+      <div class="pair-card">
+        <div class="pair-ids">R5 × R6 · <span class="chip patel">PATEL</span></div>
+        <div class="pair-score" style="color:var(--review)">0.78</div>
+        <span class="pair-verdict v-review">REVIEW</span>
+        <div class="pair-detail">name_sim: 0.61 (p patel vs priya patel)<br>email_sim: 0.55 (different prefix)<br>phone_sim: 1.00 (exact)<br>weighted: 0.78 → needs human review</div>
+      </div>
+    </div>
+    <div class="note">R5×R6 hits the REVIEW band despite sharing a phone — "P. Patel" vs "Priya Patel" tanks the name score enough to pull the weighted score below the MATCH threshold. Phone alone isn't enough.</div>
+  </div>
+
+  <!-- Stage 6: Skew Explorer -->
+  <div class="stage" id="s6">
+    <div class="stage-header">
+      <div class="stage-title">Stage 6 — Skew Explorer</div>
+      <div class="stage-desc">One hot block key causes pair explosion. Drag the slider to see how a single overloaded block key grows quadratically while all other blocks stay flat.</div>
+    </div>
+    <div class="skew-box">
+      <div class="skew-label">Hot block size — records sharing one block key: <strong id="hot-val">50</strong></div>
+      <input type="range" class="skew-slider" id="hot-slider" min="2" max="500" value="50" oninput="updateSkew(this.value)">
+      <div class="skew-output">
+        <div class="skew-stat">
+          <div class="skew-stat-val" id="sk-pairs">1,225</div>
+          <div class="skew-stat-lbl">pairs in hot block</div>
+        </div>
+        <div class="skew-stat">
+          <div class="skew-stat-val" id="sk-normal">~5</div>
+          <div class="skew-stat-lbl">avg pairs / normal block</div>
+        </div>
+        <div class="skew-stat">
+          <div class="skew-stat-val warn" id="sk-ratio">245×</div>
+          <div class="skew-stat-lbl">skew ratio</div>
+        </div>
+      </div>
+      <div id="sk-warn" style="margin-top:12px;font-size:13px;color:var(--bad);display:none">⚠ Pair explosion territory — consider salting or capping this block key.</div>
+    </div>
+    <div class="note">This is why a generic blocking key like "country=US" wrecks your pipeline. Every record in the US ends up on the same desk, and that one executor does O(n²) work while all others idle.</div>
+  </div>
+
+</div>
+<script>
+function show(id,btn){
+  document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.sn-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+function updateSkew(v){
+  v=parseInt(v);
+  document.getElementById('hot-val').textContent=v;
+  const pairs=v*(v-1)/2;
+  const normal=5;
+  const ratio=Math.round(pairs/normal);
+  document.getElementById('sk-pairs').textContent=pairs.toLocaleString();
+  document.getElementById('sk-normal').textContent='~'+normal;
+  document.getElementById('sk-ratio').textContent=ratio.toLocaleString()+'×';
+  document.getElementById('sk-ratio').className='skew-stat-val '+(ratio>100?'warn':'ok');
+  document.getElementById('sk-warn').style.display=ratio>100?'block':'none';
+}
+</script>
+</body>
+</html>
