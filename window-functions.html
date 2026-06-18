@@ -558,6 +558,13 @@ golden = df.<span class="f">filter</span>(F.col(<span class="s">"rank"</span>) =
 <span class="co"># golden.count() == number of unique clusters</span></div>
   </div>
 
+  <div class="note"><strong>Common confusion — does filter(rank == 1) return just one cluster?</strong><br><br>
+  No — it returns one row <em>from every cluster</em>. Here's why:<br><br>
+  When the window function runs, it processes the <strong>entire DataFrame at once</strong>. Every row in every cluster gets its rank column in a single pass. <code>partitionBy</code> doesn't mean "process one cluster at a time" — it means "when assigning ranks, each row only competes against rows in the same cluster."<br><br>
+  So rank = 1 in C1 and rank = 1 in C2 are completely separate things. The rank counter resets to 1 for each partition — like running <code>enumerate()</code> fresh for each cluster pile. After the window function, C1's best row has rank 1, C2's best row also has rank 1, C3's best row also has rank 1.<br><br>
+  <code>filter(rank == 1)</code> then just keeps every row where rank happens to be 1 — which is exactly one row per cluster. That's how you get R1 + R3 + R5 — all three clusters, one winner each.
+  </div>
+
   <div class="trap"><strong>The tie problem:</strong> R5 and R6 both have score 0.91. ROW_NUMBER will arbitrarily pick one as rank 1. This is non-deterministic — run it twice, get different results. In Stage 04 you'll see how to add a stable tie-breaker (like <code>updated_at</code> — more recent record wins).</div>
 </div>
 </div>
