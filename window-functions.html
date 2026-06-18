@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window Functions — Module 03</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--teal)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--teal)}
+
+.stage-nav{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:99;overflow-x:auto}
+.stage-nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;gap:6px;height:48px;align-items:center}
+.sn{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sn:hover{color:var(--ink);border-color:var(--faint)}
+.sn.on{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.stage{display:none;padding:48px 0 72px}.stage.on{display:block}
+
+/* typography */
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--teal);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--teal)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+/* concept cards */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:20px 0}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:20px;position:relative}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0;background:var(--acc,var(--teal))}
+.cc-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:8px}
+.cc-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:6px}
+.cc-body{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* analogy box */
+.analogy{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:20px 22px;margin:20px 0}
+.analogy-eye{font-family:var(--mo);font-size:10px;color:var(--violet);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.analogy-body{font-size:14px;color:var(--ink);line-height:1.75}
+.analogy-body em{color:var(--violet);font-style:normal;font-weight:600}
+
+/* callouts */
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+.trap{border-left:3px solid var(--red);background:var(--red-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.trap strong{color:var(--red)}
+
+/* code windows */
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:2;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .k{color:var(--violet)}
+.code-block .f{color:var(--teal)}
+.code-block .s{color:var(--amber)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+.code-block .hl{background:rgba(94,200,194,.08);display:inline-block;width:100%;border-left:2px solid var(--teal);padding-left:6px;margin-left:-8px}
+.code-block .why{color:var(--teal);font-style:italic}
+
+/* debug trace */
+.debug-trace{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.dt-header{background:var(--surf2);padding:10px 16px;font-family:var(--mo);font-size:11px;color:var(--violet);letter-spacing:.08em;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.dt-header::before{content:'▶';font-size:9px}
+.dt-step{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dt-step:last-child{border-bottom:0}
+.dt-line{font-family:var(--mo);font-size:12px;color:var(--ink);margin-bottom:6px}
+.dt-state{font-family:var(--mo);font-size:12px;color:var(--teal);padding:8px 12px;background:var(--teal-dim);border-radius:6px;margin:6px 0}
+.dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.dt-why em{color:var(--amber);font-style:normal}
+
+/* data table */
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+.data-table .hl-row td{background:var(--teal-dim) !important}
+.data-table .hl-row td:first-child{border-left:3px solid var(--teal)}
+.data-table .new-col{color:var(--teal);font-weight:600}
+.data-table .faint{color:var(--faint)}
+.badge{display:inline-block;font-family:var(--mo);font-size:10px;padding:2px 7px;border-radius:4px}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #1A3D5C}
+.b-violet{background:var(--violet-dim);color:var(--violet);border:1px solid #3A3060}
+
+/* wrong vs right */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.compare-panel{border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.compare-header{padding:10px 14px;font-family:var(--mo);font-size:11px;letter-spacing:.06em;border-bottom:1px solid var(--line)}
+.wrong-header{background:var(--red-dim);color:var(--red)}
+.right-header{background:var(--green-dim);color:var(--green)}
+.compare-body{background:var(--surf2);padding:14px 16px;font-family:var(--mo);font-size:12px;line-height:1.9;white-space:pre;overflow-x:auto;color:var(--muted)}
+.compare-output{background:var(--panel);padding:10px 14px;border-top:1px solid var(--line);font-family:var(--mo);font-size:12px;color:var(--muted);line-height:1.7}
+.output-label{font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+
+/* window visualiser */
+.win-viz{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:20px 0}
+.wv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.wv-rows{display:flex;flex-direction:column;gap:4px}
+.wv-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;border:1px solid transparent;transition:all .2s;font-family:var(--mo);font-size:12px}
+.wv-row.partition-a{background:var(--teal-dim);border-color:var(--teal)}
+.wv-row.partition-b{background:var(--violet-dim);border-color:var(--violet)}
+.wv-row.partition-c{background:var(--amber-dim);border-color:var(--amber)}
+.wv-row.active{transform:scale(1.02);box-shadow:0 0 0 2px var(--teal)}
+.wv-cell{flex:1;text-align:center}
+.wv-cell.hdr{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.07em}
+.wv-part-label{font-family:var(--mo);font-size:10px;padding:2px 8px;border-radius:4px;flex-shrink:0;width:80px;text-align:center}
+.wv-controls{display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap}
+.wv-btn{font-family:var(--mo);font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;border:1px solid;transition:all .15s}
+.wv-explain{font-family:var(--mo);font-size:12px;color:var(--muted);margin-top:12px;background:var(--surf2);border-radius:7px;padding:12px 14px;min-height:48px;line-height:1.7}
+
+/* quiz */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:20px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.q-prompt{font-size:13px;line-height:1.65;margin-bottom:14px;color:var(--muted)}
+.q-prompt strong{color:var(--ink)}
+.q-opts{display:flex;flex-direction:column;gap:7px}
+.q-opt{font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);padding:8px 12px;border-radius:6px;cursor:pointer;text-align:left;color:var(--muted);transition:all .15s}
+.q-opt:hover{border-color:var(--teal);color:var(--ink)}
+.q-opt.correct{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.q-opt.wrong{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.q-fb{font-size:12px;margin-top:10px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+/* stage map */
+.stage-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin:28px 0}
+.smap-item{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px;cursor:pointer;transition:border-color .15s}
+.smap-item:hover{border-color:var(--teal)}
+.smap-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:6px}
+.smap-title{font-size:13px;font-weight:500}
+.smap-desc{font-size:12px;color:var(--faint);margin-top:4px;line-height:1.5}
+
+.pipeline-viz{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:24px 0}
+.pv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.pv-flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pv-box{background:var(--surf);border:1px solid var(--line);border-radius:7px;padding:7px 13px;font-family:var(--mo);font-size:12px;color:var(--muted)}
+.pv-box.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.pv-box.hl{background:var(--violet-dim);border-color:var(--violet);color:var(--violet)}
+.pv-arr{color:var(--faint);font-size:13px;padding:0 2px}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--teal)}
+
+@media(max-width:600px){.compare-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 03</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Window Functions</span>
+  </div>
+</nav>
+
+<div class="stage-nav">
+  <div class="stage-nav-inner">
+    <button class="sn on"  onclick="go('s0',this)">00 · Overview</button>
+    <button class="sn" onclick="go('s1',this)">01 · What is a Window?</button>
+    <button class="sn" onclick="go('s2',this)">02 · PARTITION BY</button>
+    <button class="sn" onclick="go('s3',this)">03 · ROW_NUMBER</button>
+    <button class="sn" onclick="go('s4',this)">04 · RANK vs DENSE_RANK</button>
+    <button class="sn" onclick="go('s5',this)">05 · LAG &amp; LEAD</button>
+    <button class="sn" onclick="go('s6',this)">06 · Running Aggregates</button>
+    <button class="sn" onclick="go('s7',this)">07 · MDM Patterns</button>
+    <button class="sn" onclick="go('s8',this)">08 · Self-Test</button>
+  </div>
+</div>
+
+
+<!-- ══════ STAGE 0 — OVERVIEW ══════ -->
+<div class="stage on" id="s0">
+<div class="wrap">
+  <p class="sec-eye">Module 03 · MDM / Spark Track</p>
+  <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">Window Functions</h1>
+  <p class="sec-sub">The moment in every MDM pipeline where you need to ask "compared to the other records in this group, where does this one rank?" — that's a window function. This module explains why they exist, how they work, and exactly where they appear in your deduplication and golden record logic.</p>
+
+  <div class="pipeline-viz">
+    <div class="pv-label">Where window functions appear in your pipeline</div>
+    <div class="pv-flow">
+      <span class="pv-box done">Ingest</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Block</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Self-Join</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Score</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Dedup / Rank ← window functions live here</span><span class="pv-arr">→</span>
+      <span class="pv-box">Golden Record</span>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The Real Problem This Solves</h3>
+  <p>After scoring, you have a table of customer records — but some are duplicates. You need to pick <strong>one winner per cluster</strong>. That means ranking records within each cluster and keeping only rank = 1.</p>
+  <p>Here's the trap: you might reach for <code>groupBy().max()</code>. It seems right — group by cluster, take the record with the highest score. But <code>groupBy</code> <strong>collapses rows into one</strong>. You lose the original row. You can't keep the full record, you only get the aggregated value.</p>
+  <p>Window functions solve this exactly: they let you <strong>compute a value that looks at a group of rows — without collapsing them.</strong> Every row keeps its full data, and gets a new column added with the result.</p>
+
+  <div class="stage-map">
+    <div class="smap-item" onclick="go('s1',document.querySelectorAll('.sn')[1])">
+      <div class="smap-num">01</div><div class="smap-title">What is a Window?</div>
+      <div class="smap-desc">The core concept — analogy + how the frame moves</div>
+    </div>
+    <div class="smap-item" onclick="go('s2',document.querySelectorAll('.sn')[2])">
+      <div class="smap-num">02</div><div class="smap-title">PARTITION BY</div>
+      <div class="smap-desc">Grouping rows without collapsing them</div>
+    </div>
+    <div class="smap-item" onclick="go('s3',document.querySelectorAll('.sn')[3])">
+      <div class="smap-num">03</div><div class="smap-title">ROW_NUMBER</div>
+      <div class="smap-desc">Pick the top record per cluster — dedup pattern</div>
+    </div>
+    <div class="smap-item" onclick="go('s4',document.querySelectorAll('.sn')[4])">
+      <div class="smap-num">04</div><div class="smap-title">RANK vs DENSE_RANK</div>
+      <div class="smap-desc">What happens when scores tie</div>
+    </div>
+    <div class="smap-item" onclick="go('s5',document.querySelectorAll('.sn')[5])">
+      <div class="smap-num">05</div><div class="smap-title">LAG &amp; LEAD</div>
+      <div class="smap-desc">Look at the row before or after — score drift detection</div>
+    </div>
+    <div class="smap-item" onclick="go('s6',document.querySelectorAll('.sn')[6])">
+      <div class="smap-num">06</div><div class="smap-title">Running Aggregates</div>
+      <div class="smap-desc">Count matches per record without losing rows</div>
+    </div>
+    <div class="smap-item" onclick="go('s7',document.querySelectorAll('.sn')[7])">
+      <div class="smap-num">07</div><div class="smap-title">MDM Patterns</div>
+      <div class="smap-desc">Full dedup + golden record pipeline in one place</div>
+    </div>
+    <div class="smap-item" onclick="go('s8',document.querySelectorAll('.sn')[8])">
+      <div class="smap-num">08</div><div class="smap-title">Self-Test</div>
+      <div class="smap-desc">8 scenarios from real MDM pipelines</div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 1 — WHAT IS A WINDOW ══════ -->
+<div class="stage" id="s1">
+<div class="wrap">
+  <p class="sec-eye">Stage 01</p>
+  <h2 class="sec-h">What is a Window?</h2>
+  <p class="sec-sub">This is the hardest concept in the module. Everything else builds on it. Read this section carefully before moving on.</p>
+
+  <h3><span class="bar"></span>The Problem with groupBy</h3>
+  <p>Imagine you have 4 customer records from the same cluster (they're probably the same person). You want to find the one with the highest confidence score. Your first instinct might be <code>groupBy("cluster_id").max("score")</code>.</p>
+  <p>Here's what that does — and why it fails for MDM:</p>
+
+  <div class="compare-grid">
+    <div class="compare-panel">
+      <div class="compare-header wrong-header">❌ groupBy — collapses rows, loses the record</div>
+      <div class="compare-body"><span style="color:var(--violet)">df</span>.groupBy(<span style="color:var(--amber)">"cluster_id"</span>)\
+  .max(<span style="color:var(--amber)">"score"</span>)</div>
+      <div class="compare-output">
+        <div class="output-label">Output — you get this:</div>
+        <table class="data-table" style="margin:0">
+          <tr><th>cluster_id</th><th>max(score)</th></tr>
+          <tr><td>C1</td><td>0.94</td></tr>
+          <tr><td>C2</td><td>0.88</td></tr>
+        </table>
+        <div style="margin-top:8px;font-size:12px;color:var(--red)">⚠ You have the score but lost the name, email, phone — the whole record is gone. You can't build a golden record from just a score.</div>
+      </div>
+    </div>
+    <div class="compare-panel">
+      <div class="compare-header right-header">✓ Window function — adds a column, keeps every row</div>
+      <div class="compare-body"><span style="color:var(--violet)">w</span> = Window.partitionBy(<span style="color:var(--amber)">"cluster_id"</span>)\
+        .orderBy(F.desc(<span style="color:var(--amber)">"score"</span>))
+<span style="color:var(--violet)">df</span>.withColumn(<span style="color:var(--amber)">"rank"</span>,
+  F.row_number().over(<span style="color:var(--violet)">w</span>))</div>
+      <div class="compare-output">
+        <div class="output-label">Output — you get this:</div>
+        <table class="data-table" style="margin:0">
+          <tr><th>cluster_id</th><th>name</th><th>score</th><th class="new-col">rank</th></tr>
+          <tr class="hl-row"><td>C1</td><td>John Smith</td><td>0.94</td><td class="new-col">1</td></tr>
+          <tr><td>C1</td><td>Jon Smyth</td><td>0.81</td><td class="new-col">2</td></tr>
+          <tr class="hl-row"><td>C2</td><td>Priya Patel</td><td>0.88</td><td class="new-col">1</td></tr>
+          <tr><td>C2</td><td>P. Patel</td><td>0.72</td><td class="new-col">2</td></tr>
+        </table>
+        <div style="margin-top:8px;font-size:12px;color:var(--green)">✓ Every row is still there. Each got a rank column. Filter where rank=1 to get your golden records.</div>
+      </div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The Analogy — A Sliding Frame Over Sorted Rows</h3>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy</div>
+    <div class="analogy-body">
+      Imagine you've sorted all your customer records into piles on a desk — one pile per cluster. Now you pick up each record one at a time, but instead of looking at it in isolation, you look at it <em>in the context of its pile</em>: "this record is #1 in its pile, the one below it is #2," etc.<br><br>
+      The <em>window</em> is that pile. The <em>window function</em> is the question you ask while holding each record: "What position am I in my pile?" or "What was the score of the record above me?"<br><br>
+      Crucially — you never <em>merge</em> the pile into one card. Every card comes back to the table with a new sticky note on it saying its answer.
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The Three Parts of Every Window Spec</h3>
+  <p>Every window function in PySpark needs a <strong>window specification</strong> — a description of how to form the frame. It has three parts:</p>
+
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Part 1</div>
+      <div class="cc-title">PARTITION BY</div>
+      <div class="cc-body">Which column defines the "pile"? In MDM: <code>cluster_id</code>. Records in the same cluster form one window. Records in different clusters never see each other.</div>
+    </div>
+    <div class="cc" style="--acc:var(--violet)">
+      <div class="cc-num">Part 2</div>
+      <div class="cc-title">ORDER BY</div>
+      <div class="cc-body">Within the pile, how are records sorted? In MDM: by <code>score DESC</code> — so rank 1 = highest score. The order determines what "above" and "below" mean for LAG/LEAD.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Part 3 (optional)</div>
+      <div class="cc-title">ROWS/RANGE BETWEEN</div>
+      <div class="cc-body">How many rows to include in the frame. Default for most functions: all rows in the partition. You'll see this in running aggregates. Most MDM use cases don't need to set this explicitly.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Plain Python Analog — Before the Spark Syntax</h3>
+  <p>Here's what a window function is doing, in pure Python, before any Spark API:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">Pure Python — the idea behind a window function</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># Imagine your records are just a list of dicts</span>
+records = [
+  {<span class="s">"id"</span>: <span class="s">"R1"</span>, <span class="s">"cluster"</span>: <span class="s">"C1"</span>, <span class="s">"name"</span>: <span class="s">"John Smith"</span>,  <span class="s">"score"</span>: <span class="n">0.94</span>},
+  {<span class="s">"id"</span>: <span class="s">"R2"</span>, <span class="s">"cluster"</span>: <span class="s">"C1"</span>, <span class="s">"name"</span>: <span class="s">"Jon Smyth"</span>,   <span class="s">"score"</span>: <span class="n">0.81</span>},
+  {<span class="s">"id"</span>: <span class="s">"R3"</span>, <span class="s">"cluster"</span>: <span class="s">"C2"</span>, <span class="s">"name"</span>: <span class="s">"Priya Patel"</span>,  <span class="s">"score"</span>: <span class="n">0.88</span>},
+  {<span class="s">"id"</span>: <span class="s">"R4"</span>, <span class="s">"cluster"</span>: <span class="s">"C2"</span>, <span class="s">"name"</span>: <span class="s">"P. Patel"</span>,     <span class="s">"score"</span>: <span class="n">0.72</span>},
+]
+
+<span class="co"># Step 1: group by cluster — this is PARTITION BY</span>
+<span class="k">from</span> itertools <span class="k">import</span> groupby
+
+clusters = {}
+<span class="k">for</span> r <span class="k">in</span> records:
+    clusters.setdefault(r[<span class="s">"cluster"</span>], []).append(r)
+<span class="co"># clusters = {"C1": [R1, R2], "C2": [R3, R4]}</span>
+
+<span class="co"># Step 2: sort each group by score desc — this is ORDER BY score DESC</span>
+<span class="k">for</span> cluster_id, group <span class="k">in</span> clusters.items():
+    group.sort(key=<span class="k">lambda</span> r: r[<span class="s">"score"</span>], reverse=<span class="k">True</span>)
+
+<span class="co"># Step 3: add a rank to each record — this is ROW_NUMBER()</span>
+<span class="co"># Notice: every record stays! We're just adding a new field.</span>
+<span class="k">for</span> cluster_id, group <span class="k">in</span> clusters.items():
+    <span class="k">for</span> rank, record <span class="k">in</span> enumerate(group, start=<span class="n">1</span>):
+        record[<span class="s">"rank"</span>] = rank   <span class="co"># ← new column added, record unchanged</span>
+
+<span class="co"># Result: every record now has a rank field</span>
+<span class="co"># R1 → {"id":"R1", "cluster":"C1", "name":"John Smith", "score":0.94, "rank":1}</span>
+<span class="co"># R2 → {"id":"R2", "cluster":"C1", "name":"Jon Smyth",  "score":0.81, "rank":2}</span>
+<span class="co"># R3 → {"id":"R3", "cluster":"C2", "name":"Priya Patel","score":0.88, "rank":1}</span>
+<span class="co"># R4 → {"id":"R4", "cluster":"C2", "name":"P. Patel",   "score":0.72, "rank":2}</span>
+
+<span class="co"># Step 4: filter rank == 1 — this is your golden record selection</span>
+golden = [r <span class="k">for</span> r <span class="k">in</span> records <span class="k">if</span> r[<span class="s">"rank"</span>] == <span class="n">1</span>]
+<span class="co"># → [{"id":"R1",...}, {"id":"R3",...}]  ← one per cluster, full records kept</span></div>
+  </div>
+
+  <div class="note"><strong>Key insight:</strong> PySpark's window functions do exactly this — but across a distributed cluster with millions of rows. The <code>Window.partitionBy(...).orderBy(...)</code> spec is just a way of telling Spark: "group these, sort them like this, then run the function." The Python loop above is the mental model. The Spark API is the production implementation.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 2 — PARTITION BY ══════ -->
+<div class="stage" id="s2">
+<div class="wrap">
+  <p class="sec-eye">Stage 02</p>
+  <h2 class="sec-h">PARTITION BY — Grouping Without Collapsing</h2>
+  <p class="sec-sub">PARTITION BY is the most important part of a window spec. It decides which rows can "see" each other. Rows in the same partition are in the same window. Rows in different partitions are completely invisible to each other.</p>
+
+  <h3><span class="bar"></span>Interactive — Watch the Partitions Form</h3>
+  <p>Click a row below to highlight its partition and see which rows are "in its window":</p>
+
+  <div class="win-viz">
+    <div class="wv-label">Customer records — click any row to see its window</div>
+    <div class="wv-rows" id="wv-rows"></div>
+    <div class="wv-explain" id="wv-explain">Click any row to see which other rows are in the same window (same cluster_id partition).</div>
+  </div>
+
+  <h3><span class="bar"></span>The PySpark Syntax — Line by Line</h3>
+  <p>Here's how you define a window spec in PySpark. Read each line as a direct translation of the plain-English idea:</p>
+
+  <div class="debug-trace">
+    <div class="dt-header">Window spec — what each line means</div>
+    <div class="dt-step">
+      <div class="dt-line"><span style="color:var(--violet)">from</span> pyspark.sql <span style="color:var(--violet)">import</span> Window</div>
+      <div class="dt-why"><em>Why this line:</em> Window is not in F (pyspark.sql.functions). It's a separate import. You need it to define the partition/order spec before calling functions like row_number().</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line"><span style="color:var(--teal)">w</span> = Window.partitionBy(<span style="color:var(--amber)">"cluster_id"</span>)</div>
+      <div class="dt-state">w now means: "look only at rows that share the same cluster_id value"</div>
+      <div class="dt-why"><em>Why this line:</em> This is the "pile" definition. Every row with cluster_id = "C1" will form one window. Every row with cluster_id = "C2" forms another. They never mix.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line"><span style="color:var(--teal)">w</span> = <span style="color:var(--teal)">w</span>.orderBy(F.desc(<span style="color:var(--amber)">"score"</span>))</div>
+      <div class="dt-state">w now means: "within each cluster, sort rows from highest score to lowest"</div>
+      <div class="dt-why"><em>Why this line:</em> The sort order determines rank 1 vs rank 2. We want the best-scoring record to be rank 1, so we sort descending. If you forgot this, ranks would be assigned in arbitrary order — non-deterministic results.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">df.withColumn(<span style="color:var(--amber)">"rank"</span>, F.row_number().over(<span style="color:var(--teal)">w</span>))</div>
+      <div class="dt-state">For each row: compute row_number() using window w, store the result in a new column called "rank". The original row is unchanged.</div>
+      <div class="dt-why"><em>Why .over(w):</em> row_number() on its own means nothing — it needs to know "row number within what?" The .over(w) tells it which window spec to use. Without it, Spark throws an error.</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — defining and using a window spec</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> Window         <span class="co"># separate import — not in F</span>
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># Define the window: group by cluster, best score first</span>
+<span class="f">w</span> = Window\
+  .partitionBy(<span class="s">"cluster_id"</span>)\        <span class="co"># ← which rows are in the same "pile"</span>
+  .orderBy(F.desc(<span class="s">"score"</span>))          <span class="co"># ← sort within the pile, best first</span>
+
+<span class="co"># Add a rank column — row_number() counts from 1 within each partition</span>
+df = df.withColumn(<span class="s">"rank"</span>, F.row_number().over(<span class="f">w</span>))
+<span class="co">#                                        ↑↑↑↑↑↑↑
+#                                        .over(w) connects the function
+#                                        to your window spec — required</span>
+
+<span class="co"># Now filter: keep only rank 1 — one record per cluster</span>
+golden_records = df.<span class="f">filter</span>(F.col(<span class="s">"rank"</span>) == <span class="n">1</span>)</div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 3 — ROW_NUMBER ══════ -->
+<div class="stage" id="s3">
+<div class="wrap">
+  <p class="sec-eye">Stage 03</p>
+  <h2 class="sec-h">ROW_NUMBER — Picking the Winner</h2>
+  <p class="sec-sub">ROW_NUMBER is the most used window function in MDM. It assigns a unique integer — 1, 2, 3 — to each row within its partition, based on the ORDER BY you defined. Rank 1 is your winner. This is how you pick the golden record from a cluster of duplicates.</p>
+
+  <h3><span class="bar"></span>Input → Window Applied → Output</h3>
+  <p>Let's trace exactly what happens when <code>row_number()</code> runs over our customer data:</p>
+
+  <h4>Starting data — 6 records across 3 clusters</h4>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <tr><th>id</th><th>cluster_id</th><th>name</th><th>score</th><th>source_system</th><th>updated_at</th></tr>
+      <tr><td>R1</td><td>C1</td><td>John Smith</td><td>0.94</td><td>CRM</td><td>2026-06-01</td></tr>
+      <tr><td>R2</td><td>C1</td><td>Jon Smyth</td><td>0.81</td><td>ERP</td><td>2026-05-15</td></tr>
+      <tr><td>R3</td><td>C2</td><td>Priya Patel</td><td>0.88</td><td>CRM</td><td>2026-06-10</td></tr>
+      <tr><td>R4</td><td>C2</td><td>P. Patel</td><td>0.72</td><td>Billing</td><td>2026-04-01</td></tr>
+      <tr><td>R5</td><td>C3</td><td>Sarah Jones</td><td>0.91</td><td>CRM</td><td>2026-06-08</td></tr>
+      <tr><td>R6</td><td>C3</td><td>Sara Jones</td><td>0.91</td><td>ERP</td><td>2026-05-20</td></tr>
+    </table>
+  </div>
+
+  <div class="note"><strong>Notice R5 and R6:</strong> same cluster, same score (0.91). What happens to the rank? That's the tie-breaking problem — covered in Stage 04.</div>
+
+  <h4>After window function — rank column added</h4>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <tr><th>id</th><th>cluster_id</th><th>name</th><th>score</th><th class="new-col">rank</th><th>why</th></tr>
+      <tr class="hl-row"><td>R1</td><td>C1</td><td>John Smith</td><td>0.94</td><td class="new-col">1</td><td class="faint">highest score in C1</td></tr>
+      <tr><td>R2</td><td>C1</td><td>Jon Smyth</td><td>0.81</td><td class="new-col">2</td><td class="faint">second in C1</td></tr>
+      <tr class="hl-row"><td>R3</td><td>C2</td><td>Priya Patel</td><td>0.88</td><td class="new-col">1</td><td class="faint">highest score in C2</td></tr>
+      <tr><td>R4</td><td>C2</td><td>P. Patel</td><td>0.72</td><td class="new-col">2</td><td class="faint">second in C2</td></tr>
+      <tr class="hl-row"><td>R5</td><td>C3</td><td>Sarah Jones</td><td>0.91</td><td class="new-col">1</td><td class="faint">tied — arbitrary winner</td></tr>
+      <tr><td>R6</td><td>C3</td><td>Sara Jones</td><td>0.91</td><td class="new-col">2</td><td class="faint">tied — arbitrary loser</td></tr>
+    </table>
+  </div>
+
+  <h3><span class="bar"></span>The Full Dedup Code — With Debug Trace</h3>
+
+  <div class="debug-trace">
+    <div class="dt-header">Execution trace — what Spark is actually doing</div>
+    <div class="dt-step">
+      <div class="dt-line">w = Window.partitionBy("cluster_id").orderBy(F.desc("score"))</div>
+      <div class="dt-state">w = a specification object. No data touched yet. This is just a recipe.</div>
+      <div class="dt-why"><em>Why define it separately:</em> You'll reuse this spec for multiple window functions (row_number, lag, running count). Defining it once and referencing <code>w</code> keeps the code DRY.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">df = df.withColumn("rank", F.row_number().over(w))</div>
+      <div class="dt-state">df now has one extra column "rank". All other columns unchanged. Row count unchanged (still 6 rows).</div>
+      <div class="dt-why"><em>Why withColumn and not a new variable:</em> withColumn returns a new DataFrame with the column added — it doesn't modify df in-place. Assigning back to df just overwrites the variable reference. The original data is immutable in Spark.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">golden = df.filter(F.col("rank") == 1)</div>
+      <div class="dt-state">golden = 3 rows (R1, R3, R5). One per cluster. Each row has its full original data intact.</div>
+      <div class="dt-why"><em>Why filter after withColumn and not before:</em> You need the rank column to exist before you can filter on it. The window function must run first to produce the rank, then you filter.</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — full dedup with ROW_NUMBER</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> Window
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># 1. Define the window spec</span>
+<span class="co">#    partitionBy = one pile per cluster</span>
+<span class="co">#    orderBy desc = best score gets rank 1</span>
+<span class="f">w</span> = Window\
+  .partitionBy(<span class="s">"cluster_id"</span>)\
+  .orderBy(F.desc(<span class="s">"score"</span>))
+
+<span class="co"># 2. Add rank column — does NOT collapse rows, does NOT change row count</span>
+df = df.withColumn(<span class="s">"rank"</span>, F.row_number().over(<span class="f">w</span>))
+
+<span class="co"># 3. Keep only rank 1 per cluster → your golden records</span>
+golden = df.<span class="f">filter</span>(F.col(<span class="s">"rank"</span>) == <span class="n">1</span>)\
+           .drop(<span class="s">"rank"</span>)   <span class="co"># ← clean up helper column</span>
+
+<span class="co"># Result: one row per cluster_id, full original data preserved</span>
+<span class="co"># golden.count() == number of unique clusters</span></div>
+  </div>
+
+  <div class="trap"><strong>The tie problem:</strong> R5 and R6 both have score 0.91. ROW_NUMBER will arbitrarily pick one as rank 1. This is non-deterministic — run it twice, get different results. In Stage 04 you'll see how to add a stable tie-breaker (like <code>updated_at</code> — more recent record wins).</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 4 — RANK VS DENSE_RANK ══════ -->
+<div class="stage" id="s4">
+<div class="wrap">
+  <p class="sec-eye">Stage 04</p>
+  <h2 class="sec-h">RANK vs DENSE_RANK — Handling Ties</h2>
+  <p class="sec-sub">Three functions assign row numbers: ROW_NUMBER, RANK, and DENSE_RANK. They behave identically when there are no ties. When scores tie, each handles it differently. Knowing which to use prevents silent bugs where you expect one record per cluster but get zero or two.</p>
+
+  <h3><span class="bar"></span>Side-by-Side Output — Same Data, Three Functions</h3>
+  <p>Using cluster C3 where R5 and R6 both score 0.91:</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <tr><th>id</th><th>name</th><th>score</th><th class="new-col">ROW_NUMBER</th><th class="new-col" style="color:var(--amber)">RANK</th><th class="new-col" style="color:var(--violet)">DENSE_RANK</th><th>Key difference</th></tr>
+      <tr><td>R5</td><td>Sarah Jones</td><td>0.91</td><td class="new-col">1</td><td class="new-col" style="color:var(--amber)">1</td><td class="new-col" style="color:var(--violet)">1</td><td class="faint">All agree at the top</td></tr>
+      <tr><td>R6</td><td>Sara Jones</td><td>0.91</td><td class="new-col">2</td><td class="new-col" style="color:var(--amber)">1</td><td class="new-col" style="color:var(--violet)">1</td><td class="faint">RANK+DENSE_RANK both give 1 — tied!</td></tr>
+      <tr><td>R7</td><td>S. Jones</td><td>0.65</td><td class="new-col">3</td><td class="new-col" style="color:var(--amber)">3</td><td class="new-col" style="color:var(--violet)">2</td><td class="faint">RANK skips 2 (gap). DENSE_RANK doesn't.</td></tr>
+    </table>
+  </div>
+
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">ROW_NUMBER</div>
+      <div class="cc-title">Always unique. Never ties.</div>
+      <div class="cc-body">Even if scores are identical, one row gets 1 and the other gets 2. The choice is arbitrary. Use when you <em>must</em> have exactly one winner — add a stable tie-breaker to the ORDER BY to make it deterministic.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">RANK</div>
+      <div class="cc-title">Ties get the same rank. Skips numbers.</div>
+      <div class="cc-body">Two rows tied at score 0.91 both get rank 1. The next row gets rank 3 (skips 2). <code>filter(rank == 1)</code> returns <em>both</em> tied rows. Use when you want all records tied for the top spot.</div>
+    </div>
+    <div class="cc" style="--acc:var(--violet)">
+      <div class="cc-num">DENSE_RANK</div>
+      <div class="cc-title">Ties get the same rank. No gaps.</div>
+      <div class="cc-body">Same as RANK for tied rows, but the next distinct score gets rank 2 (not 3). Use when you care about "how many distinct score levels above this row" rather than "how many rows above this row."</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>MDM Recommendation — Make Ties Deterministic</h3>
+  <p>For golden record selection, you almost always want ROW_NUMBER — but with a stable tie-breaker added to the ORDER BY so the result is the same every time you run the pipeline:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — stable tie-breaking with ROW_NUMBER</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># ❌ Non-deterministic — if two rows have the same score,</span>
+<span class="co">#    rank 1 could be either one on different runs</span>
+<span class="f">w_bad</span> = Window.partitionBy(<span class="s">"cluster_id"</span>)\
+              .orderBy(F.desc(<span class="s">"score"</span>))
+
+<span class="co"># ✓ Deterministic — same score? most-recently-updated record wins.</span>
+<span class="co">#   updated_at breaks any tie in a consistent, meaningful way.</span>
+<span class="f">w_good</span> = Window.partitionBy(<span class="s">"cluster_id"</span>)\
+               .orderBy(
+                 F.desc(<span class="s">"score"</span>),       <span class="co"># ← primary sort: highest score first</span>
+                 F.desc(<span class="s">"updated_at"</span>)   <span class="co"># ← tie-breaker: most recent first</span>
+               )
+
+df = df.withColumn(<span class="s">"rank"</span>, F.row_number().over(<span class="f">w_good</span>))
+
+<span class="co"># Now: if R5 and R6 tie on score, the one updated more recently gets rank 1.</span>
+<span class="co"># Deterministic. Repeatable. Auditable.</span></div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 5 — LAG & LEAD ══════ -->
+<div class="stage" id="s5">
+<div class="wrap">
+  <p class="sec-eye">Stage 05</p>
+  <h2 class="sec-h">LAG &amp; LEAD — Looking at Neighbouring Rows</h2>
+  <p class="sec-sub">LAG looks at the row <em>before</em> the current one in the window. LEAD looks at the row <em>after</em>. Both are used in MDM to detect score drift — how much did confidence drop between the best and second-best candidate? A big drop means a clear winner. A small drop means a borderline case needing review.</p>
+
+  <h3><span class="bar"></span>The Analogy — Looking at Your Neighbours in a Sorted Line</h3>
+  <div class="analogy">
+    <div class="analogy-eye">Analogy</div>
+    <div class="analogy-body">
+      Imagine the records in a cluster are standing in a line, sorted by score, best at the front. <em>LAG(score, 1)</em> means: "what score does the person directly behind me have?" <em>LEAD(score, 1)</em> means: "what score does the person directly in front of me have?"<br><br>
+      The person at the front of the line (rank 1) has nobody in front — LEAD returns <em>null</em>. The person at the back has nobody behind — LAG returns <em>null</em>.
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>MDM Use Case — Score Drop Detection</h3>
+  <p>After ranking, you want to know: is the rank-1 record clearly better than rank-2, or are they almost identical? A big score gap = confident match. A tiny gap = borderline, might need human review.</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <tr><th>id</th><th>cluster</th><th>name</th><th>score</th><th>rank</th><th class="new-col">prev_score (LAG)</th><th class="new-col">score_drop</th><th>verdict</th></tr>
+      <tr class="hl-row"><td>R1</td><td>C1</td><td>John Smith</td><td>0.94</td><td>1</td><td class="new-col faint">null (no one above)</td><td class="new-col faint">—</td><td><span class="badge b-green">clear winner</span></td></tr>
+      <tr><td>R2</td><td>C1</td><td>Jon Smyth</td><td>0.81</td><td>2</td><td class="new-col">0.94</td><td class="new-col">0.13 drop</td><td><span class="badge b-green">confident gap</span></td></tr>
+      <tr class="hl-row"><td>R5</td><td>C3</td><td>Sarah Jones</td><td>0.91</td><td>1</td><td class="new-col faint">null</td><td class="new-col faint">—</td><td><span class="badge b-amber">borderline</span></td></tr>
+      <tr><td>R6</td><td>C3</td><td>Sara Jones</td><td>0.91</td><td>2</td><td class="new-col">0.91</td><td class="new-col" style="color:var(--red)">0.00 drop</td><td><span class="badge b-red">flag for review</span></td></tr>
+    </table>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — LAG for score drop detection</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> Window
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="f">w</span> = Window.partitionBy(<span class="s">"cluster_id"</span>).orderBy(F.desc(<span class="s">"score"</span>))
+
+<span class="co"># LAG(column, n, default) — look n rows BACK in the window</span>
+<span class="co"># For the first row (rank 1), there's no previous row → returns default (None)</span>
+df = df.withColumn(
+  <span class="s">"prev_score"</span>,
+  F.<span class="f">lag</span>(<span class="s">"score"</span>, <span class="n">1</span>, <span class="k">None</span>).over(<span class="f">w</span>)
+  <span class="co">#    ↑col    ↑how many rows back   ↑default if no previous row</span>
+)
+
+<span class="co"># Compute how much the score dropped from the row above</span>
+df = df.withColumn(
+  <span class="s">"score_drop"</span>,
+  F.col(<span class="s">"prev_score"</span>) - F.col(<span class="s">"score"</span>)
+  <span class="co"># For rank-1 rows: prev_score is null → score_drop is null (not an error)</span>
+)
+
+<span class="co"># Flag clusters where rank-1 and rank-2 are almost identical scores</span>
+<span class="co"># A tiny drop (< 0.05) means the "winner" isn't clearly better</span>
+df = df.withColumn(
+  <span class="s">"needs_review"</span>,
+  F.<span class="f">when</span>(
+    (F.col(<span class="s">"rank"</span>) == <span class="n">2</span>) & (F.col(<span class="s">"score_drop"</span>) < <span class="n">0.05</span>),
+    <span class="k">True</span>
+  ).otherwise(<span class="k">False</span>)
+)</div>
+  </div>
+
+  <div class="note"><strong>LEAD works the same way but looks forward.</strong> <code>F.lead("score", 1, None).over(w)</code> gives you the score of the row ranked one position below the current one. Useful when you're sitting on rank-1 and want to know how far ahead you are from rank-2 without needing to join back to the same table.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 6 — RUNNING AGGREGATES ══════ -->
+<div class="stage" id="s6">
+<div class="wrap">
+  <p class="sec-eye">Stage 06</p>
+  <h2 class="sec-h">Running Aggregates — Count and Sum Without Collapsing</h2>
+  <p class="sec-sub">Window functions can also run aggregations — count, sum, avg — over the window, without collapsing rows. The result is added as a new column to every row. In MDM, this is how you count how many matches each record has, or sum up the scores of all records in a cluster.</p>
+
+  <h3><span class="bar"></span>Use Case — Match Count Per Record</h3>
+  <p>After scoring, you want to know: how many times does each record appear in a matched pair? A record that matches many others is a strong candidate for the golden record. A record that matches nobody is probably unique.</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <tr><th>record_id</th><th>cluster_id</th><th>name</th><th>score</th><th class="new-col">cluster_size</th><th class="new-col">cluster_avg_score</th></tr>
+      <tr><td>R1</td><td>C1</td><td>John Smith</td><td>0.94</td><td class="new-col">2</td><td class="new-col">0.875</td></tr>
+      <tr><td>R2</td><td>C1</td><td>Jon Smyth</td><td>0.81</td><td class="new-col">2</td><td class="new-col">0.875</td></tr>
+      <tr><td>R3</td><td>C2</td><td>Priya Patel</td><td>0.88</td><td class="new-col">2</td><td class="new-col">0.800</td></tr>
+      <tr><td>R4</td><td>C2</td><td>P. Patel</td><td>0.72</td><td class="new-col">2</td><td class="new-col">0.800</td></tr>
+      <tr><td>R5</td><td>C3</td><td>Sarah Jones</td><td>0.91</td><td class="new-col">3</td><td class="new-col">0.823</td></tr>
+      <tr><td>R6</td><td>C3</td><td>Sara Jones</td><td>0.91</td><td class="new-col">3</td><td class="new-col">0.823</td></tr>
+      <tr><td>R7</td><td>C3</td><td>S. Jones</td><td>0.65</td><td class="new-col">3</td><td class="new-col">0.823</td></tr>
+    </table>
+  </div>
+
+  <div class="note"><strong>Key observation:</strong> Every row in C3 gets <code>cluster_size = 3</code> and <code>cluster_avg_score = 0.823</code>. The aggregation ran over the whole partition, and the result was broadcast back to every row — no collapse. This is the key difference from <code>groupBy().count()</code> which would give you one row per cluster instead of keeping the originals.</div>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — running aggregates over a window</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> Window
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># For aggregates over the whole partition, you don't need orderBy</span>
+<span class="co"># (You're not ranking — just counting/summing the whole group)</span>
+<span class="f">w_agg</span> = Window.partitionBy(<span class="s">"cluster_id"</span>)
+<span class="co">#              ↑ No .orderBy() needed for whole-partition aggregates</span>
+
+<span class="co"># How many records are in this cluster?</span>
+df = df.withColumn(<span class="s">"cluster_size"</span>,  F.<span class="f">count</span>(<span class="s">"*"</span>).over(<span class="f">w_agg</span>))
+
+<span class="co"># What is the average score in this cluster?</span>
+df = df.withColumn(<span class="s">"cluster_avg"</span>,   F.<span class="f">avg</span>(<span class="s">"score"</span>).over(<span class="f">w_agg</span>))
+
+<span class="co"># What is the highest score in this cluster?</span>
+df = df.withColumn(<span class="s">"cluster_max"</span>,   F.<span class="f">max</span>(<span class="s">"score"</span>).over(<span class="f">w_agg</span>))
+
+<span class="co"># All three columns added. Row count unchanged. Full records preserved.</span>
+
+<span class="co"># Practical use: flag clusters where average score is low</span>
+<span class="co"># (the whole cluster might be uncertain — send for manual review)</span>
+df = df.withColumn(<span class="s">"cluster_uncertain"</span>,
+  F.col(<span class="s">"cluster_avg"</span>) < <span class="n">0.75</span>
+)</div>
+  </div>
+
+  <div class="warn"><strong>When NOT to use window aggregates:</strong> If you only need the aggregated number (not per-row context), <code>groupBy().agg()</code> is faster — it doesn't need to broadcast the result back to every row. Use window aggregates when you need the aggregated value <em>alongside the original row data</em>.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 7 — MDM PATTERNS ══════ -->
+<div class="stage" id="s7">
+<div class="wrap">
+  <p class="sec-eye">Stage 07</p>
+  <h2 class="sec-h">Real MDM Patterns</h2>
+  <p class="sec-sub">Everything in this module in one place — the complete golden record selection pipeline using window functions. This is what the post-scoring stage of your MDM pipeline looks like end to end.</p>
+
+  <h3><span class="bar"></span>Pattern 1 — Latest Record Per Entity (Source System Dedup)</h3>
+  <p>Before entity resolution even starts, you often need to deduplicate within a single source system: if the CRM has 3 versions of the same customer (edited over time), keep only the latest.</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">Pattern 1 — keep latest record per entity per source</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> Window
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># Problem: CRM has 3 rows for customer_id=42 (3 edits over time).</span>
+<span class="co"># We want the most recent one only.</span>
+
+<span class="f">w_latest</span> = Window\
+  .partitionBy(<span class="s">"source_system"</span>, <span class="s">"customer_id"</span>)\  <span class="co"># ← group by source + customer</span>
+  .orderBy(F.desc(<span class="s">"updated_at"</span>))               <span class="co"># ← most recent first</span>
+
+df = df.withColumn(<span class="s">"row_num"</span>, F.row_number().over(<span class="f">w_latest</span>))
+
+<span class="co"># Keep only the most recent version of each customer per source</span>
+df_latest = df.<span class="f">filter</span>(F.col(<span class="s">"row_num"</span>) == <span class="n">1</span>).drop(<span class="s">"row_num"</span>)</div>
+  </div>
+
+  <h3><span class="bar"></span>Pattern 2 — Full Golden Record Selection</h3>
+  <p>After clustering and scoring, select one golden record per cluster, flag uncertain ones, and attach cluster metadata:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">Pattern 2 — complete golden record pipeline</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> Window
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># ── Step 1: define window spec ──────────────────────────────</span>
+<span class="co"># Primary sort: highest score first</span>
+<span class="co"># Tie-breaker: most recent update wins</span>
+<span class="f">w</span> = Window\
+  .partitionBy(<span class="s">"cluster_id"</span>)\
+  .orderBy(F.desc(<span class="s">"score"</span>), F.desc(<span class="s">"updated_at"</span>))
+
+<span class="co"># ── Step 2: rank within each cluster ───────────────────────</span>
+df = df.withColumn(<span class="s">"rank"</span>, F.row_number().over(<span class="f">w</span>))
+
+<span class="co"># ── Step 3: score of the runner-up (for gap analysis) ──────</span>
+<span class="co"># LAG looks 1 row back — for rank-2 row, this is the rank-1 score</span>
+df = df.withColumn(<span class="s">"prev_score"</span>, F.<span class="f">lag</span>(<span class="s">"score"</span>, <span class="n">1</span>).over(<span class="f">w</span>))
+df = df.withColumn(<span class="s">"score_gap"</span>,  F.col(<span class="s">"prev_score"</span>) - F.col(<span class="s">"score"</span>))
+
+<span class="co"># ── Step 4: cluster-level aggregates ───────────────────────</span>
+<span class="f">w_agg</span> = Window.partitionBy(<span class="s">"cluster_id"</span>)  <span class="co"># no orderBy for whole-partition agg</span>
+df = df.withColumn(<span class="s">"cluster_size"</span>, F.<span class="f">count</span>(<span class="s">"*"</span>).over(<span class="f">w_agg</span>))
+df = df.withColumn(<span class="s">"cluster_avg"</span>,  F.<span class="f">avg</span>(<span class="s">"score"</span>).over(<span class="f">w_agg</span>))
+
+<span class="co"># ── Step 5: select rank-1 records = golden records ─────────</span>
+golden = df.<span class="f">filter</span>(F.col(<span class="s">"rank"</span>) == <span class="n">1</span>)
+
+<span class="co"># ── Step 6: flag uncertain clusters for human review ───────</span>
+<span class="co"># A cluster is uncertain if: avg score is low OR cluster is large</span>
+golden = golden.withColumn(<span class="s">"needs_review"</span>,
+  (F.col(<span class="s">"cluster_avg"</span>) < <span class="n">0.75</span>) | (F.col(<span class="s">"cluster_size"</span>) > <span class="n">5</span>)
+)
+
+<span class="co"># ── Step 7: clean up helper columns ────────────────────────</span>
+golden = golden.drop(<span class="s">"rank"</span>, <span class="s">"prev_score"</span>)
+
+<span class="co"># Final result: one golden record per cluster, with:</span>
+<span class="co">#   - cluster_size: how many duplicates were merged</span>
+<span class="co">#   - cluster_avg: average confidence across the cluster</span>
+<span class="co">#   - score_gap: how much better this record scored vs runner-up</span>
+<span class="co">#   - needs_review: flag for uncertain clusters</span></div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 8 — SELF TEST ══════ -->
+<div class="stage" id="s8">
+<div class="wrap">
+  <p class="sec-eye">Stage 08</p>
+  <h2 class="sec-h">Self-Test</h2>
+  <p class="sec-sub">Eight scenarios. No trick questions — each tests one concept from this module. If you're unsure, go back to the relevant stage before answering.</p>
+  <div class="quiz-grid" id="quiz-grid"></div>
+</div>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">Module 03 · Window Functions</span>
+    <span class="foot-r"><a href="index.html">← Back to Learning Lab</a></span>
+  </div>
+</footer>
+
+<script>
+/* ── NAV ── */
+function go(id, btn) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.sn').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+/* ── COPY ── */
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ── WINDOW VISUALISER ── */
+const wvData = [
+  { id:'R1', cluster:'C1', name:'John Smith',  score:'0.94', cls:'partition-a' },
+  { id:'R2', cluster:'C1', name:'Jon Smyth',   score:'0.81', cls:'partition-a' },
+  { id:'R3', cluster:'C2', name:'Priya Patel', score:'0.88', cls:'partition-b' },
+  { id:'R4', cluster:'C2', name:'P. Patel',    score:'0.72', cls:'partition-b' },
+  { id:'R5', cluster:'C3', name:'Sarah Jones', score:'0.91', cls:'partition-c' },
+  { id:'R6', cluster:'C3', name:'Sara Jones',  score:'0.91', cls:'partition-c' },
+];
+const clusterLabel = { 'C1':'Cluster C1', 'C2':'Cluster C2', 'C3':'Cluster C3' };
+const clusterColor = { 'C1':'var(--teal)', 'C2':'var(--violet)', 'C3':'var(--amber)' };
+
+const wvRows = document.getElementById('wv-rows');
+// header
+wvRows.innerHTML = `<div class="wv-row" style="background:transparent;border-color:transparent">
+  <div class="wv-cell hdr" style="flex:0.5">ID</div>
+  <div class="wv-cell hdr">Cluster</div>
+  <div class="wv-cell hdr">Name</div>
+  <div class="wv-cell hdr">Score</div>
+  <div class="wv-cell hdr">In window?</div>
+</div>`;
+
+wvData.forEach((r, i) => {
+  const row = document.createElement('div');
+  row.className = `wv-row ${r.cls}`;
+  row.id = `wvr-${i}`;
+  row.innerHTML = `
+    <div class="wv-cell" style="flex:0.5;color:var(--faint)">${r.id}</div>
+    <div class="wv-cell"><span class="wv-part-label" style="background:${r.cls==='partition-a'?'var(--teal-dim)':r.cls==='partition-b'?'var(--violet-dim)':'var(--amber-dim)'};color:${clusterColor[r.cluster]}">${r.cluster}</span></div>
+    <div class="wv-cell">${r.name}</div>
+    <div class="wv-cell">${r.score}</div>
+    <div class="wv-cell" id="wvs-${i}" style="color:var(--faint)">—</div>`;
+  row.style.cursor = 'pointer';
+  row.addEventListener('click', () => highlightWindow(i, r.cluster));
+  wvRows.appendChild(row);
+});
+
+function highlightWindow(clickedIdx, cluster) {
+  wvData.forEach((r, i) => {
+    const row = document.getElementById(`wvr-${i}`);
+    const status = document.getElementById(`wvs-${i}`);
+    if (r.cluster === cluster) {
+      row.classList.add('active');
+      status.textContent = i === clickedIdx ? '← you clicked this' : '✓ same window';
+      status.style.color = clusterColor[cluster];
+    } else {
+      row.classList.remove('active');
+      status.textContent = '✗ different window';
+      status.style.color = 'var(--faint)';
+    }
+  });
+  const peers = wvData.filter(r => r.cluster === cluster);
+  document.getElementById('wv-explain').innerHTML =
+    `<span style="color:${clusterColor[cluster]}">${cluster}</span> window contains <strong>${peers.length} rows</strong>: ${peers.map(r=>r.name).join(' + ')}.<br>
+    When a window function runs on any of these rows, it can only "see" these ${peers.length} rows — the other clusters are invisible to it.<br>
+    <span style="color:var(--faint)">This is what PARTITION BY cluster_id does — it builds a separate, isolated window for each cluster.</span>`;
+}
+
+/* ── QUIZ ── */
+const questions = [
+  {
+    prompt: 'You use <strong>groupBy("cluster_id").max("score")</strong> to find the best record per cluster. What goes wrong?',
+    opts: [
+      'Nothing — this is the correct approach',
+      'It returns the right score but you lose all other columns (name, email, phone)',
+      'It throws a Spark error',
+      'It returns duplicates'
+    ],
+    correct: 1,
+    explain: 'groupBy().max() collapses each cluster into one row containing only the aggregated value. You get the max score but lose the original record — name, email, phone, everything. Window functions solve this by keeping every row and adding a rank column instead.'
+  },
+  {
+    prompt: 'What does <strong>.over(w)</strong> do in <code>F.row_number().over(w)</code>?',
+    opts: [
+      'It filters the DataFrame to only rows in window w',
+      'It connects the row_number function to your window specification — telling it which partition and order to use',
+      'It sorts the DataFrame by the window spec',
+      'It is optional boilerplate'
+    ],
+    correct: 1,
+    explain: '.over(w) is required — without it, row_number() has no context. It needs to know: "row number within what?" The window spec w says: "within each cluster_id partition, ordered by score descending." Without .over(w), Spark throws an AnalysisException.'
+  },
+  {
+    prompt: 'You have two records in a cluster with identical scores. You use <strong>ROW_NUMBER()</strong>. What rank do they get?',
+    opts: [
+      'Both get rank 1',
+      'Both get rank 1, next record gets rank 3',
+      'One gets rank 1, other gets rank 2 — but the choice is arbitrary',
+      'Spark throws an error for ties'
+    ],
+    correct: 2,
+    explain: 'ROW_NUMBER always assigns unique ranks — even for tied values. The problem is the choice of which tied row gets rank 1 is non-deterministic (changes between runs). The fix: add a tie-breaker to the ORDER BY, like updated_at, so the same row always wins deterministically.'
+  },
+  {
+    prompt: 'What is the difference between <strong>RANK</strong> and <strong>DENSE_RANK</strong> when two rows tie?',
+    opts: [
+      'No difference — they produce identical results',
+      'RANK skips the next number after a tie (1,1,3). DENSE_RANK does not skip (1,1,2)',
+      'DENSE_RANK skips the next number. RANK does not',
+      'RANK only works for numeric columns'
+    ],
+    correct: 1,
+    explain: 'RANK: if two rows tie at position 1, both get rank 1 and the next row gets rank 3 (the gap represents the two rows that "used up" positions 1 and 2). DENSE_RANK: same ties both get rank 1, but the next row gets rank 2 — no gap. For MDM golden record selection, neither is ideal — use ROW_NUMBER with a tie-breaker instead.'
+  },
+  {
+    prompt: '<strong>LAG("score", 1)</strong> on a rank-1 row returns what?',
+    opts: [
+      'The score of rank-2 row',
+      'The score of rank-1 row itself',
+      'null — there is no row before rank-1',
+      '0.0 by default'
+    ],
+    correct: 2,
+    explain: 'LAG looks at the row before the current one in the sorted window. Rank-1 is at the front of the line — there is nobody in front of it. So LAG returns null (or whatever default you specify as the third argument: F.lag("score", 1, None)).'
+  },
+  {
+    prompt: 'You want to add a column showing how many records are in each cluster. Which is correct?',
+    opts: [
+      'df.groupBy("cluster_id").count()',
+      'df.withColumn("size", F.count("*").over(Window.partitionBy("cluster_id")))',
+      'df.withColumn("size", F.count("*").over(Window.partitionBy("cluster_id").orderBy("score")))',
+      'Both B and C are correct'
+    ],
+    correct: 1,
+    explain: 'Option A (groupBy) collapses rows — you lose original records. Option B is correct: count(*) over a partition-only window gives the total count for the whole partition, broadcast to every row. Option C would give a running count (1, 2, 3...) rather than the total, because orderBy creates a running frame by default. For whole-partition aggregates, leave out the orderBy.'
+  },
+  {
+    prompt: 'Why do you need <strong>two window specs</strong> (w and w_agg) in the full MDM pattern?',
+    opts: [
+      'You do not — one window spec works for everything',
+      'w has orderBy (needed for ranking/LAG). w_agg has no orderBy (needed for whole-partition count/avg). Mixing them gives wrong results.',
+      'w_agg is only needed for PySpark version compatibility',
+      'They are interchangeable — just a style preference'
+    ],
+    correct: 1,
+    explain: 'When you add orderBy to a window spec, Spark defaults the frame to "all rows from start up to current row" — a running aggregate. So count(*).over(w_with_orderBy) gives a running count (1, 2, 3...) not the total partition size. To get the total for every row, you need a window with no orderBy — that is w_agg.'
+  },
+  {
+    prompt: 'After the full pipeline, a cluster has <strong>cluster_avg = 0.71</strong> and <strong>cluster_size = 8</strong>. What happens to its golden record?',
+    opts: [
+      'It is discarded — too uncertain to keep',
+      'It is flagged needs_review = True and kept for human review',
+      'It becomes the golden record with no flag',
+      'It triggers a re-score of the whole cluster'
+    ],
+    correct: 1,
+    explain: 'The pipeline flags needs_review = True when cluster_avg < 0.75 OR cluster_size > 5. This cluster fails both thresholds. The record is not discarded — it still becomes the golden record (rank 1) but the needs_review flag tells a downstream process to route it to a human reviewer rather than auto-publishing it.'
+  }
+];
+
+const qg = document.getElementById('quiz-grid');
+questions.forEach((q, i) => {
+  const card = document.createElement('div');
+  card.className = 'qcard';
+  card.innerHTML = `<div class="q-prompt"><strong>Q${i+1}.</strong> ${q.prompt}</div>
+    <div class="q-opts">${q.opts.map((o,j) => `<button class="q-opt" onclick="answerQ(${i},${j},this)">${o}</button>`).join('')}</div>
+    <div class="q-fb" id="qfb-${i}"></div>`;
+  qg.appendChild(card);
+});
+
+function answerQ(qi, oi, btn) {
+  const q = questions[qi];
+  const card = btn.closest('.qcard');
+  card.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  btn.classList.add(oi === q.correct ? 'correct' : 'wrong');
+  if (oi !== q.correct) card.querySelectorAll('.q-opt')[q.correct].classList.add('correct');
+  const fb = document.getElementById(`qfb-${qi}`);
+  fb.className = 'q-fb ' + (oi === q.correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = (oi === q.correct ? '✓ ' : '✗ ') + q.explain;
+  fb.style.display = 'block';
+}
+</script>
+</body>
+</html>
