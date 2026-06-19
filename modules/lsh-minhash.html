@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LSH &amp; MinHash — Module 06</title>
+<meta name="description" content="Learn how to find candidate pairs at scale using Jaccard similarity, MinHash signatures, banding parameter tuning, S-curves, and PySpark MinHashLSH — Module 06 of The Learning Lab's MDM/Spark track.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --coral:#F78C6C;--coral-dim:#3E241E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--amber)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--amber)}
+
+.stage-nav{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:99;overflow-x:auto}
+.stage-nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;gap:6px;height:48px;align-items:center}
+.sn{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sn:hover{color:var(--ink);border-color:var(--faint)}
+.sn.on{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.stage{display:none;padding:48px 0 72px}.stage.on{display:block}
+
+/* typography */
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--amber);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--amber)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+/* concept cards */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:20px 0}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:20px;position:relative}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0;background:var(--acc,var(--amber))}
+.cc-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:8px}
+.cc-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:6px}
+.cc-body{font-size:13px;color:var(--muted);line-height:1.6}
+.cc-body code{font-size:11px}
+
+/* analogy box */
+.analogy{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:20px 22px;margin:20px 0}
+.analogy-eye{font-family:var(--mo);font-size:10px;color:var(--violet);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.analogy-body{font-size:14px;color:var(--ink);line-height:1.75}
+.analogy-body em{color:var(--violet);font-style:normal;font-weight:600}
+
+/* callouts */
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+.trap{border-left:3px solid var(--red);background:var(--red-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.trap strong{color:var(--red)}
+
+/* code windows */
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:2;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .k{color:var(--violet)}
+.code-block .f{color:var(--teal)}
+.code-block .s{color:var(--amber)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+.code-block .hl{background:rgba(230,180,80,.08);display:inline-block;width:100%;border-left:2px solid var(--amber);padding-left:6px;margin-left:-8px}
+.code-block .why{color:var(--amber);font-style:italic}
+
+/* debug trace */
+.debug-trace{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.dt-header{background:var(--surf2);padding:10px 16px;font-family:var(--mo);font-size:11px;color:var(--violet);letter-spacing:.08em;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.dt-header::before{content:'▶';font-size:9px}
+.dt-step{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dt-step:last-child{border-bottom:0}
+.dt-line{font-family:var(--mo);font-size:12px;color:var(--ink);margin-bottom:6px}
+.dt-state{font-family:var(--mo);font-size:12px;color:var(--amber);padding:8px 12px;background:var(--amber-dim);border-radius:6px;margin:6px 0}
+.dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.dt-why em{color:var(--violet);font-style:normal}
+
+/* data table */
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+.data-table .hl-row td{background:var(--amber-dim) !important}
+.data-table .hl-row td:first-child{border-left:3px solid var(--amber)}
+.data-table .tot-row td{background:var(--surf2);font-weight:600;color:var(--ink);border-top:2px solid var(--line)}
+.data-table .new-col{color:var(--amber);font-weight:600}
+.data-table .faint{color:var(--faint)}
+.badge{display:inline-block;font-family:var(--mo);font-size:10px;padding:2px 7px;border-radius:4px}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #1A3D5C}
+.b-violet{background:var(--violet-dim);color:var(--violet);border:1px solid #3A3060}
+
+/* wrong vs right */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.compare-panel{border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.compare-header{padding:10px 14px;font-family:var(--mo);font-size:11px;letter-spacing:.06em;border-bottom:1px solid var(--line)}
+.wrong-header{background:var(--red-dim);color:var(--red)}
+.right-header{background:var(--green-dim);color:var(--green)}
+.compare-body{background:var(--surf2);padding:14px 16px;font-family:var(--mo);font-size:12px;line-height:1.9;white-space:pre;overflow-x:auto;color:var(--muted)}
+.compare-output{background:var(--panel);padding:10px 14px;border-top:1px solid var(--line);font-family:var(--mo);font-size:12px;color:var(--muted);line-height:1.7}
+.output-label{font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+
+/* red herring contrast */
+.herring{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:18px 0;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.herring-col{padding:18px 20px}
+.herring-col.left{background:var(--red-dim);border-right:1px solid var(--line)}
+.herring-col.right{background:var(--green-dim)}
+.herring-eye{font-family:var(--mo);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.herring-col.left .herring-eye{color:var(--red)}
+.herring-col.right .herring-eye{color:var(--green)}
+.herring-col h5{font-family:var(--dp);font-weight:600;font-size:14px;color:var(--ink);margin-bottom:8px}
+.herring-col p{font-size:13px;line-height:1.6;margin-bottom:8px}
+.herring-col p:last-child{margin-bottom:0}
+.herring-col code{font-size:11px}
+@media(max-width:600px){.herring{grid-template-columns:1fr}.herring-col.left{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* pipeline viz */
+.pipeline-viz{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:24px 0}
+.pv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.pv-flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pv-box{background:var(--surf);border:1px solid var(--line);border-radius:7px;padding:7px 13px;font-family:var(--mo);font-size:12px;color:var(--muted)}
+.pv-box.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.pv-box.hl{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+.pv-arr{color:var(--faint);font-size:13px;padding:0 2px}
+
+.unlock{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:18px 20px;margin:26px 0;display:flex;gap:14px;align-items:flex-start}
+.unlock-icon{font-size:20px;flex-shrink:0}
+.unlock-body{font-size:13px;color:var(--ink);line-height:1.7}
+.unlock-body strong{color:var(--violet)}
+
+/* LSH Tuner widget styles */
+.lsh-tuner{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:22px 0}
+.lsh-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.lsh-row{display:grid;grid-template-columns:180px 1fr 80px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.lsh-row:last-of-type{border-bottom:0}
+.lsh-fname{font-family:var(--mo);font-size:12px;color:var(--ink)}
+.lsh-slider{width:100%;accent-color:var(--amber);cursor:pointer}
+.lsh-sval{font-family:var(--mo);font-size:12px;color:var(--amber);text-align:center}
+.lsh-layout{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;margin-top:24px}
+.lsh-chart-panel{border:1px solid var(--line);background:var(--surf2);border-radius:8px;padding:18px;display:flex;flex-direction:column;align-items:center}
+.lsh-chart-title{font-family:var(--dp);font-size:13px;font-weight:600;color:var(--ink);margin-bottom:12px}
+.lsh-svg-container{width:100%;max-width:320px;aspect-ratio:4/3;background:var(--bg);border:1px solid var(--line);border-radius:6px;position:relative}
+.lsh-stats-panel{display:flex;flex-direction:column;gap:12px}
+.lsh-readout{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lsh-stat{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center}
+.lsh-stat-label{font-family:var(--mo);font-size:9px;color:var(--faint);text-transform:uppercase;margin-bottom:4px}
+.lsh-stat-val{font-family:var(--dp);font-weight:700;font-size:20px}
+.lsh-sim{border:1px solid var(--line);border-radius:8px;padding:14px;background:var(--surf2);font-family:var(--bd);font-size:13px}
+.lsh-sim-title{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.band-grid{display:flex;gap:3px;margin:8px 0;flex-wrap:wrap}
+.band-box{width:16px;height:16px;border-radius:3px;background:var(--line);border:1px solid rgba(255,255,255,0.05);transition:all 0.15s}
+.band-box.collision{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+
+/* quiz */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:20px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.q-prompt{font-size:13px;line-height:1.65;margin-bottom:14px;color:var(--muted)}
+.q-prompt strong{color:var(--ink)}
+.q-opts{display:flex;flex-direction:column;gap:7px}
+.q-opt{font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);padding:8px 12px;border-radius:6px;cursor:pointer;text-align:left;color:var(--muted);transition:all .15s}
+.q-opt:hover{border-color:var(--amber);color:var(--ink)}
+.q-opt.correct{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.q-opt.wrong{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.q-fb{font-size:12px;margin-top:10px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--amber)}
+
+@media(max-width:768px){
+  .lsh-layout{grid-template-columns:1fr}
+  .compare-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="../index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 06</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">LSH &amp; MinHash</span>
+  </div>
+</nav>
+
+<div class="stage-nav">
+  <div class="stage-nav-inner">
+    <button class="sn on" onclick="go('s0',this)">00 · Overview</button>
+    <button class="sn" onclick="go('s1',this)">01 · The N² Wall</button>
+    <button class="sn" onclick="go('s2',this)">02 · Jaccard Similarity</button>
+    <button class="sn" onclick="go('s3',this)">03 · The MinHash Trick</button>
+    <button class="sn" onclick="go('s4',this)">04 · Banding &amp; LSH</button>
+    <button class="sn" onclick="go('s5',this)">05 · Tuning b &amp; r</button>
+    <button class="sn" onclick="go('s6',this)">06 · PySpark Pattern</button>
+    <button class="sn" onclick="go('s7',this)">07 · Hybrid Pipeline</button>
+    <button class="sn" onclick="go('s8',this)">08 · LSH Tuner</button>
+    <button class="sn" onclick="go('s9',this)">09 · Self-Test</button>
+  </div>
+</div>
+
+
+<!-- ══════ STAGE 0 — OVERVIEW ══════ -->
+<div class="stage on" id="s0">
+<div class="wrap">
+  <p class="sec-eye">Module 06 · MDM / Spark Track · Phase 3 — ER at Scale</p>
+  <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">LSH &amp; MinHash</h1>
+  <p class="sec-sub">Module 05 gave you the ThresholdTuner to optimize your field similarity weights and matching thresholds. But that tuner assumes you already have a set of candidate pairs. In a dataset with millions of customer records, how do you find those candidate pairs in the first place? Comparing every record to every other record is impossible at scale. This module introduces **Locality Sensitive Hashing (LSH)** and **MinHash** — the algorithms that bypass the quadratic bottleneck to generate fuzzy candidate pairs in $O(N)$ time.</p>
+
+  <div class="pipeline-viz">
+    <div class="pv-label">What this module adds to your pipeline</div>
+    <div class="pv-flow">
+      <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Block (LSH)</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Self-Join</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Field Scoring</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Combine &amp; Classify</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Tune &amp; Calibrate</span><span class="pv-arr">→</span>
+      <span class="pv-box">Cluster</span>
+    </div>
+  </div>
+
+  <p>In Module 00 you saw that standard exact blocking key joins (e.g. comparing records only if they have the exact same `zip_code` or `soundex(last_name)`) are fast but brittle: a single typo splits the keys, and the records are never compared. MinHash and LSH solve this by projecting your records into hash buckets where similar records collide with high probability, even if they have typos across multiple fields.</p>
+
+  <h3><span class="bar"></span>The exact scaling challenge</h3>
+  <p>You have a database of 1 million customers. If you run a naive nested loop to find matches, you must compare record 1 to record 2, record 1 to record 3, all the way to $N \times (N - 1) / 2$. For 1 million records, that requires **500 billion comparisons**. If each comparison takes 1 microsecond, your pipeline will run for **5.7 days**. If you scale to 10 million records, it will take **1.5 years**. Locality Sensitive Hashing cuts this search space down by 99.9% in minutes.</p>
+
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Concept 01</div>
+      <div class="cc-title">Jaccard Similarity</div>
+      <div class="cc-body">The mathematical ground truth for token similarity. It is the size of the intersection of two token sets divided by the size of their union. Essential for measuring shingled strings.</div>
+    </div>
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Concept 02</div>
+      <div class="cc-title">MinHash Signatures</div>
+      <div class="cc-body">A compression mechanism. Maps a large shingle set to a small vector of $K$ integers, such that the probability of signature elements matching is exactly their Jaccard similarity.</div>
+    </div>
+    <div class="cc" style="--acc:var(--violet)">
+      <div class="cc-num">Concept 03</div>
+      <div class="cc-title">Banding (LSH)</div>
+      <div class="cc-body">Slicing signatures into $b$ bands of $r$ rows. Records are placed in buckets per band. Colliding in *at least one* band makes them a candidate pair, bypassing all-pairs comparison.</div>
+    </div>
+    <div class="cc" style="--acc:var(--coral)">
+      <div class="cc-num">Concept 04</div>
+      <div class="cc-title">S-Curve Tuning</div>
+      <div class="cc-body">The non-linear probability curve $P = 1 - (1 - s^r)^b$. By adjusting $b$ and $r$, you tune a mathematical threshold that controls your candidate generator's precision and recall.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>How to use this module:</strong> Each stage builds one mechanistic piece. Stage 01 visualizes the scaling wall. Stage 02 covers Jaccard math. Stage 03 explains MinHash signature matrices. Stages 04–05 trace the LSH banding math and parameter selection. Stage 06 shows the PySpark ML pattern. Stage 07 shows how it fits in a hybrid pipeline. Stage 08 provides a live visual simulator. Stage 09 is the self-test.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 1 — THE N² WALL ══════ -->
+<div class="stage" id="s1">
+<div class="wrap">
+  <p class="sec-eye">Stage 01</p>
+  <h2 class="sec-h">The N² Scaling Wall &amp; Fuzzy Blocking</h2>
+  <p class="sec-sub">To perform entity resolution, you must compare records. But comparing everything to everything creates a quadratic explosion ($N^2$) that crashes cluster memory. Exact blocking stops this explosion, but at a severe cost to match recall.</p>
+
+  <h3><span class="bar"></span>The quadratic explosion</h3>
+  <p>The math is simple and unforgiving. As the number of records $N$ grows, the number of candidate pairs grows quadratically:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Dataset Size ($N$)</th><th>Number of Comparisons ($N^2 / 2$)</th><th>Execution Time (at 1μs / pair)</th><th>Result</th></tr>
+    <tr><td>100</td><td>4,950</td><td>0.005 seconds</td><td>Instant</td></tr>
+    <tr><td>1,000</td><td>499,500</td><td>0.5 seconds</td><td>Fast</td></tr>
+    <tr><td>10,000</td><td>49,995,000</td><td>50 seconds</td><td>Noticeable</td></tr>
+    <tr><td>100,000</td><td>4,999,950,000</td><td>1.4 hours</td><td>Slow</td></tr>
+    <tr class="hl-row"><td>1,000,000</td><td>499,999,500,000</td><td>5.8 days</td><td>Cluster crashes or stalls</td></tr>
+    <tr><td>10,000,000</td><td>49,999,995,000,000</td><td>1.58 years</td><td>Production failure</td></tr>
+  </table>
+  </div>
+
+  <h3><span class="bar"></span>Exact Blocking: A rigid compromise</h3>
+  <p>To survive, pipelines use **Blocking Keys** (e.g. comparing records only if they have the exact same `zip_code` or `soundex(last_name)`). While this reduces the comparisons from $O(N^2)$ to local partitions, it introduces a hard boundary:</p>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Rigid Blocking Key Failure</div>
+      <h5>"We only compare if ZIP codes match exactly."</h5>
+      <p>Record A: <code>Jon Smith, ZIP 90210</code><br>Record B: <code>Jon Smith, ZIP 9021<b>1</b></code> (typist slipped)</p>
+      <p>Because the ZIP codes differ, these records land in separate partitions. They will **never** be compared, resulting in a permanent False Negative.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ Fuzzy Blocking (LSH) Solution</div>
+      <h5>"We compare if they share enough fuzzy features."</h5>
+      <p>Instead of relying on a single field matching exactly, LSH shingles the records and groups them if their *overall token similarity* is high.</p>
+      <p>The typo in the ZIP code is outweighed by the similarity in name and address, allowing the pair to collide and merge.</p>
+    </div>
+  </div>
+
+  <div class="trap"><strong>The blocking key trap:</strong> Adding more blocking keys (e.g., zip, phone, email) increases your chances of finding matches, but running multiple exact join queries creates massive shuffle overhead. We need an algorithm that hashes records based on similarity directly — Locality Sensitive Hashing.</div>
+
+  <h3><span class="bar"></span>The Goal of LSH</h3>
+  <p>LSH is a **hashing family** where:
+  <ul>
+    <li>If two records are **highly similar**, their hash values are **highly likely to collide**.</li>
+    <li>If two records are **different**, their hash values are **highly unlikely to collide**.</li>
+  </ul>
+  By placing records into hash buckets, we restrict our pairwise comparisons *only* to records that share a bucket.
+  </p>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 2 — JACCARD SIMILARITY ══════ -->
+<div class="stage" id="s2">
+<div class="wrap">
+  <p class="sec-eye">Stage 02</p>
+  <h2 class="sec-h">Jaccard Similarity — Token Sets</h2>
+  <p class="sec-sub">To measure similarity between two records, we convert them into sets of tokens (shingles). Jaccard similarity is the overlap metric that forms the foundation of MinHash and LSH.</p>
+
+  <h3><span class="bar"></span>String Shingling (k-grams)</h3>
+  <p>A shingle is a contiguous substring of length $k$ (character level) or a token of length $n$ (word level). Character shingling turns a raw string into a set, absorbing minor typos.</p>
+  <p>Let's use 2-shingles ($k=2$) on name fields (case-normalized, whitespace collapsed):</p>
+  <code>"JON"</code> &rarr; <code>{'JO', 'ON'}</code><br>
+  <code>"JOHN"</code> &rarr; <code>{'JO', 'OH', 'HN'}</code>
+
+  <h3><span class="bar"></span>The Jaccard Formula</h3>
+  <p>The Jaccard similarity $J(A, B)$ of two sets $A$ and $B$ is the size of their intersection divided by the size of their union:</p>
+  <div style="font-family:var(--mo);font-size:16px;margin:16px 0;text-align:center;color:var(--amber)">
+    J(A, B) = |A ∩ B| / |A ∪ B|
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — The Venn Diagram overlay</div>
+    <div class="analogy-body">
+      Imagine you have two blueprints. If you slide one blueprint over the other, the <em>intersection</em> is the area where the drawings line up exactly. The <em>union</em> is the total area covered by both blueprints combined.<br><br>
+      Jaccard similarity is the percentage of the total area that overlaps. If the blueprints are identical, overlap is 100% (1.0). If they share absolutely nothing, overlap is 0% (0.0). A single typo is just a small line that doesn't overlap, keeping the overall percentage high.
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Worked Examples — 2-shingles</h3>
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>String A</th><th>String B</th><th>Set A</th><th>Set B</th><th>Intersection ($A \cap B$)</th><th>Union ($A \cup B$)</th><th>Jaccard $J(A, B)$</th></tr>
+    <tr class="hl-row"><td>JOHN SMITH</td><td>JON SMITH</td><td>{JO, OH, HN, N ,  S, SM, MI, IT, TH}</td><td>{JO, ON, N ,  S, SM, MI, IT, TH}</td><td>{JO, N ,  S, SM, MI, IT, TH}</td><td>{JO, ON, OH, HN, N ,  S, SM, MI, IT, TH}</td><td>7 / 10 = <strong>0.70</strong></td></tr>
+    <tr><td>ROB LEE</td><td>BOB LEE</td><td>{RO, OB, B ,  L, LE, EE}</td><td>{BO, OB, B ,  L, LE, EE}</td><td>{OB, B ,  L, LE, EE}</td><td>{RO, BO, OB, B ,  L, LE, EE}</td><td>5 / 7 = <strong>0.71</strong></td></tr>
+    <tr><td>MARIA GARCIA</td><td>MARIA RODRIGUEZ</td><td>{MA, AR, RI, IA, A ,  G, GA, RC, CI}</td><td>{MA, AR, RI, IA, A ,  R, RO, OD, DR, IG, GU, UE, EZ}</td><td>{MA, AR, RI, IA, A }</td><td>{MA, AR, RI, IA, A ,  G, GA, RC, CI, R, RO, OD, DR, IG, GU, UE, EZ}</td><td>5 / 18 = <strong>0.28</strong></td></tr>
+    <tr><td>LI CHEN</td><td>SARAH KIM</td><td>{LI, I ,  C, CH, HE, EN}</td><td>{SA, AR, RA, AH, H ,  K, KI, IM}</td><td>{}</td><td>{LI, I ,  C... SA, AR...}</td><td>0 / 14 = <strong>0.00</strong></td></tr>
+  </table>
+  </div>
+
+  <div class="note"><strong>Why shingle size matters:</strong> If $k$ is too small (e.g. 1-shingles, plain characters), strings with completely different meanings share high overlap (e.g., "MARIA" and "AMIRA" share 100% of characters). If $k$ is too large (e.g. 5-shingles), a single typo ruins multiple shingles, making Jaccard fall to 0. For name/address data, **2-grams or 3-grams** are the optimal sweet spot.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 3 — THE MINHASH TRICK ══════ -->
+<div class="stage" id="s3">
+<div class="wrap">
+  <p class="sec-eye">Stage 03</p>
+  <h2 class="sec-h">The MinHash Trick — Signature Matrices</h2>
+  <p class="sec-sub">To compute Jaccard similarity, you must compare shingle sets directly. But distributing sets across a cluster is slow and memory-intensive. MinHashing compresses shingle sets into fixed-size integer signatures that preserve Jaccard similarity.</p>
+
+  <h3><span class="bar"></span>The MinHash Core Property</h3>
+  <p>If we apply a random permutation (shuffle) to the rows of our shingles universe, the index of the first row containing a <code>1</code> for a record is its **MinHash**. </p>
+  <p>The mathematical magic of MinHash is that:
+  <div style="font-family:var(--mo);font-size:14px;margin:16px 0;text-align:center;color:var(--amber)">
+    P( MinHash(A) == MinHash(B) ) = Jaccard(A, B)
+  </div>
+  By generating $K$ different random permutations, we get $K$ MinHash values for each record. This vector of $K$ values is the record's **MinHash Signature**. The fraction of matching elements between two signatures is an unbiased estimator of their Jaccard similarity.
+  </p>
+
+  <h3><span class="bar"></span>Worked Example — The Permutation Matrix</h3>
+  <p>Let's take three shingle sets: Record A: <code>{JO, ON}</code>, Record B: <code>{JO, ON, OH}</code>, Record C: <code>{RI, IA}</code>. We apply 3 random hash functions (representing permutations of the shingles universe):</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Shingle</th><th>A</th><th>B</th><th>C</th><th>Hash 1: $h_1(x) = (x+1)\%5$</th><th>Hash 2: $h_2(x) = (3x+1)\%5$</th><th>Hash 3: $h_3(x) = (2x+4)\%5$</th></tr>
+    <tr><td>JO (idx 0)</td><td>1</td><td>1</td><td>0</td><td>1</td><td>1</td><td>4</td></tr>
+    <tr><td>ON (idx 1)</td><td>1</td><td>1</td><td>0</td><td>2</td><td>4</td><td>1</td></tr>
+    <tr class="hl-row"><td>OH (idx 2)</td><td>0</td><td>1</td><td>0</td><td>3</td><td>2</td><td>3</td></tr>
+    <tr><td>RI (idx 3)</td><td>0</td><td>0</td><td>1</td><td>4</td><td>0</td><td>0</td></tr>
+    <tr><td>IA (idx 4)</td><td>0</td><td>0</td><td>1</td><td>0</td><td>3</td><td>2</td></tr>
+    <tr class="tot-row">
+      <td><strong>MinHash Signature:</strong></td>
+      <td><span class="badge b-amber">[0, 1, 1]</span></td>
+      <td><span class="badge b-teal">[0, 1, 1]</span></td>
+      <td><span class="badge b-violet">[0, 0, 0]</span></td>
+      <td colspan="3"><span class="faint">Signature elements are the minimum hash value where record has a 1</span></td>
+    </tr>
+  </table>
+  </div>
+
+  <div class="debug-trace">
+    <div class="dt-header">signature generation trace</div>
+    <div class="dt-step">
+      <div class="dt-line">Tracing Hash 1 for Record B (shingles: JO, ON, OH):</div>
+      <div class="dt-state">hash_values = { JO: h1(0)=1, ON: h1(1)=2, OH: h1(2)=3 } &rarr; min is JO with h1(0) = 0 (after index wrap) or 1</div>
+      <div class="dt-why">The minimum value of Hash 1 for the shingles present in B is <b>0</b> (corresponding to shingles index 4 if we wrap, or index 0 depending on permutation). In the table: for Hash 1, the minimum hash value for A's shingles (JO, ON) is h1(4)=0 is not present, h1(0)=1 is. So MinHash for A under Hash 1 is 1 (or 0 for index 4 if we look at the values: h1 value at idx 4 is 0 but A has 0 there. So A has 1s at idx 0 and idx 1. Hash 1 values are: idx 0 is 1, idx 1 is 2. The min hash value for A is 1). For B, 1s are at 0, 1, 2. Hash 1 values are 1, 2, 3. Min value is 1. For C, 1s are at 3, 4. Hash 1 values are 4, 0. Min value is 0.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Comparing Signatures vs Comparing Sets</h3>
+  <p>Instead of comparing large, variable-sized sets across the cluster, we now compare fixed-size arrays (e.g. $K=100$ integers).
+  <ul>
+    <li>Signature similarity $Sim(A, B) = \frac{\text{matching slots}}{K}$</li>
+    <li>For A and B: matches at index 1, 2, 3 &rarr; $3 / 3 = 1.0$ (approximating Jaccard 0.67)</li>
+    <li>For A and C: matches at index 1 &rarr; $0 / 3 = 0.0$ (approximating Jaccard 0.0)</li>
+  </ul>
+  As $K$ increases, the estimated signature similarity converges to the true Jaccard similarity.
+  </p>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 4 — BANDING & LSH ══════ -->
+<div class="stage" id="s4">
+<div class="wrap">
+  <p class="sec-eye">Stage 04</p>
+  <h2 class="sec-h">Banding &amp; Locality Sensitive Hashing</h2>
+  <p class="sec-sub">MinHash signatures compress your data, but comparing all signature pairs is still $O(N^2)$. Banding is the magic step that groups similar signatures into hash buckets without performing a single pairwise comparison.</p>
+
+  <h3><span class="bar"></span>The Banding Mechanism</h3>
+  <p>Take your MinHash signature of length $K$ (e.g., $K = 100$ integers). Slice it into $b$ non-overlapping bands, where each band contains exactly $r$ rows. Thus, $K = b \times r$.</p>
+
+  <div class="data-table-wrap" style="max-width: 600px; margin: 20px auto;">
+  <table class="data-table" style="text-align: center;">
+    <tr><th>Signature Vector (Length 9)</th><th>Band 1 ($r=3$)</th><th>Band 2 ($r=3$)</th><th>Band 3 ($r=3$)</th></tr>
+    <tr><td><code>[12, 5, 87, 3, 14, 9, 88, 41, 2]</code></td><td><code>[12, 5, 87]</code></td><td><code>[3, 14, 9]</code></td><td><code>[88, 41, 2]</code></td></tr>
+  </table>
+  </div>
+
+  <p>For each band, we pass the $r$ integers into a standard hash function (e.g., MurmurHash) that maps the vector to a bucket ID.
+  <ul>
+    <li>If two records share the **exact same signature elements** in a band, they hash to the same bucket ID for that band.</li>
+    <li>If they collide in **at least one** of the $b$ bands, they are nominated as a **candidate pair**.</li>
+  </ul>
+  </p>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — sorting mail into bags</div>
+    <div class="analogy-body">
+      Imagine you have thousands of books. You want to find books with similar chapters. Comparing every page of every book is too slow.<br><br>
+      Instead, you divide each book's summary into 5 sections (bands). You write the words of section 1 on a card, put it in an envelope, and drop it in slot 1. You do the same for sections 2 through 5. If two books share the <em>exact same envelope contents</em> in slot 3, they land in the same bag.<br><br>
+      You only compare books that land in the same bag. Even if a book has a typo in section 1, it will still collide in sections 2, 3, 4, or 5, ensuring you don't miss it.
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The Red Herring: "LSH is a replacement for scoring"</h3>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Red Herring — standard mistake</div>
+      <h5>"We will use LSH bucket collisions to declare matches."</h5>
+      <p>LSH is an approximate algorithm. It has false positives: unrelated records that happen to collide in one band (e.g. sharing a common name prefix but differing elsewhere).</p>
+      <p>Using LSH alone to merge records will corrupt your golden entities.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ What actually decides</div>
+      <h5>LSH is a candidate generator (blocking mechanism) only.</h5>
+      <p>LSH filters the $N^2$ search space down to a thin stream of candidate pairs. You then pass this stream to your **ScoringPlugin** (Module 04) to calculate exact field weights and composite confidence.</p>
+      <p>LSH saves the cluster; ScoringPlugin saves the data quality.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 5 — TUNING B & R ══════ -->
+<div class="stage" id="s5">
+<div class="wrap">
+  <p class="sec-eye">Stage 05</p>
+  <h2 class="sec-h">Tuning LSH — The S-Curve Math</h2>
+  <p class="sec-sub">The probability of two records colliding in LSH is a non-linear function of their Jaccard similarity. By adjusting $b$ (bands) and $r$ (rows), you shape this curve to match your target similarity threshold.</p>
+
+  <h3><span class="bar"></span>The Collision Probability Formula</h3>
+  <p>Let $s$ be the true Jaccard similarity between two records.
+  <ol>
+    <li>Probability that signatures match in all rows of a single band: $s^r$</li>
+    <li>Probability that signatures do *not* match in a single band: $1 - s^r$</li>
+    <li>Probability that signatures do *not* match in any of the $b$ bands: $(1 - s^r)^b$</li>
+    <li>Probability that signatures match in **at least one** band (collision probability):</li>
+  </ol>
+  </p>
+
+  <div style="font-family:var(--mo);font-size:18px;margin:20px 0;text-align:center;color:var(--amber)">
+    P(collision) = 1 - (1 - s^r)^b
+  </div>
+
+  <p>This formula plots an **S-Curve**. The curve is flat at low similarity, rises steeply near the threshold, and flattens out near 1.0.</p>
+
+  <h3><span class="bar"></span>The S-Curve Threshold (Elbow)</h3>
+  <p>The "elbow" or transition threshold $t$ where collision probability is exactly 0.50 is approximated by:</p>
+  <div style="font-family:var(--mo);font-size:16px;margin:12px 0;text-align:center;color:var(--amber)">
+    t ≈ (1 / b)^(1 / r)
+  </div>
+
+  <h3><span class="bar"></span>Worked Table — How $b$ and $r$ shape the curve</h3>
+  <p>Let's compare two configurations for a signature size $K = 100$:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Jaccard $s$</th><th>Config A: $b=20, r=5$ ($t \approx 0.55$)</th><th>Config B: $b=5, r=20$ ($t \approx 0.92$)</th><th>What it means</th></tr>
+    <tr><td>0.20</td><td>$1 - (1 - 0.20^5)^{20} \approx \mathbf{0.006}$</td><td>$1 - (1 - 0.20^{20})^5 \approx \mathbf{0.000}$</td><td>Low similarities are safely filtered in both configs.</td></tr>
+    <tr><td>0.50</td><td>$1 - (1 - 0.50^5)^{20} \approx \mathbf{0.474}$</td><td>$1 - (1 - 0.50^{20})^5 \approx \mathbf{0.000}$</td><td>Config A nominates ~47% of these as candidates; Config B drops all.</td></tr>
+    <tr class="hl-row"><td>0.70</td><td>$1 - (1 - 0.70^5)^{20} \approx \mathbf{0.970}$</td><td>$1 - (1 - 0.70^{20})^5 \approx \mathbf{0.004}$</td><td>Config A catches 97% of these (high recall); Config B still drops them.</td></tr>
+    <tr><td>0.90</td><td>$1 - (1 - 0.90^5)^{20} \approx \mathbf{1.000}$</td><td>$1 - (1 - 0.90^{20})^5 \approx \mathbf{0.490}$</td><td>Config A catches all; Config B only catches half.</td></tr>
+  </table>
+  </div>
+
+  <div class="warn"><strong>The trade-off:</strong>
+    <ul>
+      <li>**Too many bands $b$ (low $r$):** The threshold shifts left. You catch minor, typo-heavy matches (high recall), but you also generate massive amounts of junk candidate pairs (low precision, high cluster load).</li>
+      <li>**Too few bands $b$ (high $r$):** The threshold shifts right. Your candidate generation is very clean (high precision), but you will miss pairs with moderate typos (low recall).</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 6 — PYSPARK PATTERN ══════ -->
+<div class="stage" id="s6">
+<div class="wrap">
+  <p class="sec-eye">Stage 06</p>
+  <h2 class="sec-h">MinHashLSH in PySpark</h2>
+  <p class="sec-sub">PySpark includes a built-in `MinHashLSH` algorithm inside the `pyspark.ml` library. Here is the operational code pattern to shingle strings, generate signatures, and run the similarity join.</p>
+
+  <h3><span class="bar"></span>The Vector Requirement</h3>
+  <p>PySpark's LSH model expects inputs to be of type <code>Vector</code> (representing shingle counts/presence). We use <code>RegexTokenizer</code> to split strings, <code>NGram</code> to build character shingles, and <code>CountVectorizer</code> to convert shingle sets into vectors.</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark MinHashLSH candidate generation</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.ml.feature <span class="k">import</span> RegexTokenizer, NGram, CountVectorizer, MinHashLSH
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># 1. Shingle the standardized name column (character-level bigrams)</span>
+<span class="co"># E.g., "jon smith" -> tokens -> ngrams -> vector</span>
+tokenizer = RegexTokenizer(inputCol=<span class="s">"name_std"</span>, outputCol=<span class="s">"chars"</span>, pattern=<span class="s">""</span>)
+ngram = NGram(n=<span class="n">2</span>, inputCol=<span class="s">"chars"</span>, outputCol=<span class="s">"shingles"</span>)
+vectorizer = CountVectorizer(inputCol=<span class="s">"shingles"</span>, outputCol=<span class="s">"features"</span>)
+
+<span class="co"># Fit vectorizer pipeline</span>
+df_chars = tokenizer.transform(df)
+df_shingles = ngram.transform(df_chars)
+vector_model = vectorizer.fit(df_shingles)
+df_vectors = vector_model.transform(df_shingles)
+
+<span class="co"># 2. Fit MinHash LSH model (K = 60 hash tables)</span>
+lsh = MinHashLSH(inputCol=<span class="s">"features"</span>, outputCol=<span class="s">"hashes"</span>, numHashTables=<span class="n">60</span>)
+lsh_model = lsh.fit(df_vectors)
+
+<span class="co"># 3. Perform approximate similarity join</span>
+<span class="co"># threshold = 1 - target_jaccard (0.40 distance means >= 0.60 similarity)</span>
+candidates_df = lsh_model.approxSimilarityJoin(
+    df_vectors, df_vectors, threshold=<span class="n">0.40</span>, distCol=<span class="s">"jaccard_dist"</span>
+).filter(<span class="s">"datasetA.id < datasetB.id"</span>) <span class="co"># remove duplicates/self-comparisons</span>
+
+candidates_df.select(
+    F.col(<span class="s">"datasetA.id"</span>).alias(<span class="s">"id_a"</span>),
+    F.col(<span class="s">"datasetB.id"</span>).alias(<span class="s">"id_b"</span>),
+    (<span class="n">1.0</span> - F.col(<span class="s">"jaccard_dist"</span>)).alias(<span class="s">"jaccard_sim"</span>)
+).show()</div>
+  </div>
+
+  <div class="trap"><strong>The PySpark LSH Distance Trap:</strong> PySpark's LSH join uses <strong>Jaccard Distance</strong> ($D = 1 - S$), not similarity. If you want to find candidate pairs with Jaccard similarity $\ge 0.70$, you must set <code>threshold=0.30</code>. If you pass <code>threshold=0.70</code>, you are asking for similarity $\ge 0.30$, which will flood your cluster with false positives.</div>
+
+  <h3><span class="bar"></span>Input vs Output Output</h3>
+  <div class="compare-grid">
+    <div class="compare-panel">
+      <div class="compare-header wrong-header">Input Data (df_vectors)</div>
+      <div class="compare-body">id | name_std  | features
+1  | jon smith | (100,[2,5,8],[1,1,1])
+2  | john smth | (100,[2,7,8],[1,1,1])
+3  | sara kim  | (100,[12,19],[1,1])</div>
+    </div>
+    <div class="compare-panel">
+      <div class="compare-header right-header">approxSimilarityJoin output</div>
+      <div class="compare-body">id_a | id_b | jaccard_sim
+1    | 2    | 0.68
+<span class="co"># Note: sara kim (3) is successfully filtered and does not appear.</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 7 — HYBRID PIPELINE ══════ -->
+<div class="stage" id="s7">
+<div class="wrap">
+  <p class="sec-eye">Stage 07</p>
+  <h2 class="sec-h">The Hybrid Pipeline — Merging Candidates</h2>
+  <p class="sec-sub">In a production Master Data Management (MDM) system, LSH candidate generation does not run in isolation. It operates alongside traditional exact blocking channels to form a hybrid candidate stream.</p>
+
+  <h3><span class="bar"></span>The Candidate Flow</h3>
+  <p>Traditional blocking (e.g. matching on exact `zip_code` or `soundex(last_name)`) is great for catching records that share specific field values. LSH is great for catching typo-heavy records across multiple fields. By combining both, you maximize recall without exploding cluster memory.</p>
+
+  <div class="debug-trace">
+    <div class="dt-header">hybrid pipeline candidate generation</div>
+    <div class="dt-step">
+      <div class="dt-line">1. Generate Exact Blocking Candidates</div>
+      <div class="dt-state">blocking_pairs = df.join(df, "zip_code").filter("a.id < b.id").select("id_a", "id_b")</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">2. Generate LSH Candidates</div>
+      <div class="dt-state">lsh_pairs = lsh_model.approxSimilarityJoin(..., threshold=0.4).select("id_a", "id_b")</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">3. Combine and Deduplicate (Union &amp; Distinct)</div>
+      <div class="dt-state">all_candidates = blocking_pairs.union(lsh_pairs).distinct()</div>
+      <div class="dt-why">The <code>distinct()</code> step removes pairs captured by both channels, ensuring you only score each unique pair once.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The complete architectural flow</h3>
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">hybrid pipeline join pattern</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># 1. Exact blocking stream</span>
+exact_candidates = df.alias(<span class="s">"A"</span>).join(
+    df.alias(<span class="s">"B"</span>),
+    (F.col(<span class="s">"A.zip_code"</span>) == F.col(<span class="s">"B.zip_code"</span>)) & (F.col(<span class="s">"A.id"</span>) < F.col(<span class="s">"B.id"</span>))
+).select(
+    F.col(<span class="s">"A.id"</span>).alias(<span class="s">"id_a"</span>),
+    F.col(<span class="s">"B.id"</span>).alias(<span class="s">"id_b"</span>)
+)
+
+<span class="co"># 2. LSH fuzzy blocking stream</span>
+lsh_candidates = lsh_model.approxSimilarityJoin(
+    df_vectors, df_vectors, threshold=<span class="n">0.35</span>
+).filter(<span class="s">"datasetA.id < datasetB.id"</span>).select(
+    F.col(<span class="s">"datasetA.id"</span>).alias(<span class="s">"id_a"</span>),
+    F.col(<span class="s">"datasetB.id"</span>).alias(<span class="s">"id_b"</span>)
+)
+
+<span class="co"># 3. Deduplicated merge</span>
+unified_candidates = exact_candidates.union(lsh_candidates).distinct()
+
+<span class="co"># 4. Feed unified candidates to ScoringPlugin (Module 04)</span>
+scored_pairs = scoring_plugin.run(unified_candidates)</div>
+  </div>
+
+  <div class="note"><strong>Why this works:</strong> LSH provides a safety net. If a record has a typo in the zip code, the exact blocking stream misses it, but LSH catches it. If a record has typos in the name, LSH might miss it, but the exact zip code blocking stream catches it. Together, they achieve near-perfect candidate recall.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 8 — INTERACTIVE LSH TUNER ══════ -->
+<div class="stage" id="s8">
+<div class="wrap">
+  <p class="sec-eye">Stage 08</p>
+  <h2 class="sec-h">Interactive LSH Tuner — S-Curve &amp; Collisions</h2>
+  <p class="sec-sub">Tune LSH banding parameters live. Drag the bands ($b$) and rows per band ($r$) sliders and watch the S-curve shift. Select a Jaccard similarity and see the exact collision probability, along with a simulation of band collisions for different name typo scenarios.</p>
+
+  <div class="lsh-tuner">
+    <div class="lsh-label">LSH parameter control</div>
+    
+    <div class="lsh-row">
+      <div class="lsh-fname">Bands ($b$)</div>
+      <input type="range" class="lsh-slider" id="b-slider" min="1" max="30" step="1" value="10">
+      <div class="lsh-sval" id="b-val">10</div>
+    </div>
+    <div class="lsh-row">
+      <div class="lsh-fname">Rows per band ($r$)</div>
+      <input type="range" class="lsh-slider" id="r-slider" min="1" max="15" step="1" value="4">
+      <div class="lsh-sval" id="r-val">4</div>
+    </div>
+    <div class="lsh-row">
+      <div class="lsh-fname">Test Jaccard Similarity ($s$)</div>
+      <input type="range" class="lsh-slider" id="s-slider" min="0" max="1" step="0.01" value="0.70">
+      <div class="lsh-sval" id="s-val">0.70</div>
+    </div>
+
+    <div class="lsh-layout">
+      <!-- Chart Panel -->
+      <div class="lsh-chart-panel">
+        <div class="lsh-chart-title">Theoretical S-Curve</div>
+        <div class="lsh-svg-container">
+          <svg id="s-curve-svg" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="overflow:visible">
+            <!-- Grid lines -->
+            <line x1="0" y1="25" x2="100" y2="25" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+            <line x1="0" y1="50" x2="100" y2="50" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+            <line x1="0" y1="75" x2="100" y2="75" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+            <line x1="25" y1="0" x2="25" y2="100" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+            <line x1="50" y1="0" x2="50" y2="100" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+            <line x1="75" y1="0" x2="75" y2="100" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+            
+            <!-- Axis lines -->
+            <line x1="0" y1="100" x2="100" y2="100" stroke="var(--faint)" stroke-width="1"/>
+            <line x1="0" y1="0" x2="0" y2="100" stroke="var(--faint)" stroke-width="1"/>
+
+            <!-- S-Curve Path -->
+            <path id="curve-path" d="" fill="none" stroke="var(--amber)" stroke-width="2"/>
+            
+            <!-- Target Line & Intersection Dot -->
+            <line id="target-x" x1="0" y1="0" x2="0" y2="100" stroke="var(--violet)" stroke-width="0.75" stroke-dasharray="3,3"/>
+            <circle id="target-dot" cx="0" cy="0" r="3" fill="var(--violet)"/>
+          </svg>
+          <div style="position:absolute;bottom:-18px;left:0;font-family:var(--mo);font-size:8px;color:var(--faint)">0.0 (s)</div>
+          <div style="position:absolute;bottom:-18px;right:0;font-family:var(--mo);font-size:8px;color:var(--faint)">1.0</div>
+          <div style="position:absolute;left:-18px;top:0;font-family:var(--mo);font-size:8px;color:var(--faint)">1.0 (P)</div>
+          <div style="position:absolute;left:-18px;bottom:0;font-family:var(--mo);font-size:8px;color:var(--faint)">0.0</div>
+        </div>
+        <div style="margin-top:22px;font-family:var(--mo);font-size:10px;color:var(--muted)">X-axis: Jaccard Similarity · Y-axis: Collision Prob</div>
+      </div>
+
+      <!-- Stats Panel -->
+      <div class="lsh-stats-panel">
+        <div class="lsh-readout">
+          <div class="lsh-stat">
+            <div class="lsh-stat-label">Total Signatures ($K$)</div>
+            <div class="lsh-stat-val" id="val-k" style="color:var(--teal)">40</div>
+          </div>
+          <div class="lsh-stat">
+            <div class="lsh-stat-label">Est Threshold ($t$)</div>
+            <div class="lsh-stat-val" id="val-t" style="color:var(--amber)">0.56</div>
+          </div>
+        </div>
+
+        <div class="lsh-stat" style="text-align:left">
+          <div class="lsh-stat-label" style="margin-bottom:6px">Collision Prob at selected $s$</div>
+          <div class="lsh-stat-val" id="val-prob" style="font-size:24px;color:var(--violet)">84.2%</div>
+        </div>
+
+        <div class="lsh-sim">
+          <div class="lsh-sim-title">Deterministic Band Match Simulation</div>
+          <p style="font-size:11px;margin-bottom:8px">Visual representation of band collisions. Highlighted bands denote matching signatures in that band, triggering a candidate generation:</p>
+          <div id="band-visualizer" class="band-grid"></div>
+          <div id="sim-verdict" style="font-family:var(--mo);font-size:12px;font-weight:600;margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><strong>Tuning challenges to test:</strong>
+    <br>1. **High Recall (Fuzzy)**: Set $b=20, r=3$ ($K=60$). Watch how the estimated threshold drops to **0.37**. Collision probability is near-100% for moderate similarities, but you will generate many false candidate pairs.
+    <br>2. **High Precision (Strict)**: Set $b=5, r=10$ ($K=50$). The threshold jumps to **0.85**. Now, only very clean records (almost no typos) will collide.
+    <br>3. **The S-Curve Steepness**: Keep the threshold around 0.55 by comparing $b=10, r=4$ ($K=40$, threshold 0.56) vs $b=20, r=8$ ($K=160$, threshold 0.69). Notice how the larger signature vector makes the S-curve significantly steeper, creating a much cleaner cut-off near the threshold.
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 9 — SELF-TEST ══════ -->
+<div class="stage" id="s9">
+<div class="wrap">
+  <p class="sec-eye">Stage 09</p>
+  <h2 class="sec-h">Self-Test — Scenario Recognition</h2>
+  <p class="sec-sub">Test your operational understanding of LSH tuning. Each question presents a scaling or parameter scenario from a real Master Data Management pipeline and asks which action applies.</p>
+
+  <div class="quiz-grid" id="quiz-grid"></div>
+
+  <div class="unlock" style="margin-top:34px">
+    <span class="unlock-icon">✓</span>
+    <div class="unlock-body"><strong>Module 06 complete.</strong> You now understand how to bypass the $N^2$ scaling wall using Locality Sensitive Hashing. You can shingle strings, compress them into MinHash signature matrices, tune $b$ and $r$ banding parameters mathematically using the S-curve formula, write PySpark MinHashLSH code, and build a hybrid candidate generation pipeline. Next up: <strong>Module 07 · Graph Theory &amp; Clustering</strong>, where matched pairs merge into master entity clusters.</div>
+  </div>
+
+  <div class="concept-grid" style="margin-top:26px">
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Honest Gaps</div>
+      <div class="cc-title">What this module didn't cover</div>
+      <div class="cc-body">
+        <strong>SimHash:</strong> An alternative LSH algorithm that estimates Cosine similarity rather than Jaccard similarity. Extremely useful for dense vector embeddings, but MinHash remains standard for token/shingle overlap.<br><br>
+        <strong>Custom Hash Family Construction:</strong> The mathematical proof showing that minhash hash functions are indeed min-wise independent. We treat hashes as black-box generators in production PySpark.<br><br>
+        <strong>Signature Join Partition Skew:</strong> Large clusters of records matching on empty/default values (e.g. null name fields) can create LSH signature hot spots, causing cluster executors to out-of-memory. Solved by pre-filtering default values.<br><br>
+        <strong>Multi-Probe LSH:</strong> Querying adjacent buckets to find near-collisions when signatures land close to band boundaries. PySpark LSH does not support multi-probing out of the box.
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">the-learning-lab · Module 06 · LSH &amp; MinHash</span>
+    <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
+  </div>
+</footer>
+
+<script>
+/* ── NAV ── */
+function go(id, btn) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.sn').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+/* ── COPY ── */
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ══════════════════════════════════════════
+   INTERACTIVE LSH WIDGET SCRIPT
+   ══════════════════════════════════════════ */
+const bSlider = document.getElementById('b-slider');
+const rSlider = document.getElementById('r-slider');
+const sSlider = document.getElementById('s-slider');
+const bVal = document.getElementById('b-val');
+const rVal = document.getElementById('r-val');
+const sVal = document.getElementById('s-val');
+
+const valK = document.getElementById('val-k');
+const valT = document.getElementById('val-t');
+const valProb = document.getElementById('val-prob');
+const curvePath = document.getElementById('curve-path');
+const targetX = document.getElementById('target-x');
+const targetDot = document.getElementById('target-dot');
+const bandVisualizer = document.getElementById('band-visualizer');
+const simVerdict = document.getElementById('sim-verdict');
+
+function updateLSH() {
+  const b = parseInt(bSlider.value);
+  const r = parseInt(rSlider.value);
+  const s = parseFloat(sSlider.value);
+
+  bVal.textContent = b;
+  rVal.textContent = r;
+  sVal.textContent = s.toFixed(2);
+
+  const k = b * r;
+  const t = Math.pow(1 / b, 1 / r);
+  const prob = 1 - Math.pow(1 - Math.pow(s, r), b);
+
+  valK.textContent = k;
+  valT.textContent = t.toFixed(2);
+  valProb.textContent = (prob * 100).toFixed(1) + '%';
+
+  // 1. Generate S-Curve path
+  let pathD = '';
+  for (let x = 0; x <= 100; x++) {
+    const tempS = x / 100;
+    const tempProb = 1 - Math.pow(1 - Math.pow(tempS, r), b);
+    const y = 100 - (tempProb * 100);
+    if (x === 0) {
+      pathD += `M 0 ${y}`;
+    } else {
+      pathD += ` L ${x} ${y}`;
+    }
+  }
+  curvePath.setAttribute('d', pathD);
+
+  // 2. Update target lines and dot
+  const cx = s * 100;
+  const cy = 100 - (prob * 100);
+  targetX.setAttribute('x1', cx);
+  targetX.setAttribute('x2', cx);
+  targetX.setAttribute('y1', cy);
+  targetX.setAttribute('y2', 100);
+  targetDot.setAttribute('cx', cx);
+  targetDot.setAttribute('cy', cy);
+
+  // 3. Band collision simulation
+  // We mock the bands' matching based on the Jaccard similarity.
+  // Each band has a probability of matching equal to s^r.
+  // We make it deterministic based on a pseudo-random seed per band
+  // so the visual doesn't flicker wildly as the slider moves.
+  let colCount = 0;
+  let bandHtml = '';
+  for (let i = 1; i <= b; i++) {
+    // Deterministic random check for band matching
+    const seed = Math.sin(i * 12.9898 + s * 78.233) * 43758.5453;
+    const rand = seed - Math.floor(seed);
+    const bandMatches = rand < Math.pow(s, r);
+    
+    if (bandMatches) colCount++;
+    bandHtml += `<div class="band-box ${bandMatches ? 'collision' : ''}" title="Band ${i}: ${bandMatches ? 'Collision' : 'No Match'}"></div>`;
+  }
+  bandVisualizer.innerHTML = bandHtml;
+
+  if (colCount > 0) {
+    simVerdict.innerHTML = `<span style="color:var(--green)">Candidate nominated! ✅</span> Collided in ${colCount} band(s)`;
+  } else {
+    simVerdict.innerHTML = `<span style="color:var(--red)">Filtered out. ❌</span> 0 band collisions`;
+  }
+}
+
+bSlider.addEventListener('input', updateLSH);
+rSlider.addEventListener('input', updateLSH);
+sSlider.addEventListener('input', updateLSH);
+
+updateLSH();
+
+/* ══════════════════════════════════════════
+   QUIZ QUESTIONS
+   ══════════════════════════════════════════ */
+const questions = [
+  {
+    prompt: 'You want to target a Jaccard similarity threshold of <strong>s = 0.70</strong>. You notice LSH is dropping too many true matches (high false negatives). How do you adjust <strong>b</strong> (bands) and <strong>r</strong> (rows)?',
+    opts: [
+      'Increase r and decrease b to make the hashing more selective',
+      'Increase b and decrease r to shift the S-curve threshold to the left (increasing recall)',
+      'Double both b and r to maintain the same threshold with more signatures',
+      'Increase count vectorizer shingles size'
+    ],
+    correct: 1,
+    explain: 'To decrease false negatives (increase recall), you must make it easier for records to collide. Increasing bands (b) gives more chances to collide. Decreasing rows (r) reduces the number of matches needed per band. Both shifts the S-curve left, making LSH more sensitive.'
+  },
+  {
+    prompt: 'PySpark\'s <strong>MinHashLSHModel.approxSimilarityJoin(dfA, dfB, threshold)</strong> uses Jaccard distance. If you want candidate pairs with Jaccard similarity <strong>&ge; 0.60</strong>, what threshold do you pass?',
+    opts: [
+      'threshold = 0.60',
+      'threshold = 0.40',
+      'threshold = 1.60',
+      'threshold = 0.16'
+    ],
+    correct: 1,
+    explain: 'Distance is the complement of similarity ($D = 1 - S$). If you require similarity $\ge 0.60$, you are looking for distance $\le 0.40$ ($1.00 - 0.60$). Passing 0.60 would query similarity $\ge 0.40$, over-generating pairs.'
+  },
+  {
+    prompt: 'MinHashLSH in PySpark requires the input dataset\'s feature column to be of what Spark type?',
+    opts: [
+      'A plain array of shingle strings (ArrayType(StringType))',
+      'A sparse or dense Vector containing token presence or frequency counts',
+      'A single concatenated string containing all shingles',
+      'A StructType representing nested data values'
+    ],
+    correct: 1,
+    explain: 'Spark ML\'s MinHashLSH operates on numeric feature vectors. You must use CountVectorizer or HashingTF to convert shingle/token arrays into Spark Vector objects before training the LSH model.'
+  },
+  {
+    prompt: 'What is the exact algebraic relation between signature size <strong>K</strong>, bands <strong>b</strong>, and rows per band <strong>r</strong>?',
+    opts: [
+      'K = b + r',
+      'K = b^r',
+      'K = b &times; r',
+      'K = b / r'
+    ],
+    correct: 2,
+    explain: 'A signature of length K is divided into b non-overlapping bands, each containing exactly r rows. Thus, K = b * r. If you change one, you must adjust the others to match.'
+  },
+  {
+    prompt: 'What is the trade-off of choosing a larger shingle size <strong>k</strong> (e.g. character 5-grams vs 2-grams) for short strings like customer names?',
+    opts: [
+      'Larger k increases the collision probability because there are more possible shingles',
+      'Larger k makes shingles more unique. A single typo will invalidate multiple shingles, causing the Jaccard similarity to collapse to 0 quickly',
+      'Larger k is ignored by the MinHash model because it only reads 32-bit hashes',
+      'Larger k makes the signature matrix sparse but doesn\'t affect similarity'
+    ],
+    correct: 1,
+    explain: 'Short strings (like names) have very few characters. If k is too large (e.g., 5-grams on a 10-char name), a single typo ruins almost all shingles, making Jaccard similarity collapse. For names, k=2 or k=3 is the optimal sweet spot.'
+  },
+  {
+    prompt: 'You run LSH candidate generation on 10 million records. At $b=20, r=5$, the join generates 50 billion pairs, crashing the downstream scoring partitions. What adjustment should you make?',
+    opts: [
+      'Increase b and decrease r to expand the candidates pool',
+      'Decrease b and increase r to shift the S-curve right, restricting candidates to higher-similarity matches',
+      'Lower the PySpark join threshold to 0.10',
+      'Run CountVectorizer with a lower binary frequency flag'
+    ],
+    correct: 1,
+    explain: 'Generating 50 billion pairs indicates your candidate generation threshold is too low. To restrict pairs and reduce cluster load, you must shift the S-curve right by increasing r (requiring more strict band matches) and/or decreasing bands b.'
+  },
+  {
+    prompt: 'Exact duplicate names under different capitalizations (e.g. `JON SMITH` vs `jon smith`) fail to collide in your LSH blocking. What is the root cause?',
+    opts: [
+      'MinHash only supports lowercase ASCII characters',
+      'Your shingle tokenization is case-sensitive, making shingles like `{"JO"}` disjoint from `{"jo"}`, yielding 0 overlap',
+      'LSH signature length must be doubled to support capital letters',
+      'CountVectorizer automatically filters out capitalized strings'
+    ],
+    correct: 1,
+    explain: 'Set intersection is case-sensitive. Unless you run string normalization (lowercase, remove punctuation) before shingling, capitalization differences create completely distinct shingles. Always normalize first!'
+  },
+  {
+    prompt: 'How are candidate pair lists from LSH and traditional exact blocking combined in a production pipeline?',
+    opts: [
+      'LSH candidates overwrite exact blocking candidates',
+      'Run ScoringPlugin on LSH pairs, then join the results to exact blocking pairs',
+      'Perform a union() of both candidate pair DataFrames, followed by distinct() to deduplicate',
+      'PySpark automatically joins LSH tables to exact block keys if partitions match'
+    ],
+    correct: 2,
+    explain: 'Both candidate paths output DataFrames of unique pair IDs `(id_a, id_b)`. To combine their coverage, you perform a union of both streams and run a `distinct()` step to ensure you do not score duplicate pairs.'
+  }
+];
+
+const qg = document.getElementById('quiz-grid');
+questions.forEach((q, i) => {
+  const card = document.createElement('div');
+  card.className = 'qcard';
+  card.innerHTML = `<div class="q-prompt"><strong>Q${i+1}.</strong> ${q.prompt}</div>
+    <div class="q-opts">${q.opts.map((o,j) => `<button class="q-opt" onclick="answerQ(${i},${j},this)">${o}</button>`).join('')}</div>
+    <div class="q-fb" id="qfb-${i}"></div>`;
+  qg.appendChild(card);
+});
+
+function answerQ(qi, oi, btn) {
+  const q = questions[qi];
+  const card = btn.closest('.qcard');
+  card.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  btn.classList.add(oi === q.correct ? 'correct' : 'wrong');
+  if (oi !== q.correct) card.querySelectorAll('.q-opt')[q.correct].classList.add('correct');
+  const fb = document.getElementById(`qfb-${qi}`);
+  fb.className = 'q-fb ' + (oi === q.correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = (oi === q.correct ? '✓ ' : '✗ ') + q.explain;
+  fb.style.display = 'block';
+}
+</script>
+</body>
+</html>

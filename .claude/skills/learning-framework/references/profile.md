@@ -80,3 +80,17 @@ Last updated: 2026-06-19
 **Artifact:** score-aggregation-confidence.html (interactive, matches Module 04's HTML walkthrough format with 10 stages, live threshold tuner, 8-question self-test).
 
 **Sustain:** Website module session — treated as unlimited budget per standing note. Full 10-stage module produced in one pass.
+
+---
+
+## Module 06 — LSH & MinHash (2026-06-19)
+
+**Covered (depth `use`):** The $N^2$ scaling wall (pair explosion), fuzzy blocking, Jaccard similarity (k-gram character shingling overlap metric), MinHash signatures (permutations matrix compression), LSH banding (signatures split into $b$ bands of $r$ rows, Murmur hashing bands), tuning LSH (S-curve collision probability $P = 1-(1-s^r)^b$, threshold estimate $t \approx (1/b)^{1/r}$), PySpark MinHashLSH pattern (NGram vector inputs, `approxSimilarityJoin`, Jaccard distance threshold trap), hybrid blocking candidate join (union & distinct of blocking and LSH pairs), interactive LSH tuner widget.
+
+**What worked:** 11-stage flow matching Module 05's structure. Table-driven teaching for Jaccard sets, MinHash permutations matrix, and S-curve thresholds. "X is a red herring; Y decides" contrast used for: LSH as a replacement for scoring (candidate generation only vs final verdict). Analogies: mail cubby sorting (banding), Venn diagram overlay (Jaccard similarity). Interactive widget with responsive bands/rows sliders and dynamic SVG-drawn S-curve graph with dot intersection, combined with a 10-profile deterministic band match simulator showing direct collisions.
+
+**Known gaps:** SimHash for Cosine distance vector embeddings, custom hash family mathematical proofs, partition skew in signature joins, multi-probe LSH query support.
+
+**Artifact:** lsh-minhash.html (interactive, matches Module 05's HTML walkthrough format with 11 stages, live S-curve calculator, 8-question self-test).
+
+**Sustain:** Website module session — treated as unlimited budget. Full 11-stage module produced.

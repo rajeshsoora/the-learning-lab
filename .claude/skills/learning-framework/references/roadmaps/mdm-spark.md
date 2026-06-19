@@ -9,7 +9,7 @@
 
 ---
 
-## Progress snapshot (as of 2026-06-19) — 6 / 9 modules complete
+## Progress snapshot (as of 2026-06-19) — 7 / 9 modules complete
 
 ### Phase 1 — Spark Foundations  (~2–2.5 sessions) ✅
 - ✅ **00 — Entity Resolution Overview** — `entity-resolution-walkthrough.html`
@@ -34,10 +34,10 @@
   - Unlocks: tune the thresholds that decide which pairs auto-merge, which go to human review, and which are rejected.
 
 ### Phase 3 — ER at Scale  (~2 sessions)
-- 🔜 **06 — LSH & MinHash** (~1 session)
+- ✅ **06 — LSH & MinHash** — `lsh-minhash.html` *(built 2026-06-19)*
   - Topics: minhash, banding, jaccard, candidate generation
   - Unlocks: find candidate pairs at scale without all-pairs comparison — approximate blocking that complements the self-join.
-- ⬜ **07 — Graph Theory & Clustering** (~1 session)
+- 🔜 **07 — Graph Theory & Clustering** (~1 session)
   - Topics: connected components, union-find, BFS/DFS, transitive matches
   - Unlocks: how matched pairs merge into one master entity — the final ER step that turns pairs into clusters.
 
@@ -83,9 +83,21 @@
 - **Stage 08** Interactive Threshold Tuner — live sliders for match/review thresholds, 200 simulated labeled pairs, real-time precision/recall/F1/queue readouts, 5 presets (conservative, balanced, aggressive, tight review, reset).
 - **Stage 09** Self-test — 8 scenario-recognition questions covering precision failures, sampling bias, queue overflow, calibration per-dataset, the elbow, F1 limitations, calibration table interpretation, calibration drift.
 
+## Module 06 — what was covered (built 2026-06-19)
+11-stage treatment, matching the Module 05 style.
+- **Stage 00** Overview — visualizes LSH blocking in the pipeline; Jaccard, MinHash, Banding, and S-curve tuning.
+- **Stage 01** The N² Wall — growth table of N vs N²/2 comparisons; contrasts rigid blocking keys vs LSH fuzzy blocking.
+- **Stage 02** Jaccard Similarity — k-gram character shingling; Venn diagram analogy; worked shingle intersection/union table.
+- **Stage 03** The MinHash Trick — set compression; random permutations index matching math; worked shingle permutation matrix.
+- **Stage 04** Banding & LSH — dividing signature $K = b \times r$; Murmur hashing bands; "LSH is a replacement for scoring" red herring.
+- **Stage 05** Tuning LSH — S-curve formula $P = 1 - (1 - s^r)^b$; threshold elbow calculation $t \approx (1/b)^{1/r}$; worked b/r tuning table.
+- **Stage 06** PySpark Pattern — RegexTokenizer, NGram, CountVectorizer, MinHashLSH, approxSimilarityJoin; PySpark Jaccard distance trap ($D = 1-S$).
+- **Stage 07** The Hybrid Pipeline — union and distinct of exact blocking and LSH candidates; full Spark pipeline pattern.
+- **Stage 08** Interactive LSH Tuner — live b and r sliders; dynamic SVG S-curve plotting; deterministic band collision simulation on 10 customer records.
+- **Stage 09** Self-test — 8 scenario-recognition questions covering LSH parameters, distance join, shingle size, case tokenization.
+
 ## Parked / for later
-- Nothing parked from Module 05 itself.
-- Module 06 should introduce LSH & MinHash for candidate generation at scale — approximate blocking that complements the self-join from Module 00.
+- Nothing parked from Module 06 itself.
 - **Carried from an earlier Module 01 planning note (not confirmed resolved on the live site):** null handling inside arrays · schema evolution mechanics (Delta `mergeSchema`) · array-of-structs (the real MDM shape) · `transform`/`inline`. Worth a 15-min warm-up check next time nested-data content resurfaces, to confirm these were actually covered.
 
 ## Calibration notes that held this session
