@@ -9,7 +9,7 @@
 
 ---
 
-## Progress snapshot (as of 2026-06-19) — 7 / 9 modules complete
+## Progress snapshot (as of 2026-06-19) — 8 / 9 modules complete
 
 ### Phase 1 — Spark Foundations  (~2–2.5 sessions) ✅
 - ✅ **00 — Entity Resolution Overview** — `entity-resolution-walkthrough.html`
@@ -37,12 +37,12 @@
 - ✅ **06 — LSH & MinHash** — `lsh-minhash.html` *(built 2026-06-19)*
   - Topics: minhash, banding, jaccard, candidate generation
   - Unlocks: find candidate pairs at scale without all-pairs comparison — approximate blocking that complements the self-join.
-- 🔜 **07 — Graph Theory & Clustering** (~1 session)
+- ✅ **07 — Graph Theory & Clustering** — `graph-clustering.html` *(built 2026-06-19)*
   - Topics: connected components, union-find, BFS/DFS, transitive matches
   - Unlocks: how matched pairs merge into one master entity — the final ER step that turns pairs into clusters.
 
 ### Phase 4 — Pipeline Mastery (Capstone)  (~2 sessions)
-- ⬜ **08 — Spark Performance (Remaining Levers)** (~1 session)
+- 🔜 **08 — Spark Performance (Remaining Levers)** (~1 session)
   - Topics: column pruning, predicate pushdown, memory tuning, partition sizing
   - Unlocks: optimize the full pipeline beyond shuffle/join/skew.
 - ⬜ **09 — Pipeline Design (Capstone)** (~1 session)
@@ -96,8 +96,22 @@
 - **Stage 08** Interactive LSH Tuner — live b and r sliders; dynamic SVG S-curve plotting; deterministic band collision simulation on 10 customer records.
 - **Stage 09** Self-test — 8 scenario-recognition questions covering LSH parameters, distance join, shingle size, case tokenization.
 
+## Module 07 — what was covered (built 2026-06-19)
+10-stage treatment, matching the Module 06 style.
+- **Stage 00** Overview — visualizes clustering closing the pipeline; connected components, BFS/DFS, union-find, transitive closure.
+- **Stage 01** From Pairs to Entities — the moved-person scenario (A↔B match, B↔C match, A↔C never scores), motivating why pairwise verdicts alone are insufficient.
+- **Stage 02** Graph Model — ER-to-graph-theory term mapping table; friendship-circle analogy; worked component trace on the moved-person graph.
+- **Stage 03** BFS/DFS Traversal — component-finding algorithm; full debug trace on a 6-record graph (A-B, B-C, D-E, isolated F); cost/scale caveat motivating union-find.
+- **Stage 04** Union-Find — find/union operations; same 6-record graph traced via union-find for direct comparison; path compression explained.
+- **Stage 05 (climax)** Transitive Closure — the "clustering just groups matched pairs" red herring; the bridge-edge failure mode (one weak match fuses two large clusters); cluster-size sanity-check mitigation.
+- **Stage 06** Choosing an Approach — 3-question decision tree (memory fit → Spark-native vs hand-rolled → audit-path needs) + side-by-side comparison table.
+- **Stage 07** PySpark Pattern — GraphFrames `connectedComponents()` from ThresholdTuner match verdicts; checkpoint-dir trap; join-back into Module 03's window-function golden-record selection.
+- **Stage 08** Interactive Cluster Builder — canvas-based union-find widget; click candidate pairs to add edges live; guided sequence demonstrating the transitive-fuse climax visually.
+- **Stage 09** Self-test — 8 scenario-recognition questions covering transitive closure, bridge-edge risk, checkpoint dir, path compression, BFS/DFS vs Spark fit, edge-list sourcing, singleton components.
+
 ## Parked / for later
 - Nothing parked from Module 06 itself.
+- **From Module 07:** weighted/probabilistic clustering (edge-confidence-aware community detection), cluster-splitting/review-queue tooling at the cluster level, GraphFrames' internal algorithm (Hash-to-Min label propagation) and convergence behavior, graph algorithms beyond connectivity (centrality, shortest-path, community detection for fraud rings).
 - **Carried from an earlier Module 01 planning note (not confirmed resolved on the live site):** null handling inside arrays · schema evolution mechanics (Delta `mergeSchema`) · array-of-structs (the real MDM shape) · `transform`/`inline`. Worth a 15-min warm-up check next time nested-data content resurfaces, to confirm these were actually covered.
 
 ## Calibration notes that held this session

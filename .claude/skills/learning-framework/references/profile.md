@@ -94,3 +94,17 @@ Last updated: 2026-06-19
 **Artifact:** lsh-minhash.html (interactive, matches Module 05's HTML walkthrough format with 11 stages, live S-curve calculator, 8-question self-test).
 
 **Sustain:** Website module session — treated as unlimited budget. Full 11-stage module produced.
+
+---
+
+## Module 07 — Graph Theory & Clustering (2026-06-19)
+
+**Covered (depth `use`):** Graph model (records as nodes, match verdicts as edges, connected components as master entities), BFS/DFS component-finding traced step-by-step, union-find (find/union, path compression) traced on the identical graph for direct comparison, transitive closure as the climax (moved-person scenario, bridge-edge risk where one weak match fuses two large clusters), decision criteria for BFS/DFS vs hand-rolled union-find vs GraphFrames, GraphFrames `connectedComponents()` PySpark pattern with the checkpoint-dir trap, join-back into Module 03's golden-record window functions, interactive canvas-based union-find cluster builder.
+
+**What worked:** 10-stage flow matching Module 06's structure. "X is a red herring; Y decides" contrast used for: clustering as pairwise bookkeeping vs clustering as transitive-closure fact-creation. Same worked example (6-record graph) traced through both BFS/DFS and union-find so the two algorithms could be compared directly rather than taught in isolation. Decision-tree format (reused from Module 01's nested-types pattern) for the BFS/DFS vs union-find vs GraphFrames choice. Interactive widget used a live canvas + union-find instead of sliders, since the tunable parameter here is "which edges exist," not a numeric threshold — matched to the topic instead of reusing the slider pattern by default.
+
+**Known gaps:** Weighted/probabilistic clustering (edge-confidence-aware community detection) not covered. Cluster-splitting/review-queue tooling at the cluster level named but not built. GraphFrames' internal algorithm (Hash-to-Min label propagation) and convergence behavior not traced. Graph algorithms beyond connectivity (centrality, shortest-path, fraud-ring community detection) out of scope.
+
+**Artifact:** graph-clustering.html (interactive, matches Module 06's HTML walkthrough format with 10 stages, live canvas-based cluster builder, 8-question self-test).
+
+**Sustain:** Website module session — treated as unlimited budget. Full 10-stage module produced.

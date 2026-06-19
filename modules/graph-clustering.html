@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Theory &amp; Clustering — Module 07</title>
+<meta name="description" content="Learn how matched pairs merge into master entities using connected components, union-find, BFS/DFS, and transitive closure — Module 07 of The Learning Lab's MDM/Spark track.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --coral:#F78C6C;--coral-dim:#3E241E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--amber)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--amber)}
+
+.stage-nav{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:99;overflow-x:auto}
+.stage-nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;gap:6px;height:48px;align-items:center}
+.sn{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sn:hover{color:var(--ink);border-color:var(--faint)}
+.sn.on{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.stage{display:none;padding:48px 0 72px}.stage.on{display:block}
+
+/* typography */
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--amber);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--amber)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+/* concept cards */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:20px 0}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:20px;position:relative}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0;background:var(--acc,var(--amber))}
+.cc-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:8px}
+.cc-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:6px}
+.cc-body{font-size:13px;color:var(--muted);line-height:1.6}
+.cc-body code{font-size:11px}
+
+/* analogy box */
+.analogy{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:20px 22px;margin:20px 0}
+.analogy-eye{font-family:var(--mo);font-size:10px;color:var(--violet);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.analogy-body{font-size:14px;color:var(--ink);line-height:1.75}
+.analogy-body em{color:var(--violet);font-style:normal;font-weight:600}
+
+/* callouts */
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+.trap{border-left:3px solid var(--red);background:var(--red-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.trap strong{color:var(--red)}
+
+/* code windows */
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:2;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .k{color:var(--violet)}
+.code-block .f{color:var(--teal)}
+.code-block .s{color:var(--amber)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+.code-block .hl{background:rgba(230,180,80,.08);display:inline-block;width:100%;border-left:2px solid var(--amber);padding-left:6px;margin-left:-8px}
+.code-block .why{color:var(--amber);font-style:italic}
+
+/* debug trace */
+.debug-trace{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.dt-header{background:var(--surf2);padding:10px 16px;font-family:var(--mo);font-size:11px;color:var(--violet);letter-spacing:.08em;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.dt-header::before{content:'▶';font-size:9px}
+.dt-step{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dt-step:last-child{border-bottom:0}
+.dt-line{font-family:var(--mo);font-size:12px;color:var(--ink);margin-bottom:6px}
+.dt-state{font-family:var(--mo);font-size:12px;color:var(--amber);padding:8px 12px;background:var(--amber-dim);border-radius:6px;margin:6px 0}
+.dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.dt-why em{color:var(--violet);font-style:normal}
+
+/* data table */
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+.data-table .hl-row td{background:var(--amber-dim) !important}
+.data-table .hl-row td:first-child{border-left:3px solid var(--amber)}
+.data-table .tot-row td{background:var(--surf2);font-weight:600;color:var(--ink);border-top:2px solid var(--line)}
+.data-table .new-col{color:var(--amber);font-weight:600}
+.data-table .faint{color:var(--faint)}
+.badge{display:inline-block;font-family:var(--mo);font-size:10px;padding:2px 7px;border-radius:4px}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #1A3D5C}
+.b-violet{background:var(--violet-dim);color:var(--violet);border:1px solid #3A3060}
+
+/* wrong vs right */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.compare-panel{border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.compare-header{padding:10px 14px;font-family:var(--mo);font-size:11px;letter-spacing:.06em;border-bottom:1px solid var(--line)}
+.wrong-header{background:var(--red-dim);color:var(--red)}
+.right-header{background:var(--green-dim);color:var(--green)}
+.compare-body{background:var(--surf2);padding:14px 16px;font-family:var(--mo);font-size:12px;line-height:1.9;white-space:pre;overflow-x:auto;color:var(--muted)}
+.compare-output{background:var(--panel);padding:10px 14px;border-top:1px solid var(--line);font-family:var(--mo);font-size:12px;color:var(--muted);line-height:1.7}
+.output-label{font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+
+/* red herring contrast */
+.herring{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:18px 0;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.herring-col{padding:18px 20px}
+.herring-col.left{background:var(--red-dim);border-right:1px solid var(--line)}
+.herring-col.right{background:var(--green-dim)}
+.herring-eye{font-family:var(--mo);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.herring-col.left .herring-eye{color:var(--red)}
+.herring-col.right .herring-eye{color:var(--green)}
+.herring-col h5{font-family:var(--dp);font-weight:600;font-size:14px;color:var(--ink);margin-bottom:8px}
+.herring-col p{font-size:13px;line-height:1.6;margin-bottom:8px}
+.herring-col p:last-child{margin-bottom:0}
+.herring-col code{font-size:11px}
+@media(max-width:600px){.herring{grid-template-columns:1fr}.herring-col.left{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* pipeline viz */
+.pipeline-viz{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:24px 0}
+.pv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.pv-flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pv-box{background:var(--surf);border:1px solid var(--line);border-radius:7px;padding:7px 13px;font-family:var(--mo);font-size:12px;color:var(--muted)}
+.pv-box.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.pv-box.hl{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+.pv-arr{color:var(--faint);font-size:13px;padding:0 2px}
+
+.unlock{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:18px 20px;margin:26px 0;display:flex;gap:14px;align-items:flex-start}
+.unlock-icon{font-size:20px;flex-shrink:0}
+.unlock-body{font-size:13px;color:var(--ink);line-height:1.7}
+.unlock-body strong{color:var(--violet)}
+
+/* decision tree */
+.decision-tree{display:flex;flex-direction:column;gap:10px;margin:18px 0}
+.dq{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.dq-num{font-family:var(--mo);font-size:10px;color:var(--amber);letter-spacing:.08em;margin-bottom:6px}
+.dq-q{font-family:var(--dp);font-weight:600;font-size:14px;margin-bottom:8px}
+.dq-a{font-size:13px;color:var(--muted);line-height:1.6;padding-left:14px;border-left:2px solid var(--line)}
+.dq-a strong{color:var(--ink)}
+
+/* graph cluster widget */
+.gc-widget{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:22px 0}
+.gc-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.gc-layout{display:grid;grid-template-columns:1.3fr 1fr;gap:24px}
+.gc-canvas-wrap{border:1px solid var(--line);background:var(--surf2);border-radius:8px;padding:14px}
+.gc-canvas{width:100%;aspect-ratio:4/3;display:block}
+.gc-controls{display:flex;flex-direction:column;gap:12px}
+.gc-pair-list{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto}
+.gc-pair-btn{font-family:var(--mo);font-size:11px;background:var(--surf);border:1px solid var(--line);color:var(--muted);padding:8px 12px;border-radius:6px;cursor:pointer;text-align:left;transition:all .15s;display:flex;justify-content:space-between;align-items:center}
+.gc-pair-btn:hover{border-color:var(--amber);color:var(--ink)}
+.gc-pair-btn.added{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+.gc-pair-btn .gc-pair-state{font-size:9px;color:var(--faint)}
+.gc-stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gc-stat{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center}
+.gc-stat-label{font-family:var(--mo);font-size:9px;color:var(--faint);text-transform:uppercase;margin-bottom:4px}
+.gc-stat-val{font-family:var(--dp);font-weight:700;font-size:18px;color:var(--amber)}
+.gc-reset{font-family:var(--mo);font-size:11px;background:transparent;border:1px solid var(--line);color:var(--faint);padding:8px 12px;border-radius:6px;cursor:pointer;transition:all .15s}
+.gc-reset:hover{color:var(--ink);border-color:var(--faint)}
+.gc-cluster-readout{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:12px;font-family:var(--mo);font-size:11px;color:var(--muted);line-height:1.7;max-height:120px;overflow-y:auto}
+
+/* quiz */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:20px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.q-prompt{font-size:13px;line-height:1.65;margin-bottom:14px;color:var(--muted)}
+.q-prompt strong{color:var(--ink)}
+.q-opts{display:flex;flex-direction:column;gap:7px}
+.q-opt{font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);padding:8px 12px;border-radius:6px;cursor:pointer;text-align:left;color:var(--muted);transition:all .15s}
+.q-opt:hover{border-color:var(--amber);color:var(--ink)}
+.q-opt.correct{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.q-opt.wrong{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.q-fb{font-size:12px;margin-top:10px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--amber)}
+
+@media(max-width:768px){
+  .gc-layout{grid-template-columns:1fr}
+  .compare-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="../index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 07</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Graph Theory &amp; Clustering</span>
+  </div>
+</nav>
+
+<div class="stage-nav">
+  <div class="stage-nav-inner">
+    <button class="sn on" onclick="go('s0',this)">00 · Overview</button>
+    <button class="sn" onclick="go('s1',this)">01 · From Pairs to Entities</button>
+    <button class="sn" onclick="go('s2',this)">02 · Graph Model</button>
+    <button class="sn" onclick="go('s3',this)">03 · BFS/DFS Traversal</button>
+    <button class="sn" onclick="go('s4',this)">04 · Union-Find</button>
+    <button class="sn" onclick="go('s5',this)">05 · Transitive Closure</button>
+    <button class="sn" onclick="go('s6',this)">06 · Choosing an Approach</button>
+    <button class="sn" onclick="go('s7',this)">07 · PySpark / GraphFrames</button>
+    <button class="sn" onclick="go('s8',this)">08 · Cluster Builder</button>
+    <button class="sn" onclick="go('s9',this)">09 · Self-Test</button>
+  </div>
+</div>
+
+
+<!-- ══════ STAGE 0 — OVERVIEW ══════ -->
+<div class="stage on" id="s0">
+<div class="wrap">
+  <p class="sec-eye">Module 07 · MDM / Spark Track · Phase 3 — ER at Scale</p>
+  <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">Graph Theory &amp; Clustering</h1>
+  <p class="sec-sub">Module 06 gave you LSH to find candidate pairs at scale without all-pairs comparison. Module 04/05 gave you a ScoringPlugin and ThresholdTuner that turn each candidate pair into a match/review/no-match verdict. But a verdict is still just a fact about <strong>one pair</strong>. If A matches B, and B matches C, are A, B, and C one entity, or three separate facts about two entities? This module is the final ER step: turning a pile of pairwise match verdicts into actual master entity clusters, using graph theory — connected components, BFS/DFS, union-find, and the transitive closure that makes clustering necessary in the first place.</p>
+
+  <div class="pipeline-viz">
+    <div class="pv-label">What this module adds to your pipeline</div>
+    <div class="pv-flow">
+      <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Block (Exact + LSH)</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Self-Join</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Field Scoring</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Combine &amp; Classify</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Tune &amp; Calibrate</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Cluster (Graph)</span><span class="pv-arr">→</span>
+      <span class="pv-box">Golden Record</span>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Why pairwise verdicts aren't enough</h3>
+  <p>Every prior module in Phase 2 and Phase 3 produces <strong>pairs</strong>: candidate pairs from blocking and LSH, scored pairs from the ScoringPlugin, classified pairs from the ThresholdTuner. None of that machinery ever looks at three records at once. But real customer databases don't split cleanly into pairs — a person who moved twice and changed their phone number each time might match record A↔B, B↔C, but A↔C scores too low to ever surface as a candidate. Treated as isolated facts, you'd merge A with B, and B with C, but never realize all three are the same person unless something forces the transitive leap.</p>
+
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Concept 01</div>
+      <div class="cc-title">Graph Model</div>
+      <div class="cc-body">Records become nodes; match verdicts become edges. The entire pairwise output of your pipeline is just one big graph waiting to be traversed.</div>
+    </div>
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Concept 02</div>
+      <div class="cc-title">Connected Components</div>
+      <div class="cc-body">A cluster is a connected component — every node reachable from every other node by following match edges. This is the formal definition of a "master entity."</div>
+    </div>
+    <div class="cc" style="--acc:var(--violet)">
+      <div class="cc-num">Concept 03</div>
+      <div class="cc-title">BFS/DFS &amp; Union-Find</div>
+      <div class="cc-body">Two different algorithms to discover the same connected components — one explores the graph node-by-node, the other merges sets incrementally as edges arrive.</div>
+    </div>
+    <div class="cc" style="--acc:var(--coral)">
+      <div class="cc-num">Concept 04</div>
+      <div class="cc-title">Transitive Closure</div>
+      <div class="cc-body">The reason clustering exists at all: if A matches B and B matches C, A and C end up in the same entity — even if A and C were never directly scored.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>How to use this module:</strong> Stage 01 motivates clustering with the moved-person scenario. Stage 02 formalizes the graph model. Stages 03–04 cover the two traversal algorithms (BFS/DFS and union-find) with worked traces. Stage 05 is the climax — the transitive closure gotcha. Stage 06 gives decision criteria for picking an approach. Stage 07 shows the production PySpark/GraphFrames pattern. Stage 08 is a live cluster-builder widget. Stage 09 is the self-test.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 1 — FROM PAIRS TO ENTITIES ══════ -->
+<div class="stage" id="s1">
+<div class="wrap">
+  <p class="sec-eye">Stage 01</p>
+  <h2 class="sec-h">From Pairs to Entities — The Moved-Person Problem</h2>
+  <p class="sec-sub">Module 04 introduced the moved-person scenario as a reason field weighting matters. Now it's the reason clustering exists: a chain of true matches your scoring pipeline only ever sees two at a time.</p>
+
+  <h3><span class="bar"></span>The scenario</h3>
+  <p>One real person appears three times in your raw data, once per address they've lived at:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Record</th><th>Name</th><th>Address</th><th>Phone</th><th>SSN (last 4)</th></tr>
+    <tr><td>A</td><td>Jon Smith</td><td>100 Oak St, Austin TX</td><td>512-555-0101</td><td>4471</td></tr>
+    <tr><td>B</td><td>Jon Smith</td><td>200 Pine Ave, Austin TX</td><td>512-555-0199</td><td>4471</td></tr>
+    <tr><td>C</td><td>Jonathan Smith</td><td>200 Pine Ave, Austin TX</td><td>512-555-0199</td><td>4471</td></tr>
+  </table>
+  </div>
+
+  <p>Your ScoringPlugin (Module 04) and ThresholdTuner (Module 05) classify each pair independently:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Pair</th><th>Shared fields</th><th>Composite score</th><th>Verdict</th></tr>
+    <tr><td>A ↔ B</td><td>Same name, same SSN, <em>different address/phone</em></td><td>0.81</td><td><span class="badge b-green">match</span></td>
+    <tr><td>B ↔ C</td><td>Same address/phone/SSN, <em>name variant (Jon vs Jonathan)</em></td><td>0.88</td><td><span class="badge b-green">match</span></td></tr>
+    <tr class="hl-row"><td>A ↔ C</td><td>Same SSN only — <em>different address, different name spelling</em></td><td>0.52</td><td><span class="badge b-amber">no-match (below threshold)</span></td></tr>
+  </table>
+  </div>
+
+  <p>A↔C never scores high enough to surface as a match — it might not even have been generated as a candidate pair by blocking or LSH, since the address and phone differ and the name spelling differs too. Looked at as three isolated pairwise facts, you'd be tempted to merge {A, B} into one entity and treat C separately, or merge {B, C} and leave A alone. Either choice loses information you already proved twice over: A=B (via the move) and B=C (via the name normalization). The only correct answer is that all three are the same person, and the only way to get there is to stop thinking pair-by-pair and start thinking about the <strong>graph</strong> of all match verdicts together.</p>
+
+  <div class="trap"><strong>The pairwise trap:</strong> If your pipeline stops at the ThresholdTuner and just writes `(id_a, id_b, verdict)` rows to a table, you have a list of edges — not a list of entities. Two different downstream consumers querying "who is this person's other records" could get two different, inconsistent answers depending on which row they happen to look at first. You need one more step that resolves the whole edge list into a consistent partition of records into entities.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 2 — GRAPH MODEL ══════ -->
+<div class="stage" id="s2">
+<div class="wrap">
+  <p class="sec-eye">Stage 02</p>
+  <h2 class="sec-h">The Graph Model — Nodes, Edges, Components</h2>
+  <p class="sec-sub">Everything your pipeline has produced so far — candidate pairs, scores, verdicts — is secretly a graph. Naming it as one is what unlocks the algorithms in this module.</p>
+
+  <h3><span class="bar"></span>Mapping ER concepts onto graph theory</h3>
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>ER pipeline concept</th><th>Graph theory term</th><th>What it is</th></tr>
+    <tr><td>A raw record (post-standardization)</td><td><strong>Node / vertex</strong></td><td>One point in the graph. Every distinct record_id is a node.</td></tr>
+    <tr><td>A match verdict between two records</td><td><strong>Edge</strong></td><td>An undirected connection between two nodes. Only `match` verdicts become edges — `review` and `no-match` do not (until a human resolves a review).</td></tr>
+    <tr><td>A set of records that should become one golden record</td><td><strong>Connected component</strong></td><td>A maximal set of nodes where every node is reachable from every other node by following edges, directly or through intermediate nodes.</td></tr>
+    <tr><td>A record with no matches at all</td><td><strong>Singleton component</strong></td><td>A connected component of size 1 — a node with no edges. Still a valid "entity" of one record.</td></tr>
+  </table>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — the friendship-circle test</div>
+    <div class="analogy-body">
+      Think of match edges like "these two people know each other." If Jon knows Maria, and Maria knows Diego, Jon and Diego are in the <em>same friend circle</em> even if they've never met directly — because there's a path connecting them. A connected component is exactly a friend circle: everyone reachable from everyone else, with no path leading outside the group. Master entity clustering asks the identical question, just with "knows" replaced by "is the same real-world person as."
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Worked example — drawing the moved-person graph</h3>
+  <p>Take Stage 01's three records and draw the match edges (A↔B and B↔C are matches; A↔C is not an edge):</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Node</th><th>Edges to</th><th>Directly reachable</th><th>Component membership</th></tr>
+    <tr><td>A</td><td>B</td><td>B</td><td>Component 1</td></tr>
+    <tr class="hl-row"><td>B</td><td>A, C</td><td>A, C</td><td>Component 1</td></tr>
+    <tr><td>C</td><td>B</td><td>B</td><td>Component 1</td></tr>
+  </table>
+  </div>
+
+  <p>Even though A and C have no direct edge, both A and C are reachable from B, and B is reachable from both. By the connected-component definition, {A, B, C} is <strong>one</strong> component — one master entity — even though only 2 of the 3 possible pairs were ever scored as matches. This is the formal justification for the conclusion Stage 01 reached by inspection: graph connectivity, not pairwise agreement, decides entity membership.</p>
+
+  <div class="note"><strong>Why this matters operationally:</strong> Every "find all records for this person" query, every golden-record merge, every downstream join to this MDM data is implicitly a connected-components query. Getting clustering right is what makes "the same entity" mean the same thing everywhere in your system.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 3 — BFS/DFS TRAVERSAL ══════ -->
+<div class="stage" id="s3">
+<div class="wrap">
+  <p class="sec-eye">Stage 03</p>
+  <h2 class="sec-h">Finding Components by Traversal — BFS &amp; DFS</h2>
+  <p class="sec-sub">The most direct way to find connected components: pick an unvisited node, walk every edge reachable from it, and mark everything you touch as one component. Breadth-first and depth-first search are two orderings of the same walk.</p>
+
+  <h3><span class="bar"></span>The algorithm (component-finding via traversal)</h3>
+  <p>For each node not yet assigned to a component:</p>
+  <ol style="margin-left:18px;margin-bottom:14px;font-size:14px;color:var(--muted);line-height:1.8">
+    <li>Start a new component, add the node to it.</li>
+    <li>Visit every neighbor via an edge; if unvisited, add it to the same component and queue it for visiting.</li>
+    <li>Repeat until no more reachable unvisited nodes remain — the component is complete.</li>
+    <li>Move to the next unassigned node and repeat for the next component.</li>
+  </ol>
+  <p><strong>BFS</strong> (breadth-first search) explores all direct neighbors before going further out, using a queue (FIFO). <strong>DFS</strong> (depth-first search) follows one path as deep as it can before backtracking, using a stack (LIFO) or recursion. Both visit the exact same set of nodes for a connected component — they just visit them in a different order. For component-finding alone, the order doesn't change the answer.</p>
+
+  <h3><span class="bar"></span>Worked example — a 6-record graph, traced with BFS</h3>
+  <p>Edges from your ScoringPlugin's match verdicts: <code>A-B, B-C, D-E</code>. Record F has no matches.</p>
+
+  <div class="debug-trace">
+    <div class="dt-header">BFS component trace</div>
+    <div class="dt-step">
+      <div class="dt-line">Start at A (unvisited). New component_id = 1. Queue: [A]</div>
+      <div class="dt-state">visited = {A:1}</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">Pop A. Neighbors of A: [B]. B is unvisited → assign component 1, enqueue.</div>
+      <div class="dt-state">visited = {A:1, B:1} · queue = [B]</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">Pop B. Neighbors of B: [A, C]. A already visited (skip). C unvisited → assign component 1, enqueue.</div>
+      <div class="dt-state">visited = {A:1, B:1, C:1} · queue = [C]</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">Pop C. Neighbors of C: [B]. Already visited. Queue empty → component 1 complete: {A, B, C}.</div>
+      <div class="dt-state">components so far = [{A,B,C}]</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">Next unvisited node: D. New component_id = 2. Traverse D→E (same pattern). Component 2 complete: {D, E}.</div>
+      <div class="dt-state">components so far = [{A,B,C}, {D,E}]</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">Next unvisited node: F. No neighbors. Component 3 = {F} (singleton).</div>
+      <div class="dt-why">F never matched anything, but it's still a valid entity of one record — <em>every node ends up in exactly one component, including isolated ones</em>.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Final result</h3>
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Component ID</th><th>Records</th><th>Size</th><th>Master entity</th></tr>
+    <tr><td>1</td><td>A, B, C</td><td>3</td><td>One merged golden record</td></tr>
+    <tr><td>2</td><td>D, E</td><td>2</td><td>One merged golden record</td></tr>
+    <tr><td>3</td><td>F</td><td>1</td><td>Unchanged — its own entity</td></tr>
+  </table>
+  </div>
+
+  <div class="warn"><strong>Cost characteristic:</strong> BFS/DFS visits every node once and every edge once — $O(N + E)$ total. That's the right complexity, but it assumes the whole graph fits comfortably in memory on one machine for the traversal to walk. At MDM scale (millions of nodes, an unstructured edge list scattered across a cluster), a single-machine, single-threaded BFS/DFS over the raw adjacency list is the wrong tool — it doesn't parallelize naturally the way a Spark job needs to. That gap is exactly why union-find (Stage 04) and GraphFrames (Stage 07) exist.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 4 — UNION-FIND ══════ -->
+<div class="stage" id="s4">
+<div class="wrap">
+  <p class="sec-eye">Stage 04</p>
+  <h2 class="sec-h">Union-Find — Merging Sets Incrementally</h2>
+  <p class="sec-sub">Instead of walking the graph from scratch, union-find processes edges one at a time, incrementally merging the sets each edge connects. It never needs the whole adjacency list in memory at once, which is why it's the standard approach for streaming or distributed clustering.</p>
+
+  <h3><span class="bar"></span>The core idea: every node starts as its own component</h3>
+  <p>Union-find (a.k.a. "disjoint-set union") tracks a parent pointer for every node. Initially every node points to itself — every node is its own component of size 1. Processing an edge `(x, y)` means: "find the representative (root) of x's component, find the representative of y's component, and if they differ, merge the two components by pointing one root at the other."</p>
+
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Operation 1</div>
+      <div class="cc-title">find(x)</div>
+      <div class="cc-body">Follow x's parent pointer up the chain until you reach a node that points to itself — that's the component's root/representative.</div>
+    </div>
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Operation 2</div>
+      <div class="cc-title">union(x, y)</div>
+      <div class="cc-body">find(x) and find(y); if the roots differ, set one root's parent to the other root. The two components are now one.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Worked example — the same 6-record graph, traced with union-find</h3>
+  <p>Edges arrive in this order: <code>A-B, D-E, B-C</code>. Record F never appears in an edge.</p>
+
+  <div class="debug-trace">
+    <div class="dt-header">union-find trace</div>
+    <div class="dt-step">
+      <div class="dt-line">Initialize: every node is its own parent.</div>
+      <div class="dt-state">parent = {A:A, B:B, C:C, D:D, E:E, F:F}</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">Process edge A-B. find(A)=A, find(B)=B. Roots differ → union: parent[B] = A.</div>
+      <div class="dt-state">parent = {A:A, B:A, C:C, D:D, E:E, F:F}</div>
+      <div class="dt-why">A and B are now in the same component, rooted at A.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">Process edge D-E. find(D)=D, find(E)=E. Roots differ → union: parent[E] = D.</div>
+      <div class="dt-state">parent = {A:A, B:A, C:C, D:D, E:D, F:F}</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">Process edge B-C. find(B): B→A (root A). find(C)=C. Roots differ → union: parent[C] = A.</div>
+      <div class="dt-state">parent = {A:A, B:A, C:A, D:D, E:D, F:F}</div>
+      <div class="dt-why">C joins A and B's component <em>without ever having a direct edge to A</em> — this is transitive closure happening automatically, one union at a time.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">No more edges. F's parent is still itself.</div>
+      <div class="dt-state">Final roots: find(A)=A, find(B)=A, find(C)=A, find(D)=D, find(E)=D, find(F)=F</div>
+      <div class="dt-why">Group every node by its root: {A,B,C} (root A), {D,E} (root D), {F} (root F) — identical result to the BFS trace in Stage 03.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>Why union-find fits distributed pipelines better than BFS/DFS:</strong> Union-find processes edges as a stream, in any order, without needing the full adjacency structure in memory — it only needs a parent-pointer map, which can be represented as a Spark DataFrame and updated iteratively. BFS/DFS needs to actively walk from node to node, which requires random-access lookups that don't map cleanly onto Spark's columnar, distributed execution model. This is the real reason GraphFrames' <code>connectedComponents()</code> (Stage 07) is implemented as a union-find-style iterative label-propagation algorithm under the hood, not a literal distributed BFS.</div>
+
+  <h3><span class="bar"></span>Path compression — keeping find() fast</h3>
+  <p>In a naive union-find, long chains of parent pointers (A→B→C→D→...) make `find()` slow over many unions. <strong>Path compression</strong> fixes this: every time `find(x)` walks up to the root, it re-points every node along the way directly to the root, flattening the chain for future lookups. Combined with union-by-size (always attaching the smaller component's root to the larger one), this gives near-constant-time operations even on millions of edges — the textbook reason union-find scales where naive traversal doesn't.</p>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 5 — TRANSITIVE CLOSURE (CLIMAX) ══════ -->
+<div class="stage" id="s5">
+<div class="wrap">
+  <p class="sec-eye">Stage 05 · The Climax</p>
+  <h2 class="sec-h">Transitive Closure — The Gotcha That Justifies This Whole Module</h2>
+  <p class="sec-sub">Both algorithms above quietly did something that pairwise scoring never could: they merged records that were never directly compared. This is transitive closure, and it cuts both ways — it's the entire point of clustering, and also its biggest risk.</p>
+
+  <h3><span class="bar"></span>The red herring: "clustering just groups the matched pairs"</h3>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Red Herring — the naive mental model</div>
+      <h5>"Clustering takes the match pairs and bundles each one into a group."</h5>
+      <p>This makes it sound like clustering only ever combines pairs that were <em>already proven to match by your ScoringPlugin</em> — as if it's just a bookkeeping step that relabels existing verdicts.</p>
+      <p>Under this model, you'd expect every pair inside a cluster to have a high composite score. That assumption is false, and believing it leads directly to data-quality incidents.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ What actually happens</div>
+      <h5>Clustering creates new "facts" — pairs that were never scored at all.</h5>
+      <p>If A↔B is a match and B↔C is a match, A and C land in the same cluster <strong>even if A↔C was never a candidate pair, never scored, and would score below threshold if it were</strong>. The cluster asserts A and C are the same entity — a claim your ScoringPlugin never made and never checked.</p>
+      <p>This is mathematically correct <em>and</em> exactly how the moved-person scenario (Stage 01) gets resolved. But it is also exactly how an over-eager clustering step <strong>silently merges unrelated people</strong> through a single weak bridge match.</p>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The failure mode: a single weak edge merges a crowd</h3>
+  <p>Suppose your blocking/LSH/scoring pipeline produces a borderline `review`-band match between two genuinely different people who happen to share a common, generic name and a shared apartment complex address (a classic high-density-address false positive). If that review pair is mistakenly auto-approved (or your threshold band is set too loosely), it becomes one edge — and that single edge can fuse two entire pre-existing clusters into one giant, wrong entity:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Before the bad edge</th><th>After adding 1 bad edge (X↔Y)</th><th>Consequence</th></tr>
+    <tr><td>Cluster 1: {Maria G., 4 records, same household}</td><td rowspan="2">One merged cluster: 7 records, two unrelated families</td><td rowspan="2">Golden record now blends two people's SSNs, phones, and addresses into one "entity" — a serious data-quality and possibly compliance incident.</td></tr>
+    <tr><td>Cluster 2: {Maria G., 3 records, different family, same apartment complex}</td></tr>
+  </table>
+  </div>
+
+  <div class="trap"><strong>The bridge-edge trap:</strong> The damage from one wrong match scales with cluster size, not with how confident that one match was. A 60%-confidence match between two singleton records merges 2 records into a wrong entity. The same 60%-confidence match between two existing 10-record clusters merges 20 records into one wrong entity. <strong>Clustering amplifies every scoring mistake by the size of the clusters it touches.</strong> This is why threshold tuning (Module 05) and clustering (this module) cannot be reasoned about independently — a threshold that looked "safe enough" in pairwise precision/recall terms can still be unsafe once you account for what it does when it becomes a bridge edge between two large existing clusters.</div>
+
+  <h3><span class="bar"></span>The mitigation: cluster-level sanity checks</h3>
+  <p>Because transitive closure can silently merge a crowd, production clustering steps add a guard the pairwise ScoringPlugin never needed: after computing connected components, re-examine any cluster above a size threshold (e.g. &gt;5 records) and check whether it is internally consistent — do all records in the cluster pairwise agree on enough core fields (SSN, DOB) to plausibly be one person? A cluster that only holds together through one or two bridge edges, with otherwise dissimilar members, is a strong signal of a bad bridge match and should be flagged for review rather than auto-merged.</p>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 6 — CHOOSING AN APPROACH (DECISION CRITERIA) ══════ -->
+<div class="stage" id="s6">
+<div class="wrap">
+  <p class="sec-eye">Stage 06</p>
+  <h2 class="sec-h">Choosing an Approach — BFS/DFS vs Union-Find vs GraphFrames</h2>
+  <p class="sec-sub">All three approaches find the same connected components. The choice between them is about scale and execution environment, not correctness.</p>
+
+  <div class="decision-tree">
+    <div class="dq">
+      <div class="dq-num">QUESTION 1</div>
+      <div class="dq-q">Does the whole edge list fit comfortably in memory on one machine?</div>
+      <div class="dq-a"><strong>Yes</strong> → BFS/DFS (or a simple in-memory union-find) is fine — e.g. a one-off analysis script, a small reference dataset, or debugging a sample of records pulled out of the pipeline. <strong>No</strong> (millions+ of records/edges, data lives in a Spark DataFrame) → go to Question 2.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">QUESTION 2</div>
+      <div class="dq-q">Are you inside a Spark pipeline already, with edges as a DataFrame of `(id_a, id_b)` pairs?</div>
+      <div class="dq-a"><strong>Yes</strong> → use <strong>GraphFrames' <code>connectedComponents()</code></strong> (Stage 07) — it's a distributed, union-find-style label-propagation implementation built specifically for this. Don't hand-roll a distributed BFS. <strong>No</strong>, you're prototyping in plain Python/pandas → a hand-rolled <strong>union-find with path compression</strong> is simple, fast, and easy to unit test before porting the logic's intent into the Spark job.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">QUESTION 3</div>
+      <div class="dq-q">Do you need to inspect the traversal path (e.g. "show me the chain of matches that connected A to C") for audit/debugging, not just the final grouping?</div>
+      <div class="dq-a"><strong>Yes</strong> → BFS/DFS naturally gives you the path as a byproduct of the traversal order. Union-find's parent pointers can reconstruct a path too, but it takes an extra step (walking parent chains for both nodes back to their common root). <strong>No</strong>, you only need the final cluster assignment → either works; pick based on Questions 1–2.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Side-by-side summary</h3>
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Approach</th><th>Best for</th><th>Complexity</th><th>Distributes well?</th></tr>
+    <tr><td>BFS/DFS</td><td>Small in-memory graphs, debugging, audit-path reconstruction</td><td>$O(N + E)$</td><td><span class="badge b-red">No — needs random-access node lookups</span></td></tr>
+    <tr><td>Union-find (hand-rolled)</td><td>Prototyping, unit tests, small-to-medium edge streams</td><td>~$O(E \log^* N)$ with path compression</td><td><span class="badge b-amber">Partially — edges can stream in any order, but the parent map is still one structure</span></td></tr>
+    <tr class="hl-row"><td>GraphFrames <code>connectedComponents()</code></td><td>Production MDM pipelines on millions+ of records</td><td>Iterative, distributed (multiple Spark stages)</td><td><span class="badge b-green">Yes — built for this</span></td></tr>
+  </table>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 7 — PYSPARK / GRAPHFRAMES PATTERN ══════ -->
+<div class="stage" id="s7">
+<div class="wrap">
+  <p class="sec-eye">Stage 07</p>
+  <h2 class="sec-h">The Production Pattern — GraphFrames in PySpark</h2>
+  <p class="sec-sub">GraphFrames (a Spark package) gives you a distributed <code>connectedComponents()</code> that takes exactly the edge list your hybrid candidate pipeline (Module 06) and ScoringPlugin/ThresholdTuner (Modules 04–05) already produce.</p>
+
+  <h3><span class="bar"></span>The input shape GraphFrames expects</h3>
+  <p>GraphFrames needs two DataFrames: <code>vertices</code> with an <code>id</code> column, and <code>edges</code> with <code>src</code> and <code>dst</code> columns. Your pipeline already has both — vertices are your standardized records, edges are the rows from your ThresholdTuner that classified as `match`.</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">GraphFrames connected components pattern</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> graphframes <span class="k">import</span> GraphFrame
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># 1. Vertices: every standardized record is a node</span>
+vertices = standardized_df.select(F.col(<span class="s">"record_id"</span>).alias(<span class="s">"id"</span>))
+
+<span class="co"># 2. Edges: only the pairs your ThresholdTuner classified as "match"</span>
+<span class="co"># (matches Module 05's classify() output, filtered to the match band)</span>
+edges = scored_pairs_df.filter(
+    F.col(<span class="s">"verdict"</span>) == <span class="s">"match"</span>
+).select(
+    F.col(<span class="s">"id_a"</span>).alias(<span class="s">"src"</span>),
+    F.col(<span class="s">"id_b"</span>).alias(<span class="s">"dst"</span>)
+)
+
+<span class="co"># 3. Build the graph and run connected components</span>
+<span class="co"># GraphFrames requires a checkpoint dir for the iterative algorithm</span>
+spark.sparkContext.setCheckpointDir(<span class="s">"/tmp/checkpoints"</span>)
+g = GraphFrame(vertices, edges)
+components_df = g.connectedComponents()
+
+<span class="co"># 4. Result: every record_id now has a "component" id (the cluster id)</span>
+components_df.show()
+<span class="co"># +---------+-----------+
+# | id      | component |
+# +---------+-----------+
+# | A       | 17179869184|
+# | B       | 17179869184|
+# | C       | 17179869184|
+# | D       | 17179869185|
+# | E       | 17179869185|
+# | F       | 17179869186|
+# +---------+-----------+</span></div>
+  </div>
+
+  <div class="trap"><strong>The checkpoint-dir trap:</strong> <code>connectedComponents()</code> runs an <strong>iterative</strong> algorithm internally (multiple rounds of label propagation until labels stop changing). Without a checkpoint directory, Spark's lazy evaluation builds an ever-growing lineage graph across iterations and the job will eventually fail or stall on lineage recomputation. Always call <code>setCheckpointDir()</code> before invoking <code>connectedComponents()</code> — this is the single most common GraphFrames production bug.</div>
+
+  <h3><span class="bar"></span>Joining components back to build golden records</h3>
+  <p>The `component` column is just an opaque cluster id — join it back onto your standardized data, then group by it to drive the golden-record selection logic from Module 03's window functions:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">cluster → golden record handoff</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># Attach the cluster id to every standardized record</span>
+clustered_df = standardized_df.join(
+    components_df, standardized_df.record_id == components_df.id
+).drop(<span class="s">"id"</span>)
+
+<span class="co"># Module 03's window functions now operate per-cluster instead of per</span>
+<span class="co"># source-record: rank by recency within each component to pick the</span>
+<span class="co"># golden record's field values.</span>
+<span class="k">from</span> pyspark.sql.window <span class="k">import</span> Window
+w = Window.partitionBy(<span class="s">"component"</span>).orderBy(F.col(<span class="s">"updated_at"</span>).desc())
+golden_df = clustered_df.withColumn(<span class="s">"rn"</span>, F.row_number().over(w)) \
+                         .filter(F.col(<span class="s">"rn"</span>) == <span class="n">1</span>)</div>
+  </div>
+
+  <div class="note"><strong>Why this completes the pipeline:</strong> `component` is the column that finally turns "a pile of pairwise verdicts" into "one row per real-world entity." Everything from Module 00 onward — blocking, scoring, thresholds, LSH — exists to produce a trustworthy edge list. This module's `connectedComponents()` call is the step that converts that edge list into the partition of records your golden-record logic actually needs.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 8 — INTERACTIVE CLUSTER BUILDER ══════ -->
+<div class="stage" id="s8">
+<div class="wrap">
+  <p class="sec-eye">Stage 08</p>
+  <h2 class="sec-h">Interactive Cluster Builder — Union-Find Live</h2>
+  <p class="sec-sub">Click candidate match pairs to add them as edges, one at a time, and watch union-find merge clusters live — including a transitive merge where two existing clusters fuse the moment a single bridge edge connects them.</p>
+
+  <div class="gc-widget">
+    <div class="gc-label">7 records · click a pair below to add the match edge</div>
+    <div class="gc-layout">
+      <div class="gc-canvas-wrap">
+        <canvas id="gc-canvas" class="gc-canvas" width="600" height="450"></canvas>
+      </div>
+      <div class="gc-controls">
+        <div class="gc-stat-row">
+          <div class="gc-stat"><div class="gc-stat-label">Clusters</div><div class="gc-stat-val" id="gc-cluster-count">7</div></div>
+          <div class="gc-stat"><div class="gc-stat-label">Edges added</div><div class="gc-stat-val" id="gc-edge-count">0</div></div>
+        </div>
+        <div class="gc-pair-list" id="gc-pair-list"></div>
+        <button class="gc-reset" onclick="gcReset()">Reset all edges</button>
+        <div class="gc-cluster-readout" id="gc-cluster-readout"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><strong>Try this sequence to see the climax in action:</strong> Add <code>A–B</code>, then <code>D–E</code>, then <code>F–G</code> — three separate small clusters, no surprises. Now add <code>B–C</code>: cluster {A,B} absorbs C. Finally add <code>C–D</code> — watch the {A,B,C} cluster and the {D,E} cluster <strong>instantly fuse into one 5-record cluster</strong>, even though A and D (or A and E) never had a direct edge. That single C–D edge is the bridge-edge scenario from Stage 05, made visible.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 9 — SELF-TEST ══════ -->
+<div class="stage" id="s9">
+<div class="wrap">
+  <p class="sec-eye">Stage 09</p>
+  <h2 class="sec-h">Self-Test — Scenario Recognition</h2>
+  <p class="sec-sub">Test your operational understanding of graph clustering. Each question presents a scenario from a real Master Data Management pipeline and asks which action or fact applies.</p>
+
+  <div class="quiz-grid" id="quiz-grid"></div>
+
+  <div class="unlock" style="margin-top:34px">
+    <span class="unlock-icon">✓</span>
+    <div class="unlock-body"><strong>Module 07 complete.</strong> You now understand how matched pairs become master entities: model records and verdicts as a graph, find connected components via BFS/DFS or union-find, recognize and guard against transitive closure's bridge-edge risk, choose between hand-rolled union-find and GraphFrames based on scale, and run <code>connectedComponents()</code> in production PySpark. Next up: <strong>Module 08 · Spark Performance (Remaining Levers)</strong>, where you optimize the full pipeline beyond shuffle/join/skew.</div>
+  </div>
+
+  <div class="concept-grid" style="margin-top:26px">
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Honest Gaps</div>
+      <div class="cc-title">What this module didn't cover</div>
+      <div class="cc-body">
+        <strong>Weighted/probabilistic clustering:</strong> Real production systems sometimes weight edges by match confidence and use community-detection algorithms (e.g. label propagation with edge weights, or graph cuts) instead of treating every match edge as equally binding. We treated all match edges as equally strong, which is the simpler and more common starting point but not the only approach.<br><br>
+        <strong>Cluster-splitting / cluster review workflows:</strong> We named the bridge-edge mitigation (flag oversized clusters for review) but didn't build the actual review-queue logic or a "split this cluster" operational tool — that's a natural follow-on to Module 05's review queue concept, applied at the cluster level instead of the pair level.<br><br>
+        <strong>GraphFrames internals:</strong> We used <code>connectedComponents()</code> as a black box. The actual algorithm (a distributed variant of Hash-to-Min / Alternating-update label propagation) and its convergence/iteration-count behavior at scale weren't traced.<br><br>
+        <strong>Graph algorithms beyond connectivity:</strong> Centrality measures, shortest-path, or community detection beyond connected components — useful for fraud-ring detection or relationship graphs, but out of scope for straightforward entity-resolution clustering.
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">the-learning-lab · Module 07 · Graph Theory &amp; Clustering</span>
+    <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
+  </div>
+</footer>
+
+<script>
+/* ── NAV ── */
+function go(id, btn) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.sn').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+/* ── COPY ── */
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ══════════════════════════════════════════
+   INTERACTIVE CLUSTER BUILDER (union-find)
+   ══════════════════════════════════════════ */
+const gcNodes = {
+  A: {x:120, y:90},  B: {x:260, y:70},  C: {x:380, y:120},
+  D: {x:480, y:260}, E: {x:380, y:340}, F: {x:160, y:330},
+  G: {x:80,  y:220}
+};
+const gcCandidatePairs = [
+  ['A','B'], ['B','C'], ['C','D'], ['D','E'], ['F','G'], ['A','G'], ['E','F']
+];
+let gcParent = {};
+let gcEdgesAdded = [];
+
+function gcInit() {
+  gcParent = {};
+  Object.keys(gcNodes).forEach(n => gcParent[n] = n);
+  gcEdgesAdded = [];
+  gcRenderPairList();
+  gcDraw();
+  gcUpdateStats();
+}
+
+function gcFind(x) {
+  if (gcParent[x] !== x) gcParent[x] = gcFind(gcParent[x]);
+  return gcParent[x];
+}
+
+function gcUnion(x, y) {
+  const rx = gcFind(x), ry = gcFind(y);
+  if (rx !== ry) gcParent[rx] = ry;
+}
+
+function gcClusterColor(root) {
+  const palette = ['#5EC8C2','#A78BFA','#E6B450','#5BD68B','#F2789F','#7FB5F0','#F78C6C'];
+  let hash = 0;
+  for (let i = 0; i < root.length; i++) hash = (hash * 31 + root.charCodeAt(i)) % palette.length;
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function gcRenderPairList() {
+  const list = document.getElementById('gc-pair-list');
+  list.innerHTML = '';
+  gcCandidatePairs.forEach(([a,b]) => {
+    const key = a+'-'+b;
+    const added = gcEdgesAdded.includes(key);
+    const btn = document.createElement('button');
+    btn.className = 'gc-pair-btn' + (added ? ' added' : '');
+    btn.innerHTML = `<span>${a} — ${b}</span><span class="gc-pair-state">${added ? 'added ✓' : 'click to add'}</span>`;
+    btn.disabled = added;
+    btn.onclick = () => {
+      gcUnion(a, b);
+      gcEdgesAdded.push(key);
+      gcRenderPairList();
+      gcDraw();
+      gcUpdateStats();
+    };
+    list.appendChild(btn);
+  });
+}
+
+function gcUpdateStats() {
+  const roots = new Set(Object.keys(gcNodes).map(n => gcFind(n)));
+  document.getElementById('gc-cluster-count').textContent = roots.size;
+  document.getElementById('gc-edge-count').textContent = gcEdgesAdded.length;
+
+  const groups = {};
+  Object.keys(gcNodes).forEach(n => {
+    const r = gcFind(n);
+    if (!groups[r]) groups[r] = [];
+    groups[r].push(n);
+  });
+  const lines = Object.values(groups)
+    .sort((a,b) => b.length - a.length)
+    .map(g => `{${g.sort().join(', ')}}` + (g.length > 1 ? ` — ${g.length} records merged` : ' — singleton'));
+  document.getElementById('gc-cluster-readout').innerHTML = lines.join('<br>');
+}
+
+function gcDraw() {
+  const canvas = document.getElementById('gc-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // edges first (under nodes)
+  gcEdgesAdded.forEach(key => {
+    const [a,b] = key.split('-');
+    const pa = gcNodes[a], pb = gcNodes[b];
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.strokeStyle = '#E6B450';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  });
+
+  // nodes
+  Object.entries(gcNodes).forEach(([name, pos]) => {
+    const root = gcFind(name);
+    const color = gcClusterColor(root);
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 22, 0, Math.PI*2);
+    ctx.fillStyle = color + '33';
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    ctx.fillStyle = '#E6EDF3';
+    ctx.font = '600 15px "Space Grotesk", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, pos.x, pos.y);
+  });
+}
+
+function gcReset() { gcInit(); }
+
+gcInit();
+
+/* ══════════════════════════════════════════
+   QUIZ QUESTIONS
+   ══════════════════════════════════════════ */
+const questions = [
+  {
+    prompt: 'Record A matches Record B (score 0.81), and Record B matches Record C (score 0.88), but Record A vs Record C was never scored above threshold. What should happen to A, B, and C in clustering?',
+    opts: [
+      'A and B merge into one entity; C stays separate since A-C was never proven',
+      'A, B, and C all merge into one entity, because B connects them transitively',
+      'Only the highest-scoring pair (B-C) merges; A is dropped from the entity',
+      'Clustering should refuse to merge until A-C is explicitly scored'
+    ],
+    correct: 1,
+    explain: 'Connected components are defined by reachability, not direct edges. A is reachable from C via B, so all three belong in the same connected component / master entity, even though A-C was never directly scored.'
+  },
+  {
+    prompt: 'Why does GraphFrames\' <code>connectedComponents()</code> require you to call <code>spark.sparkContext.setCheckpointDir()</code> first?',
+    opts: [
+      'It saves the final cluster output to disk for the user to download later',
+      'connectedComponents() runs multiple iterative rounds; without checkpointing, the Spark lineage graph grows unbounded and the job stalls or fails',
+      'It is required by GraphFrames\' license terms for production use',
+      'It pre-allocates memory for the vertices DataFrame'
+    ],
+    correct: 1,
+    explain: 'connectedComponents() is an iterative algorithm (repeated rounds of label propagation). Without a checkpoint directory to truncate the lineage between iterations, Spark\'s lazy evaluation builds an ever-growing execution plan that eventually fails or stalls.'
+  },
+  {
+    prompt: 'In union-find, what does <strong>path compression</strong> do?',
+    opts: [
+      'It deletes nodes that have no edges from the graph entirely',
+      'It re-points every node visited during a find() call directly to the root, flattening future lookups',
+      'It compresses the edge list by removing duplicate pairs',
+      'It merges all singleton components into one default cluster'
+    ],
+    correct: 1,
+    explain: 'Path compression flattens the parent-pointer chain every time find() walks up to a root, so future find() calls on those nodes are near-instant. Without it, long chains from repeated unions make find() slow.'
+  },
+  {
+    prompt: 'A 60%-confidence borderline match gets auto-approved between two records, each belonging to a pre-existing cluster of 10 records (20 records total, two different families). What is the actual consequence?',
+    opts: [
+      'Only the two directly-matched records are affected; the rest of each cluster is unaffected',
+      'The error is contained because clustering double-checks each merge against the original scores',
+      'All 20 records merge into one wrong entity — the single bad edge bridges and fuses both entire clusters',
+      'The pipeline automatically rejects merges between two clusters larger than 5 records'
+    ],
+    correct: 2,
+    explain: 'Transitive closure means one bridge edge connecting two existing clusters merges them entirely — the error scales with the size of both clusters, not with how confident the single bridging match was. This is why bridge edges into large clusters are especially dangerous.'
+  },
+  {
+    prompt: 'Why is a hand-rolled, single-machine BFS/DFS traversal a poor fit for clustering millions of MDM records in a Spark pipeline?',
+    opts: [
+      'BFS/DFS cannot find connected components correctly at any scale',
+      'BFS/DFS requires random-access node-by-node lookups that don\'t parallelize naturally across a distributed, columnar Spark DataFrame',
+      'BFS/DFS only works on directed graphs, and match edges are undirected',
+      'BFS/DFS produces a different, less accurate clustering result than union-find'
+    ],
+    correct: 1,
+    explain: 'BFS/DFS finds the exact same components as union-find — the issue is execution model, not correctness. BFS/DFS needs to actively walk node-to-node with random access, which fights against Spark\'s distributed, columnar execution. Union-find-style label propagation (what GraphFrames implements) fits Spark far better.'
+  },
+  {
+    prompt: 'What is the production-pipeline mitigation for the "one bridge edge fuses two large clusters" risk described in this module?',
+    opts: [
+      'Never auto-approve any match below 100% confidence',
+      'Flag clusters above a size threshold for a consistency check — do all members plausibly agree on core fields — before trusting the auto-merge',
+      'Disable transitive closure entirely and only merge directly-scored pairs',
+      'Re-run blocking and LSH on every cluster after it forms'
+    ],
+    correct: 1,
+    explain: 'Disabling transitive closure would defeat the purpose of clustering (it would miss the moved-person scenario). The practical mitigation is a post-clustering sanity check: large clusters get re-examined for internal consistency, flagging ones that only hold together through one or two bridge edges.'
+  },
+  {
+    prompt: 'In the GraphFrames pattern, what should feed the `edges` DataFrame passed into <code>GraphFrame(vertices, edges)</code>?',
+    opts: [
+      'Every candidate pair generated by blocking and LSH, regardless of score',
+      'Only the pairs your ThresholdTuner classified into the "match" verdict band',
+      'Every pair in the dataset, scored or not (a full cross join)',
+      'Only pairs that were manually reviewed by a human'
+    ],
+    correct: 1,
+    explain: 'Edges should represent confirmed match verdicts, not raw candidates. Feeding in every candidate pair (including no-match and unscored pairs) would create edges between unrelated records and corrupt the clustering. Only the "match" band from the ThresholdTuner belongs in the edge list.'
+  },
+  {
+    prompt: 'Record F has no match edges to any other record in the dataset. How does it appear in the connected-components output?',
+    opts: [
+      'It is dropped from the output since it has no edges',
+      'It is grouped into a default "unmatched" cluster with all other unmatched records',
+      'It forms its own singleton connected component — a valid entity of exactly one record',
+      'It causes the connectedComponents() algorithm to throw an error'
+    ],
+    correct: 2,
+    explain: 'Every node belongs to exactly one connected component, even nodes with zero edges. An isolated record becomes a singleton component — a perfectly valid one-record entity, not an error or a special case requiring separate handling.'
+  }
+];
+
+const qg = document.getElementById('quiz-grid');
+questions.forEach((q, i) => {
+  const card = document.createElement('div');
+  card.className = 'qcard';
+  card.innerHTML = `<div class="q-prompt"><strong>Q${i+1}.</strong> ${q.prompt}</div>
+    <div class="q-opts">${q.opts.map((o,j) => `<button class="q-opt" onclick="answerQ(${i},${j},this)">${o}</button>`).join('')}</div>
+    <div class="q-fb" id="qfb-${i}"></div>`;
+  qg.appendChild(card);
+});
+
+function answerQ(qi, oi, btn) {
+  const q = questions[qi];
+  const card = btn.closest('.qcard');
+  card.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  btn.classList.add(oi === q.correct ? 'correct' : 'wrong');
+  if (oi !== q.correct) card.querySelectorAll('.q-opt')[q.correct].classList.add('correct');
+  const fb = document.getElementById(`qfb-${qi}`);
+  fb.className = 'q-fb ' + (oi === q.correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = (oi === q.correct ? '✓ ' : '✗ ') + q.explain;
+  fb.style.display = 'block';
+}
+</script>
+</body>
+</html>
