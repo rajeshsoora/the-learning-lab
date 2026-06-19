@@ -577,6 +577,43 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   <h3><span class="bar"></span>Reading the curve</h3>
   <p>The PR curve is plotted with <strong>recall on the X axis</strong> and <strong>precision on the Y axis</strong>. Each point on the curve is one possible threshold. As you move from left to right (increasing recall), precision typically drops — you're catching more true matches, but some false ones sneak in.</p>
 
+  <div class="pr-chart-wrap">
+    <div class="pr-chart-label">Precision-Recall Curve (200 Labeled Pairs)</div>
+    <div class="pr-canvas">
+      <svg id="pr-curve-svg" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="overflow:visible">
+        <!-- Grid lines -->
+        <line x1="0" y1="25" x2="100" y2="25" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <line x1="0" y1="50" x2="100" y2="50" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <line x1="0" y1="75" x2="100" y2="75" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <line x1="25" y1="0" x2="25" y2="100" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <line x1="50" y1="0" x2="50" y2="100" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <line x1="75" y1="0" x2="75" y2="100" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2,2"/>
+        
+        <!-- Axis lines -->
+        <line x1="0" y1="100" x2="100" y2="100" stroke="var(--faint)" stroke-width="1"/>
+        <line x1="0" y1="0" x2="0" y2="100" stroke="var(--faint)" stroke-width="1"/>
+
+        <!-- PR Curve Path -->
+        <path id="pr-curve-path" d="" fill="none" stroke="var(--teal)" stroke-width="2"/>
+        
+        <!-- Hover line / point (interactive) -->
+        <line id="pr-hover-x" x1="0" y1="0" x2="0" y2="100" stroke="var(--violet)" stroke-width="0.5" stroke-dasharray="3,3" style="display:none;"/>
+        <line id="pr-hover-y" x1="0" y1="100" x2="100" y2="100" stroke="var(--violet)" stroke-width="0.5" stroke-dasharray="3,3" style="display:none;"/>
+        <circle id="pr-hover-dot" cx="0" cy="0" r="3" fill="var(--violet)" style="display:none;"/>
+      </svg>
+      <!-- Axis Labels -->
+      <div style="position:absolute;bottom:-18px;left:0;font-family:var(--mo);font-size:8px;color:var(--faint)">0.0 (Recall)</div>
+      <div style="position:absolute;bottom:-18px;right:0;font-family:var(--mo);font-size:8px;color:var(--faint)">1.0</div>
+      <div style="position:absolute;left:-18px;top:0;font-family:var(--mo);font-size:8px;color:var(--faint)">1.0 (Precision)</div>
+      <div style="position:absolute;left:-18px;bottom:0;font-family:var(--mo);font-size:8px;color:var(--faint)">0.0</div>
+      
+      <!-- Interactive Tooltip -->
+      <div id="pr-tooltip" style="position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-family:var(--mo);font-size:10px;color:var(--ink);pointer-events:none;display:none;z-index:10;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.5);"></div>
+    </div>
+  </div>
+
+  <p style="margin-top:28px;">Hover over the curve above to see specific precision/recall coordinates for different thresholds. The corresponding data points for standard selections are detailed below:</p>
+
   <div class="data-table-wrap">
   <table class="data-table">
     <tr><th>Threshold</th><th>Precision</th><th>Recall</th><th>What's happening</th></tr>
@@ -1235,6 +1272,110 @@ function answerQ(qi, oi, btn) {
   fb.textContent = (oi === q.correct ? '✓ ' : '✗ ') + q.explain;
   fb.style.display = 'block';
 }
+
+/* ── PR CURVE DRAWING & INTERACTION ── */
+function drawPRCurve() {
+  const points = [];
+  for (let t = 0.0; t <= 1.01; t += 0.01) {
+    let tp = 0, fp = 0, fn = 0;
+    LABELED.forEach(p => {
+      if (p.score >= t) {
+        if (p.label) tp++;
+        else fp++;
+      } else {
+        if (p.label) fn++;
+      }
+    });
+    const precision = (tp + fp) > 0 ? tp / (tp + fp) : 1.0;
+    const recall = (tp + fn) > 0 ? tp / (tp + fn) : 0.0;
+    points.push({ threshold: t, precision, recall });
+  }
+
+  points.sort((a, b) => a.recall - b.recall);
+
+  let pathD = '';
+  points.forEach((p, idx) => {
+    const x = p.recall * 100;
+    const y = 100 - (p.precision * 100);
+    if (idx === 0) {
+      pathD += `M ${x} ${y}`;
+    } else {
+      pathD += ` L ${x} ${y}`;
+    }
+  });
+  
+  const svgPath = document.getElementById('pr-curve-path');
+  if (svgPath) {
+    svgPath.setAttribute('d', pathD);
+  }
+
+  const svg = document.getElementById('pr-curve-svg');
+  const hoverX = document.getElementById('pr-hover-x');
+  const hoverY = document.getElementById('pr-hover-y');
+  const hoverDot = document.getElementById('pr-hover-dot');
+  const tooltip = document.getElementById('pr-tooltip');
+
+  if (svg) {
+    svg.addEventListener('mousemove', (e) => {
+      const rect = svg.getBoundingClientRect();
+      const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+      
+      let closest = points[0];
+      let minDistance = Math.abs(points[0].recall * 100 - mouseX);
+      points.forEach(p => {
+        const dist = Math.abs(p.recall * 100 - mouseX);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = p;
+        }
+      });
+
+      const cx = closest.recall * 100;
+      const cy = 100 - (closest.precision * 100);
+
+      if (hoverX) {
+        hoverX.setAttribute('x1', cx);
+        hoverX.setAttribute('x2', cx);
+        hoverX.setAttribute('y1', cy);
+        hoverX.setAttribute('y2', 100);
+        hoverX.style.display = 'block';
+      }
+      if (hoverY) {
+        hoverY.setAttribute('x1', 0);
+        hoverY.setAttribute('x2', cx);
+        hoverY.setAttribute('y1', cy);
+        hoverY.setAttribute('y2', cy);
+        hoverY.style.display = 'block';
+      }
+      if (hoverDot) {
+        hoverDot.setAttribute('cx', cx);
+        hoverDot.setAttribute('cy', cy);
+        hoverDot.style.display = 'block';
+      }
+
+      if (tooltip) {
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = `
+          <strong>Threshold:</strong> ${closest.threshold.toFixed(2)}<br>
+          <strong>Precision:</strong> ${(closest.precision * 100).toFixed(1)}%<br>
+          <strong>Recall:</strong> ${(closest.recall * 100).toFixed(1)}%
+        `;
+        const parentRect = svg.parentElement.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - parentRect.left + 15) + 'px';
+        tooltip.style.top = (e.clientY - parentRect.top - 15) + 'px';
+      }
+    });
+
+    svg.addEventListener('mouseleave', () => {
+      if (hoverX) hoverX.style.display = 'none';
+      if (hoverY) hoverY.style.display = 'none';
+      if (hoverDot) hoverDot.style.display = 'none';
+      if (tooltip) tooltip.style.display = 'none';
+    });
+  }
+}
+
+drawPRCurve();
 </script>
 </body>
 </html>
