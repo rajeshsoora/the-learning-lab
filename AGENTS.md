@@ -167,12 +167,15 @@ docs/
   file (inline CSS/JS, no external deps beyond what's already used),
   regardless of which track it belongs to — there's no per-track
   subdirectory under `modules/`.
-- **Module internal pattern** (established by Modules 00–04, formalized as
-  Stage 7's build step): motivating example → analogy/anchor tied to
-  something Rajesh already knows → worked mechanism with tables → the
-  climax/gotcha (the thing that makes the topic non-trivial) → decision
-  criteria → runnable code pattern → interactive widget → scenario-based
-  self-test → mandatory **Honest Gaps** section.
+- **Module internal pattern** (formalized as Stage 7's build step in
+  `SKILL.md`): an **invariant core** present in every module — motivating
+  example/anchor tied to something Rajesh already knows → worked mechanism →
+  mandatory **Honest Gaps** section — plus an **optional menu** (decision
+  criteria, runnable code pattern, interactive widget, climax/gotcha framing,
+  scenario-based self-test) included only when the specific topic actually
+  calls for it. Stage 7 runs a quick pre-build check to decide which optional
+  sections apply before the module is written — this is not a fixed
+  checklist every module follows verbatim.
 - **Three registries, one truth, per track:** a track's roadmap file
   (`references/roadmaps/<id>.md`), `index.html` `TRACKS`, and `roadmap.html`
   `ROADMAPS` all describe the same modules for that track `id`. Adding or

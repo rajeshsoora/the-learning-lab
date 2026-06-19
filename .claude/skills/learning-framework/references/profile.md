@@ -108,3 +108,19 @@ Last updated: 2026-06-19
 **Artifact:** graph-clustering.html (interactive, matches Module 06's HTML walkthrough format with 10 stages, live canvas-based cluster builder, 8-question self-test).
 
 **Sustain:** Website module session — treated as unlimited budget. Full 10-stage module produced.
+
+---
+
+## Module 08 — Spark Performance (Remaining Levers) (2026-06-19)
+
+**Covered (depth `use`):** The five "remaining" perf levers (vs Module 00's structural shuffle/join/skew) — column pruning (columnar Parquet skips unread column-runs; CSV can't), predicate pushdown (filter-in-engine vs pushed-into-scan, partition pruning vs row-group min/max, `.explain()`/`PushedFilters` verification), partition sizing (~128 MB target, `repartition` full-shuffle/can-grow/even vs `coalesce` no-shuffle/shrink-only/uneven, the 200-default `shuffle.partitions` tiny-files trap), spill & memory (execution-region overflow→disk, spill≠OOM, the "add more RAM" red herring → it's per-task data-vs-memory, fix with more/smaller partitions or skew), caching (reuse-across-branches win, "cache everything" anti-pattern, cache-is-lazy), AQE (coalesce/skew-join/dynamic-broadcast runtime re-optimization; "AQE owns the shuffle, you own the read"), the symptom→lever decision tree, full tuned-pipeline PySpark pattern, combined two-mode tuning-calculator widget.
+
+**New artifact type introduced — Code Companion (per the "supplement session for coding" Rajesh asked to include):** a standalone sibling HTML (`spark-performance-code.html`, Stage 08.1) that drills the PySpark idioms separately from the concept walkthrough — predict-then-reveal, fresh data, two reps per idiom, hand-verified trace values, violet accent. This is the first Code Companion on the MDM track (the Module 05 one — `score-aggregation-confidence-code.html` — was the prototype). Pattern: the main module's PySpark-pattern stage shows each idiom once and links out via a `.note`; the companion gives the extra reps. Idioms drilled here: `.select` pruning, `repartition` vs `coalesce`, `F.broadcast`, `.cache` laziness, `spark.sql.shuffle.partitions`. Logged in `code-fluency.md`.
+
+**What worked (held this session):** 11-stage flow matching Module 07. Table-driven throughout (cost-trap table, row-major-vs-columnar, repartition-vs-coalesce, pushdown-mechanism, AQE-handles-vs-you). "X is a red herring; Y decides" used twice — (1) "add more RAM" vs data-per-task for spill, (2) "cache everything" vs reuse-pattern. Desks/paper analogy reused from Module 00 for partition sizing (continuity across the track). Widget matched to the topic's real tunables (partition sizing + shuffle count) rather than reusing a default slider pattern blindly. Every code block shows highlighted lever lines with inline `why` comments.
+
+**Known gaps:** Bucketing/pre-sorted tables, unified-memory-model knobs in detail (`spark.memory.fraction`/`storageFraction`), `.persist()` storage levels, hands-on Spark-UI tour, dynamic resource allocation/cluster sizing. (Carried in roadmap "Parked / for later".)
+
+**Artifact:** spark-performance.html (11 stages, combined partition/shuffle tuning calculator, 8-question self-test) + spark-performance-code.html (Code Companion, 5 idioms × 2 predict-then-reveal drills).
+
+**Sustain:** Website module session — treated as unlimited budget per standing note. Full 11-stage module + companion produced in one pass.

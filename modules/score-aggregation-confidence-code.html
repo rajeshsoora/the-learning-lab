@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Companion — Stage 07.1 — ThresholdTuner Mechanics — Module 05</title>
+<meta name="description" content="A standalone drill page for the PySpark idioms used in Module 05's ThresholdTuner — separate from the concept walkthrough, multiple fresh reps per idiom.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--teal)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--violet)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:48px 24px 72px}
+
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:40px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--violet);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--teal)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:2;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .k{color:var(--violet)}
+.code-block .f{color:var(--teal)}
+.code-block .s{color:var(--amber)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+
+.debug-trace{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.dt-header{background:var(--surf2);padding:10px 16px;font-family:var(--mo);font-size:11px;color:var(--violet);letter-spacing:.08em;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.dt-header::before{content:'▶';font-size:9px}
+.dt-step{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dt-step:last-child{border-bottom:0}
+.dt-line{font-family:var(--mo);font-size:12px;color:var(--ink);margin-bottom:6px}
+.dt-state{font-family:var(--mo);font-size:12px;color:var(--teal);padding:8px 12px;background:var(--teal-dim);border-radius:6px;margin:6px 0}
+.dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.dt-why em{color:var(--amber);font-style:normal}
+
+.predict{border-left:3px solid var(--violet);background:var(--violet-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.predict strong{color:var(--violet)}
+.reveal{margin:10px 0 16px}
+.reveal summary{font-family:var(--mo);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);cursor:pointer;padding:8px 0;list-style:none}
+.reveal summary::-webkit-details-marker{display:none}
+.reveal summary::before{content:'▶ ';font-size:9px}
+.reveal[open] summary::before{content:'▼ '}
+.reveal[open] summary{margin-bottom:4px}
+.predict-row{display:flex;gap:8px;margin-top:10px}
+.predict-input{flex:1;font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--ink)}
+.predict-input:focus{outline:none;border-color:var(--violet)}
+.predict-check{font-family:var(--mo);font-size:11px;padding:7px 14px;border-radius:6px;border:1px solid var(--violet);background:var(--violet-dim);color:var(--violet);cursor:pointer;transition:all .15s;flex-shrink:0}
+.predict-check:hover{background:var(--violet);color:#fff}
+.predict-fb{font-size:12px;margin-top:8px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+
+.idiom-nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 8px}
+.idiom-chip{font-family:var(--mo);font-size:11px;padding:6px 12px;border-radius:99px;border:1px solid var(--line);color:var(--faint)}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--violet)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="../index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 05 · Code Companion</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Stage 07.1</span>
+  </div>
+</nav>
+
+<div class="wrap">
+  <p class="sec-eye">Stage 07.1 · Code Companion</p>
+  <h2 class="sec-h">ThresholdTuner Mechanics — Drilled, Not Just Shown</h2>
+  <p class="sec-sub">Module 05's <a href="score-aggregation-confidence.html#s7" style="color:var(--teal)">Stage 07.2</a> shows you each PySpark idiom in <code>ThresholdTuner</code> once, anchored to that exact class. This page exists for a different job: drilling the same idioms with <strong>fresh data you haven't seen</strong>, two reps each, so a single correct guess in the main module doesn't get mistaken for fluency. Nothing here is new conceptually — same scoring/tuning logic as Module 05 — this is purely about getting comfortable reading the code.</p>
+
+  <div class="warn"><strong>How to use this page:</strong> work top to bottom, idiom by idiom. Each one gets a plain-language explanation, then two predict-then-check drills against a fresh toy dataset (not the P1–P8 set from Stage 07.2). Getting both right on an idiom is a real signal — that's what <code>references/code-fluency.md</code> calls a "pass," and two passes in two different places (this page counts as one, Stage 07.2 counts as another) is what moves an idiom toward "fluent."</p></div>
+
+  <div class="idiom-nav">
+    <span class="idiom-chip">F.when / .otherwise</span>
+    <span class="idiom-chip">& / ~ boolean masks</span>
+    <span class="idiom-chip">Row attribute access</span>
+    <span class="idiom-chip">.cast("int")</span>
+    <span class="idiom-chip">.groupBy().agg() / .orderBy()</span>
+  </div>
+
+  <h3><span class="bar"></span>The drill dataset</h3>
+  <p>Six pairs, different from Stage 07.2's P1–P8 — deliberately, so these drills test the idiom itself, not memory of the earlier table.</p>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>pair_id</th><th>composite</th><th>human_label</th></tr></thead>
+      <tbody>
+        <tr><td>Q1</td><td>0.92</td><td>true_match</td></tr>
+        <tr><td>Q2</td><td>0.77</td><td>false_match</td></tr>
+        <tr><td>Q3</td><td>0.65</td><td>true_match</td></tr>
+        <tr><td>Q4</td><td>0.50</td><td>false_match</td></tr>
+        <tr><td>Q5</td><td>0.38</td><td>true_match</td></tr>
+        <tr><td>Q6</td><td>0.22</td><td>false_match</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3><span class="bar"></span>Idiom 1 — F.when(cond, val).otherwise(val)</h3>
+  <p><strong>What it is, generally:</strong> PySpark's per-row if/else. It doesn't run once like a Python <code>if</code> — it evaluates <code>cond</code> for every row in the column and produces <code>val</code> or the otherwise-value, per row, all at once.</p>
+  <p><strong>Where it shows up in ThresholdTuner:</strong> <code>F.when(predicted & is_match, 1).otherwise(0)</code> inside <code>confusion_matrix</code> — turning a boolean condition into a 0/1 column that <code>F.sum</code> can add up.</p>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> match_threshold = 0.75. For Q2 (composite=0.77, label=false_match): predicted = True, is_match = False. What does <code>F.when(predicted &amp; is_match, 1).otherwise(0)</code> evaluate to for this row?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d1a" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d1a','d1af',null,{numeric:true,target:0,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="d1af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">predicted & is_match = True & False</div><div class="dt-state">→ False → F.when(...,1).otherwise(0) = 0</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2:</strong> same threshold (0.75). For Q1 (composite=0.92, label=true_match): predicted = True, is_match = True. What does <code>F.when(predicted &amp; is_match, 1).otherwise(0)</code> evaluate to?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d1b" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d1b','d1bf',null,{numeric:true,target:1,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="d1bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">predicted & is_match = True & True</div><div class="dt-state">→ True → F.when(...,1).otherwise(0) = 1</div><div class="dt-why">Same expression, opposite row — this is the contrast that actually proves you can evaluate the condition, not just recall an answer.</div></div></div>
+  </details>
+
+  <h3><span class="bar"></span>Idiom 2 — boolean column-mask filter (&amp; / ~ combined)</h3>
+  <p><strong>What it is, generally:</strong> <code>predicted</code> and <code>is_match</code> are each a column of True/False, one value per row. <code>&amp;</code> is per-row AND, <code>~</code> is per-row NOT — for <em>columns</em>, not single booleans. Python's own <code>and</code>/<code>not</code> don't work here because there's no single value to test against.</p>
+  <p><strong>Where it shows up:</strong> the <code>fp</code> and <code>fn</code> lines in <code>confusion_matrix</code> combine both — <code>predicted &amp; ~is_match</code> and <code>~predicted &amp; is_match</code>.</p>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> For Q3 (composite=0.65, true_match), threshold=0.75: predicted=False, is_match=True. What does <code>~predicted &amp; is_match</code> evaluate to?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d2a" placeholder="True / False">
+      <button class="predict-check" onclick="checkPredict('d2a','d2af',['true','yes'])">check</button>
+    </div>
+    <div class="predict-fb" id="d2af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">~predicted & is_match = ~False & True = True & True</div><div class="dt-state">→ True</div><div class="dt-why">This is the <code>fn</code> condition — a real match the threshold missed. Q3 would count toward <code>fn</code>.</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2:</strong> For Q4 (composite=0.50, false_match), threshold=0.75: predicted=False, is_match=False. What does <code>predicted &amp; ~is_match</code> evaluate to?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d2b" placeholder="True / False">
+      <button class="predict-check" onclick="checkPredict('d2b','d2bf',['false','no'])">check</button>
+    </div>
+    <div class="predict-fb" id="d2bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">predicted & ~is_match = False & ~False = False & True</div><div class="dt-state">→ False</div><div class="dt-why">Q4 doesn't count toward <code>fp</code> here — <code>predicted</code> being False already rules it out, regardless of what <code>~is_match</code> is.</div></div></div>
+  </details>
+
+  <h3><span class="bar"></span>Idiom 3 — Row attribute access after .first()</h3>
+  <p><strong>What it is, generally:</strong> <code>.first()</code> returns one <code>Row</code> object — think of it as a dict you can also dot-access. <code>row.some_column</code> reaches in by name, same as <code>row["some_column"]</code>.</p>
+  <p><strong>Where it shows up:</strong> <code>cm.tp</code>, <code>cm.fp</code>, <code>cm.fn</code> in <code>pr_at</code>, right after <code>cm = self.confusion_matrix(...)</code>.</p>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> <code>row = Row(precision=0.8, recall=0.6)</code>. What does <code>row.recall</code> evaluate to?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d3a" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d3a','d3af',null,{numeric:true,target:0.6,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="d3af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">row.recall</div><div class="dt-state">→ 0.6</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2:</strong> <code>row = Row(tp=5, fp=2, fn=1)</code>. What does <code>row.tp</code> evaluate to?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d3b" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d3b','d3bf',null,{numeric:true,target:5,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="d3bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">row.tp</div><div class="dt-state">→ 5</div><div class="dt-why">Order in the Row constructor doesn't matter for dot-access — only the name does.</div></div></div>
+  </details>
+
+  <h3><span class="bar"></span>Idiom 4 — .cast("int") truncates, doesn't round</h3>
+  <p><strong>What it is, generally:</strong> converts a value's type. For floats → int, it chops the decimal off. It does not round to the nearest integer.</p>
+  <p><strong>Where it shows up:</strong> <code>(F.col(score_col) * bins).cast("int")</code> in <code>calibration_table</code>, computing which bin a score falls into.</p>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> Q2's composite is 0.77. <code>0.77 * 10 = 7.7</code>. What does <code>.cast("int")</code> produce for 7.7?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d4a" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d4a','d4af',null,{numeric:true,target:7,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="d4af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">7.7 → .cast("int")</div><div class="dt-state">→ 7 (not 8)</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2 — the gotcha:</strong> a pair has composite 0.99. <code>0.99 * 10 = 9.9</code>. What does <code>.cast("int")</code> produce for 9.9?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d4b" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d4b','d4bf',null,{numeric:true,target:9,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="d4bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">9.9 → .cast("int")</div><div class="dt-state">→ 9 (not 10)</div><div class="dt-why">Even at 9.9 — a hair under 10 — it still truncates down to 9. This is the case where "round vs. truncate" actually changes the answer, which is exactly why it's worth drilling twice.</div></div></div>
+  </details>
+
+  <h3><span class="bar"></span>Idiom 5 — .groupBy().agg() then .orderBy()</h3>
+  <p><strong>What it is, generally:</strong> <code>groupBy(key).agg(...)</code> is the SQL <code>GROUP BY</code> equivalent — collapse every row sharing a key into one output row, computing aggregates per group. The output row order is <em>not</em> guaranteed — Spark groups across a distributed cluster, with no inherent "first group, second group." <code>.orderBy(key)</code> is what actually sorts it.</p>
+  <p><strong>Where it shows up:</strong> <code>calibration_table</code> — group by score bin, then sort by bin so the printed table reads low-to-high.</p>
+
+  <div class="predict">
+    <strong>Drill:</strong> three bins come out of <code>groupBy("bin").agg(...)</code> with no order promised: 0.9, 0.2, 0.5. After <code>.orderBy("bin")</code> (ascending, the default), which bin prints <em>first</em>?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d5a" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d5a','d5af',null,{numeric:true,target:0.2,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="d5af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">orderBy("bin"), ascending: 0.2, 0.5, 0.9</div><div class="dt-state">first = 0.2</div><div class="dt-why">Without <code>.orderBy</code>, those three rows could print in any order, and that order could even change between runs — grouping doesn't sort, sorting is its own separate step.</div></div></div>
+  </details>
+
+  <div class="divider"></div>
+  <p>Back to <a href="score-aggregation-confidence.html#s7" style="color:var(--teal)">Module 05, Stage 07.2</a> to see these same idioms anchored to the real <code>ThresholdTuner</code> class.</p>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">the-learning-lab · Module 05 · Code Companion (Stage 07.1)</span>
+    <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
+  </div>
+</footer>
+
+<script>
+function checkPredict(inputId, fbId, accepted, opts) {
+  opts = opts || {};
+  const input = document.getElementById(inputId);
+  const fb = document.getElementById(fbId);
+  const raw = input.value.trim().toLowerCase();
+  let correct = false;
+  if (opts.numeric) {
+    let num = NaN;
+    const fracMatch = raw.match(/^(-?\d*\.?\d+)\s*\/\s*(-?\d*\.?\d+)$/);
+    if (fracMatch) {
+      num = parseFloat(fracMatch[1]) / parseFloat(fracMatch[2]);
+    } else {
+      num = parseFloat(raw);
+    }
+    correct = !isNaN(num) && Math.abs(num - opts.target) <= (opts.tolerance ?? 0.02);
+  } else {
+    const norm = raw.replace(/[\s-]/g, '');
+    correct = accepted.some(a => a.replace(/[\s-]/g, '') === norm);
+  }
+  fb.style.display = 'block';
+  fb.className = 'predict-fb ' + (correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = correct
+    ? 'Correct — open the trace below to see why.'
+    : 'Not quite — open the trace below, then try the next drill with that in mind.';
+}
+
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>

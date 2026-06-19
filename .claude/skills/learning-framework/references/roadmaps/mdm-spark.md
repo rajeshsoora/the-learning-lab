@@ -9,7 +9,7 @@
 
 ---
 
-## Progress snapshot (as of 2026-06-19) — 8 / 9 modules complete
+## Progress snapshot (as of 2026-06-19) — 9 / 10 modules complete (capstone Module 09 next)
 
 ### Phase 1 — Spark Foundations  (~2–2.5 sessions) ✅
 - ✅ **00 — Entity Resolution Overview** — `entity-resolution-walkthrough.html`
@@ -42,10 +42,10 @@
   - Unlocks: how matched pairs merge into one master entity — the final ER step that turns pairs into clusters.
 
 ### Phase 4 — Pipeline Mastery (Capstone)  (~2 sessions)
-- 🔜 **08 — Spark Performance (Remaining Levers)** (~1 session)
+- ✅ **08 — Spark Performance (Remaining Levers)** — `spark-performance.html` + `spark-performance-code.html` *(built 2026-06-19)*
   - Topics: column pruning, predicate pushdown, memory tuning, partition sizing
   - Unlocks: optimize the full pipeline beyond shuffle/join/skew.
-- ⬜ **09 — Pipeline Design (Capstone)** (~1 session)
+- 🔜 **09 — Pipeline Design (Capstone)** (~1 session)
   - Topics: join-back strategies, enrichment, intermediate datasets, YAML plugin arch
   - Unlocks: design the full MDM entity resolution architecture end to end with confidence.
 
@@ -109,8 +109,26 @@
 - **Stage 08** Interactive Cluster Builder — canvas-based union-find widget; click candidate pairs to add edges live; guided sequence demonstrating the transitive-fuse climax visually.
 - **Stage 09** Self-test — 8 scenario-recognition questions covering transitive closure, bridge-edge risk, checkpoint dir, path compression, BFS/DFS vs Spark fit, edge-list sourcing, singleton components.
 
+## Module 08 — what was covered (built 2026-06-19)
+11-stage treatment, matching the Module 07 style — plus the **first Code Companion supplement** for the track (`spark-performance-code.html`, Stage 08.1), a new artifact type that drills the PySpark idioms separately from the concept walkthrough.
+- **Stage 00** Overview — Module 08 tunes every existing stage rather than adding one; distinguishes the three *structural* levers from Module 00 (shuffle/join/skew) from the five *cost* levers here; five concept cards (column pruning, predicate pushdown, partition sizing, spill/memory, caching+AQE).
+- **Stage 01** The "it runs, ship it" cost trap — naive 2 TB / 40-col read vs the 6-col / active-only footprint (~11× waste); the "performance bugs don't throw" framing; SELECT * anchor.
+- **Stage 02** Column pruning — row-major vs columnar (Parquet skips unread column-runs on disk); CSV buys nothing; the wide-table MDM trap; prune-too-aggressively-is-a-correctness-bug caveat (keep `updated_at` for Mod 03's window).
+- **Stage 03** Predicate pushdown — filter-in-engine vs filter-pushed-into-scan (herring contrast); partition pruning (skip directories) vs row-group min/max; what blocks pushdown (UDF/explode/regex); `.explain()` → `PushedFilters` verification.
+- **Stage 04** Partition sizing — ~128 MB target; desks-and-paper anchor reused from Mod 00; `repartition` (full shuffle, can grow, even) vs `coalesce` (no shuffle, shrink-only, uneven) comparison table; the 200-default `spark.sql.shuffle.partitions` trap → tiny files.
+- **Stage 05 (climax)** Spill & memory — what spill is (execution region overflow → disk), spill ≠ OOM; the **"just add more RAM is the wrong reflex"** red herring (spill is per-task data-vs-memory, fix = more/smaller partitions or fix skew); caching as the other memory lever with the "cache everything" anti-pattern; cache-is-lazy warning.
+- **Stage 06** AQE — three runtime features (coalesce shuffle partitions, skew-join split, dynamic broadcast switch); the "AQE owns the shuffle, you own the read + the DAG" split table (pruning/pushdown/caching stay manual).
+- **Stage 07** Decision tree — five symptom→lever cards keyed to Spark-UI-observable symptoms (bytes scanned, task count, spill, recompute, big-vs-tiny join); "one symptom, not all five" framing; "most slow tickets are Symptom 1."
+- **Stage 08** PySpark pattern — the Stage 01 read rewritten with all five levers (AQE conf, select+filter, `F.broadcast`, `.cache`, `.coalesce(64)` write, `.explain()`), highlighted line-by-line; order-matters trap; links to the Code Companion.
+- **Stage 09** Interactive Tuning Calculator — **combined two-mode widget** (Rajesh chose "both"): Partition Sizing (data + target MB → partitions, per-task MB, spill-band verdict) and Shuffle Tuning (output size + shuffle.partitions → files, avg size, tiny-files verdict, the 200 trap). U-shaped-cost-curve takeaway.
+- **Stage 10** Self-test — 8 scenario-recognition questions (prune vs memory, coalesce vs repartition, coalesce-can't-grow, spill-first-move, lazy DataFrame recompute, cache-without-action, the 200 default, what AQE won't fix).
+
+### Code Companion (Stage 08.1) — `spark-performance-code.html`
+First instance of the Code Companion artifact on the MDM track (sibling to the existing Module 05 companion). Five idioms, predict-then-reveal, two fresh-data reps each, hand-verified trace values: `.select()` pruning (Parquet 200 MB vs CSV 400 MB), `repartition` vs `coalesce` (coalesce-can't-grow gotcha), `F.broadcast` (which side ships / no big-side shuffle), `.cache()` laziness (recompute? / nothing cached without an action), `spark.sql.shuffle.partitions` (set 16 → 16; unset → 200). Includes the PySpark lazy/distributed "logical result, not literal execution order" caveat. See `code-fluency.md` for the ledger entries.
+
 ## Parked / for later
 - Nothing parked from Module 06 itself.
+- **From Module 08:** bucketing & pre-sorted tables (write-time-for-read-time), the unified memory model knobs (`spark.memory.fraction`/`storageFraction`, region borrowing) in detail, `.persist()` storage levels (MEMORY_ONLY vs MEMORY_AND_DISK vs serialized/off-heap), a hands-on Spark-UI tour (SQL/Stages tabs), dynamic resource allocation & cluster sizing (executor count, cores-per-executor, autoscaling).
 - **From Module 07:** weighted/probabilistic clustering (edge-confidence-aware community detection), cluster-splitting/review-queue tooling at the cluster level, GraphFrames' internal algorithm (Hash-to-Min label propagation) and convergence behavior, graph algorithms beyond connectivity (centrality, shortest-path, community detection for fraud rings).
 - **Carried from an earlier Module 01 planning note (not confirmed resolved on the live site):** null handling inside arrays · schema evolution mechanics (Delta `mergeSchema`) · array-of-structs (the real MDM shape) · `transform`/`inline`. Worth a 15-min warm-up check next time nested-data content resurfaces, to confirm these were actually covered.
 

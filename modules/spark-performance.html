@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 08 — Spark Performance (Remaining Levers)</title>
+<meta name="description" content="The remaining Spark performance levers beyond shuffle/join/skew: column pruning, predicate pushdown, partition sizing, spill & memory, caching, and AQE — applied to the MDM entity-resolution pipeline.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --coral:#F78C6C;--coral-dim:#3E241E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--amber)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--amber)}
+
+.stage-nav{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:99;overflow-x:auto}
+.stage-nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;gap:6px;height:48px;align-items:center}
+.sn{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sn:hover{color:var(--ink);border-color:var(--faint)}
+.sn.on{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.stage{display:none;padding:48px 0 72px}.stage.on{display:block}
+
+/* typography */
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--amber);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--amber)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+/* concept cards */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:20px 0}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:20px;position:relative}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0;background:var(--acc,var(--amber))}
+.cc-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:8px}
+.cc-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:6px}
+.cc-body{font-size:13px;color:var(--muted);line-height:1.6}
+.cc-body code{font-size:11px}
+
+/* analogy box */
+.analogy{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:20px 22px;margin:20px 0}
+.analogy-eye{font-family:var(--mo);font-size:10px;color:var(--violet);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.analogy-body{font-size:14px;color:var(--ink);line-height:1.75}
+.analogy-body em{color:var(--violet);font-style:normal;font-weight:600}
+
+/* callouts */
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+.trap{border-left:3px solid var(--red);background:var(--red-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.trap strong{color:var(--red)}
+
+/* code windows */
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:2;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .k{color:var(--violet)}
+.code-block .f{color:var(--teal)}
+.code-block .s{color:var(--amber)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+.code-block .hl{background:rgba(230,180,80,.08);display:inline-block;width:100%;border-left:2px solid var(--amber);padding-left:6px;margin-left:-8px}
+.code-block .why{color:var(--amber);font-style:italic}
+
+/* debug trace */
+.debug-trace{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.dt-header{background:var(--surf2);padding:10px 16px;font-family:var(--mo);font-size:11px;color:var(--violet);letter-spacing:.08em;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.dt-header::before{content:'▶';font-size:9px}
+.dt-step{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dt-step:last-child{border-bottom:0}
+.dt-line{font-family:var(--mo);font-size:12px;color:var(--ink);margin-bottom:6px}
+.dt-state{font-family:var(--mo);font-size:12px;color:var(--amber);padding:8px 12px;background:var(--amber-dim);border-radius:6px;margin:6px 0}
+.dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.dt-why em{color:var(--violet);font-style:normal}
+
+/* data table */
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+.data-table .hl-row td{background:var(--amber-dim) !important}
+.data-table .hl-row td:first-child{border-left:3px solid var(--amber)}
+.data-table .tot-row td{background:var(--surf2);font-weight:600;color:var(--ink);border-top:2px solid var(--line)}
+.data-table .new-col{color:var(--amber);font-weight:600}
+.data-table .faint{color:var(--faint)}
+.badge{display:inline-block;font-family:var(--mo);font-size:10px;padding:2px 7px;border-radius:4px}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #1A3D5C}
+.b-violet{background:var(--violet-dim);color:var(--violet);border:1px solid #3A3060}
+
+/* red herring contrast */
+.herring{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:18px 0;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.herring-col{padding:18px 20px}
+.herring-col.left{background:var(--red-dim);border-right:1px solid var(--line)}
+.herring-col.right{background:var(--green-dim)}
+.herring-eye{font-family:var(--mo);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.herring-col.left .herring-eye{color:var(--red)}
+.herring-col.right .herring-eye{color:var(--green)}
+.herring-col h5{font-family:var(--dp);font-weight:600;font-size:14px;color:var(--ink);margin-bottom:8px}
+.herring-col p{font-size:13px;line-height:1.6;margin-bottom:8px}
+.herring-col p:last-child{margin-bottom:0}
+.herring-col code{font-size:11px}
+@media(max-width:600px){.herring{grid-template-columns:1fr}.herring-col.left{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* pipeline viz */
+.pipeline-viz{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:24px 0}
+.pv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.pv-flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pv-box{background:var(--surf);border:1px solid var(--line);border-radius:7px;padding:7px 13px;font-family:var(--mo);font-size:12px;color:var(--muted)}
+.pv-box.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.pv-box.hl{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+.pv-arr{color:var(--faint);font-size:13px;padding:0 2px}
+
+.unlock{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:18px 20px;margin:26px 0;display:flex;gap:14px;align-items:flex-start}
+.unlock-icon{font-size:20px;flex-shrink:0}
+.unlock-body{font-size:13px;color:var(--ink);line-height:1.7}
+.unlock-body strong{color:var(--violet)}
+
+/* decision tree */
+.decision-tree{display:flex;flex-direction:column;gap:10px;margin:18px 0}
+.dq{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.dq-num{font-family:var(--mo);font-size:10px;color:var(--amber);letter-spacing:.08em;margin-bottom:6px}
+.dq-q{font-family:var(--dp);font-weight:600;font-size:14px;margin-bottom:8px}
+.dq-a{font-size:13px;color:var(--muted);line-height:1.6;padding-left:14px;border-left:2px solid var(--line)}
+.dq-a strong{color:var(--ink)}
+
+/* perf widget */
+.sp-widget{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:22px 0}
+.sp-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.sp-tabs{display:flex;gap:8px;margin-bottom:20px}
+.sp-tab{font-family:var(--mo);font-size:11px;padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;transition:all .15s}
+.sp-tab:hover{color:var(--ink);border-color:var(--faint)}
+.sp-tab.on{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+.sp-mode{display:none}.sp-mode.on{display:block}
+.sp-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.sp-controls{display:flex;flex-direction:column;gap:18px}
+.sp-ctl-label{font-family:var(--mo);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:8px}
+.sp-ctl-label b{color:var(--amber);font-weight:600}
+.sp-slider{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:var(--surf2);outline:none}
+.sp-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--amber);cursor:pointer;border:2px solid var(--bg)}
+.sp-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--amber);cursor:pointer;border:2px solid var(--bg)}
+.sp-readout{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:18px}
+.sp-stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.sp-stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px;text-align:center}
+.sp-stat-label{font-family:var(--mo);font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.sp-stat-val{font-family:var(--dp);font-weight:700;font-size:19px;color:var(--ink)}
+.sp-bar-wrap{margin:14px 0 6px}
+.sp-bar-track{height:14px;border-radius:7px;background:var(--surf);overflow:hidden;border:1px solid var(--line)}
+.sp-bar-fill{height:100%;border-radius:6px;transition:width .2s,background .2s}
+.sp-verdict{font-family:var(--mo);font-size:12px;padding:11px 14px;border-radius:8px;line-height:1.6;margin-top:6px}
+.v-good{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.v-warn{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.v-bad{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+/* quiz */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:20px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.q-prompt{font-size:13px;line-height:1.65;margin-bottom:14px;color:var(--muted)}
+.q-prompt strong{color:var(--ink)}
+.q-opts{display:flex;flex-direction:column;gap:7px}
+.q-opt{font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);padding:8px 12px;border-radius:6px;cursor:pointer;text-align:left;color:var(--muted);transition:all .15s}
+.q-opt:hover{border-color:var(--amber);color:var(--ink)}
+.q-opt.correct{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.q-opt.wrong{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.q-fb{font-size:12px;margin-top:10px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--amber)}
+
+@media(max-width:768px){
+  .sp-layout{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="../index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 08</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Spark Performance · Remaining Levers</span>
+  </div>
+</nav>
+
+<div class="stage-nav">
+  <div class="stage-nav-inner">
+    <button class="sn on" onclick="go('s0',this)">00 · Overview</button>
+    <button class="sn" onclick="go('s1',this)">01 · The Cost Trap</button>
+    <button class="sn" onclick="go('s2',this)">02 · Column Pruning</button>
+    <button class="sn" onclick="go('s3',this)">03 · Predicate Pushdown</button>
+    <button class="sn" onclick="go('s4',this)">04 · Partition Sizing</button>
+    <button class="sn" onclick="go('s5',this)">05 · Spill &amp; Memory</button>
+    <button class="sn" onclick="go('s6',this)">06 · AQE</button>
+    <button class="sn" onclick="go('s7',this)">07 · Symptom → Lever</button>
+    <button class="sn" onclick="go('s8',this)">08 · PySpark Pattern</button>
+    <button class="sn" onclick="go('s9',this)">09 · Tuning Calculator</button>
+    <button class="sn" onclick="go('s10',this)">10 · Self-Test</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ══════ STAGE 0 — OVERVIEW ══════ -->
+<div class="stage on" id="s0">
+  <p class="sec-eye">Stage 00 · Overview</p>
+  <h2 class="sec-h">The Pipeline Works. Now Make It Cheap.</h2>
+  <p class="sec-sub">By Module 07 your entity-resolution pipeline is functionally complete — it standardizes, blocks, scores, classifies, tunes, and clusters into master entities. Every result it produces is correct. This module changes none of those results. It changes what they <em>cost</em>: the bytes read off disk, the data shuffled across the network, the memory each task burns, and the number of files you write. Same answers, a fraction of the cluster bill.</p>
+
+  <div class="pipeline-viz">
+    <div class="pv-label">Module 08 doesn't add a stage — it tunes every stage you already built</div>
+    <div class="pv-flow">
+      <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Block</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Self-Join</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Score</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Classify</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Cluster</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Golden Record</span>
+    </div>
+    <p style="margin:14px 0 0;font-size:13px;color:var(--faint)">Module 00 already gave you the three <em>structural</em> levers — shuffle, join strategy, and skew. Those decide the <strong>shape</strong> of the computation. This module is the remaining levers that decide how much each shape <strong>costs</strong>.</p>
+  </div>
+
+  <h3><span class="bar"></span>The five remaining levers</h3>
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Lever 1 · read less</div>
+      <div class="cc-title">Column Pruning</div>
+      <div class="cc-body">Read only the columns the job actually uses. A 40-column table read for 6 columns wastes 85% of the scan. <code>.select(...)</code> early.</div>
+    </div>
+    <div class="cc" style="--acc:var(--blue)">
+      <div class="cc-num">Lever 2 · read less</div>
+      <div class="cc-title">Predicate Pushdown</div>
+      <div class="cc-body">Push the <code>WHERE</code> into the scan so disk and the file format skip rows before Spark ever sees them. <code>.filter(...)</code> before the expensive op.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Lever 3 · right-size</div>
+      <div class="cc-title">Partition Sizing</div>
+      <div class="cc-body">Aim for ~128&nbsp;MB per task. Too many tiny partitions = scheduler overhead and tiny files; too few giant ones = no parallelism and spill. <code>repartition</code> vs <code>coalesce</code>.</div>
+    </div>
+    <div class="cc" style="--acc:var(--red)">
+      <div class="cc-num">Lever 4 · fit in RAM</div>
+      <div class="cc-title">Spill &amp; Memory</div>
+      <div class="cc-body">When a task's data won't fit execution memory, Spark spills to disk and crawls. Usually a partition-sizing problem in disguise — not a "buy more RAM" problem.</div>
+    </div>
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Lever 5 · reuse / auto-tune</div>
+      <div class="cc-title">Caching &amp; AQE</div>
+      <div class="cc-body"><code>.cache()</code> a DataFrame reused by several branches. Let Adaptive Query Execution re-tune partition counts and skew at runtime so you hand-tune less.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>How to read this module.</strong> Levers 1–2 make Spark <em>read less</em>. Lever 3 makes each task the right size. Lever 4 keeps each task in memory. Lever 5 reuses work and lets the engine auto-tune. Every lever is shown against your real MDM pipeline, and Stage 08 assembles them into one tuned read of that pipeline. There's a separate <a href="spark-performance-code.html" style="color:var(--amber)">Code Companion</a> that drills the PySpark idioms themselves.</p></div>
+</div>
+
+<!-- ══════ STAGE 1 — THE COST TRAP ══════ -->
+<div class="stage" id="s1">
+  <p class="sec-eye">Stage 01 · The motivating problem</p>
+  <h2 class="sec-h">"It Runs — Ship It." The Most Expensive Sentence in Data Engineering.</h2>
+  <p class="sec-sub">A correct pipeline and a cheap pipeline are two different things, and Spark will happily give you the first while quietly costing you ten times the second. The trap is that nothing fails. No error, no wrong answer — just a job that reads far more than it needs and a bill nobody questions because "it works."</p>
+
+  <h3><span class="bar"></span>Your ER pipeline, untuned</h3>
+  <p>Your <code>customers</code> table in Parquet is wide and deep — 40 columns, 2&nbsp;TB, billions of rows, most of them inactive accounts you never resolve. The first stage of entity resolution needs exactly six columns and only the <em>active</em> records. Here's what the naive read does versus what the job actually needs:</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>What the read does</th><th>Columns</th><th>Rows</th><th>Bytes scanned</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>Naive: <code>spark.read.parquet(path)</code></td><td>40 of 40</td><td>all 5B</td><td>2.0 TB</td><td><span class="badge b-red">what you pay</span></td></tr>
+        <tr class="hl-row"><td>What ER stage 1 actually consumes</td><td class="new-col">6 of 40</td><td class="new-col">0.6B active</td><td class="new-col">~180 GB</td><td><span class="badge b-green">what you need</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Same correct candidate pairs come out either way. But the naive read moves <strong>~11× the bytes</strong> off disk and across the cluster. On a pay-per-scan engine that's a literal 11× line item; on a fixed cluster it's 11× the wall-clock and 11× the chance of a spill or an OOM somewhere downstream.</p>
+
+  <div class="analogy">
+    <div class="analogy-eye">Anchor</div>
+    <div class="analogy-body">It's the difference between <em>SELECT *</em> and <em>SELECT the six columns you need</em> in a SQL query against a huge table — except Spark's default ergonomics make <em>SELECT *</em> the path of least resistance. You already know not to <code>SELECT *</code> a 40-column table in production. This module is that instinct, applied to every read, shuffle, and write in the pipeline.</div>
+  </div>
+
+  <div class="trap"><strong>The trap restated:</strong> performance bugs don't throw. A wrong join throws or returns garbage and you fix it immediately. An untuned scan returns the right answer and bills you forever. The whole skill of this module is <em>seeing</em> the cost that isn't yelling at you.</div>
+</div>
+
+<!-- ══════ STAGE 2 — COLUMN PRUNING ══════ -->
+<div class="stage" id="s2">
+  <p class="sec-eye">Stage 02 · Lever 1 — read less</p>
+  <h2 class="sec-h">Column Pruning — Stop Reading Columns You Throw Away</h2>
+  <p class="sec-sub">Parquet (and ORC) are <em>columnar</em> formats: each column is stored in its own contiguous run of bytes on disk, not interleaved row-by-row. That single fact is what makes column pruning real and not cosmetic — if you don't ask for a column, Spark physically never reads its bytes off disk.</p>
+
+  <h3><span class="bar"></span>Row-major vs column-major, in one picture</h3>
+  <p>A CSV stores a row at a time: <code>id,name,email,…,col40</code> then the next row. To get column 3 you must read every row's full width. Parquet stores all the <code>id</code>s together, then all the <code>name</code>s, then all the <code>email</code>s. Ask for three columns and the reader seeks to exactly those three runs and skips the rest.</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Read</th><th>Format</th><th>Columns touched on disk</th><th>Bytes</th></tr></thead>
+      <tbody>
+        <tr><td><code>read.csv(path)</code> then select 6</td><td>CSV (row-major)</td><td>all 40 — must read full rows</td><td>2.0 TB</td></tr>
+        <tr><td><code>read.parquet(path)</code> then select 6</td><td>Parquet (columnar)</td><td>6 — pruned at the file reader</td><td class="new-col">~300 GB</td></tr>
+        <tr class="hl-row"><td><code>read.parquet(path).select(6)</code></td><td>Parquet (columnar)</td><td>6 — pruned, planner-confirmed</td><td class="new-col">~300 GB</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note"><strong>Why two Parquet rows look identical.</strong> Spark's optimizer pushes the <code>select</code> down into the Parquet reader for you in many cases even if you select later in the query. Writing <code>.select(...)</code> early makes the pruning <em>explicit and guaranteed</em> rather than hoping the optimizer figured out which columns survive to the end. With CSV there is nothing to push down — the format can't seek to a column — so column pruning buys you almost nothing until you store as Parquet.</div>
+
+  <h3><span class="bar"></span>The wide-table trap in MDM</h3>
+  <p>MDM source tables are notoriously wide — every system that ever touched a customer bolts on its own columns (loyalty flags, marketing consent, legacy IDs, audit timestamps). Entity resolution cares about a tiny slice: identity fields. Pruning to that slice is the single highest-leverage change on most ER pipelines, because the scan is the biggest single cost and you're discarding 80%+ of every row.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><p class="code-label">column pruning — the six identity fields</p><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+<pre class="code-block"><span class="co"># 40-column table; ER needs 6. Select at the read, not after the join.</span>
+customers = (
+    spark.<span class="f">read</span>.<span class="f">parquet</span>(<span class="s">"s3://mdm/customers"</span>)
+         .<span class="f">select</span>(<span class="s">"cust_id"</span>, <span class="s">"name"</span>, <span class="s">"email"</span>, <span class="s">"phone"</span>, <span class="s">"zip"</span>, <span class="s">"status"</span>)
+)
+<span class="co"># Parquet reader now touches 6 column-runs on disk, skips the other 34.</span></pre>
+  </div>
+
+  <div class="trap"><strong>Don't prune away a column you need two stages later.</strong> If clustering's golden-record step needs <code>updated_at</code> to pick the latest record (Module 03's window function), it has to survive the <code>select</code>. Prune to "everything ER touches anywhere downstream," not "everything stage 1 touches." Pruning too aggressively is a correctness bug; pruning to the real footprint is free money.</div>
+</div>
+
+<!-- ══════ STAGE 3 — PREDICATE PUSHDOWN ══════ -->
+<div class="stage" id="s3">
+  <p class="sec-eye">Stage 03 · Lever 2 — read less</p>
+  <h2 class="sec-h">Predicate Pushdown — Filter at the Disk, Not in the Engine</h2>
+  <p class="sec-sub">Column pruning skips columns. Predicate pushdown skips <em>rows</em> — and the magic is <em>where</em> it skips them. A pushed-down filter is evaluated by the file reader (and sometimes the storage layer) before the rows are ever handed to Spark. A filter that <em>isn't</em> pushed down reads every row into the engine and throws most away after the fact.</p>
+
+  <h3><span class="bar"></span>Two places a filter can live</h3>
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Filter that stayed in the engine</div>
+      <h5>Read everything, discard late</h5>
+      <p>Spark reads all 5B rows into the executors, runs the self-join and scoring across all of them, <em>then</em> applies <code>status == "active"</code>. You paid the scan, the shuffle, and the join on 5B rows to keep 0.6B.</p>
+      <p><code>df.join(other).filter(col("status")=="active")</code></p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ Filter pushed into the scan</div>
+      <h5>Skip rows at the reader</h5>
+      <p>The <code>status == "active"</code> predicate is handed to the Parquet reader. Row groups whose <code>status</code> min/max can't contain "active" are skipped on disk. Only 0.6B rows ever enter the engine, so the join shuffles 0.6B, not 5B.</p>
+      <p><code>df.filter(col("status")=="active").join(other)</code></p>
+    </div>
+  </div>
+
+  <p>The optimizer reorders many filters for you, but two things block pushdown and put the filter back in the engine: a filter expressed <em>after</em> a non-trivial transform the optimizer can't see through (a UDF, an explode, a join on the filtered column), and a predicate the file format can't evaluate (a regex on a column with no stored statistics). When pushdown is blocked, you eat the full scan.</p>
+
+  <h3><span class="bar"></span>Partition pruning — the strongest form</h3>
+  <p>If the table is physically partitioned on disk by a column — say <code>.../ingest_date=2026-06-18/...</code> — then a filter on that column skips whole <em>directories</em> without opening a single file. This is partition pruning, and it's the difference between scanning one day and scanning three years.</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Filter</th><th>Mechanism</th><th>What gets skipped</th><th>Strength</th></tr></thead>
+      <tbody>
+        <tr><td><code>ingest_date == '2026-06-18'</code> (partition col)</td><td>Partition pruning</td><td>entire date directories</td><td><span class="badge b-green">strongest</span></td></tr>
+        <tr><td><code>status == 'active'</code> (Parquet col)</td><td>Row-group min/max</td><td>row groups that can't match</td><td><span class="badge b-amber">good</span></td></tr>
+        <tr><td><code>regexp_like(name, '...')</code></td><td>none — runs in engine</td><td>nothing; full scan</td><td><span class="badge b-red">none</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3><span class="bar"></span>Verify it actually happened</h3>
+  <p>Never assume pushdown — confirm it. <code>.explain()</code> prints the physical plan, and you look for the <code>PushedFilters</code> line under the Parquet scan. If your filter is listed there, the reader is doing the skipping. If it shows up only as a later <code>Filter</code> node, it stayed in the engine and you have a problem to chase.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><p class="code-label">confirm pushdown with explain()</p><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+<pre class="code-block">customers.<span class="f">filter</span>(F.<span class="f">col</span>(<span class="s">"status"</span>) == <span class="s">"active"</span>).<span class="f">explain</span>()
+
+<span class="co"># Look for this line under the FileScan parquet node:</span>
+<span class="co">#   PushedFilters: [IsNotNull(status), EqualTo(status,active)]</span>
+<span class="co"># If 'active' appears there → the reader skips non-active row groups on disk.</span>
+<span class="co"># If you only see a separate '+- Filter (status = active)' node → NOT pushed.</span></pre>
+  </div>
+</div>
+
+<!-- ══════ STAGE 4 — PARTITION SIZING ══════ -->
+<div class="stage" id="s4">
+  <p class="sec-eye">Stage 04 · Lever 3 — right-size each task</p>
+  <h2 class="sec-h">Partition Sizing — The Goldilocks Number Is ~128&nbsp;MB</h2>
+  <p class="sec-sub">A Spark partition is the unit of parallel work: one partition = one task = one core's worth of data at a time. Get the size wrong in either direction and you pay. Too many tiny partitions and the scheduler spends more time launching tasks than doing work — and your writes explode into thousands of tiny files. Too few giant partitions and most of your cluster sits idle while a handful of overloaded tasks spill to disk.</p>
+
+  <div class="analogy">
+    <div class="analogy-eye">Anchor — the desks again</div>
+    <div class="analogy-body">From Module 00: a partition is a <em>desk</em>, a task is a <em>person working that desk</em>. 2&nbsp;000 desks each with one sheet of paper means people spend all day standing up and sitting down (scheduler overhead). Four desks each buried under a 500-page stack means four people work while everyone else watches, and those four run out of desk space and start stacking paper on the floor (<em>spill</em>). You want every desk holding a comfortable, similar-sized stack — about 128&nbsp;MB.</div>
+  </div>
+
+  <h3><span class="bar"></span>The two tools — and why they're not interchangeable</h3>
+  <p>You change partition count with <code>repartition(n)</code> or <code>coalesce(n)</code>. They look similar and behave very differently:</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th></th><th><code>repartition(n)</code></th><th><code>coalesce(n)</code></th></tr></thead>
+      <tbody>
+        <tr><td>Shuffle?</td><td><span class="badge b-amber">full shuffle</span> — moves all data</td><td><span class="badge b-green">no shuffle</span> — merges existing partitions</td></tr>
+        <tr><td>Can increase count?</td><td>yes — any <code>n</code></td><td><span class="badge b-red">no</span> — only decrease</td></tr>
+        <tr><td>Result balance</td><td>even, uniform sizes</td><td>can be uneven (merged blindly)</td></tr>
+        <tr><td>Cost</td><td>expensive (network)</td><td>cheap (local merge)</td></tr>
+        <tr class="hl-row"><td>Use when</td><td>going <em>up</em>, or fixing skew/uneven sizes</td><td>going <em>down</em> after a heavy filter</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The canonical case: you read 2&nbsp;TB into 16&nbsp;000 partitions, then <code>filter</code> to the 0.6B active rows — now most of those partitions are nearly empty but you still pay one task each. <code>coalesce(800)</code> merges them down with no shuffle. Going the other way — you have 8 fat partitions and need parallelism — only <code>repartition(200)</code> can <em>create</em> partitions, and it costs a shuffle to do it.</p>
+
+  <h3><span class="bar"></span>The 200 default that bites everyone</h3>
+  <p>Every shuffle (<code>groupBy</code>, <code>join</code>, <code>distinct</code>, window) repartitions its output to <code>spark.sql.shuffle.partitions</code>, which defaults to <strong>200</strong>. That number is a fixed constant that knows nothing about your data. Shuffle 10&nbsp;GB and 200 is roughly right (~50&nbsp;MB each). Shuffle 50&nbsp;MB through a small lookup join and you've just created 200 partitions of 0.25&nbsp;MB each — 200 tiny tasks and, if you write them, 200 tiny files.</p>
+
+  <div class="trap"><strong>The tiny-files problem compounds downstream.</strong> Those 200 micro-files don't just waste a write — every job that later reads that output pays an open-and-close per file, and object stores like S3 throttle on request count, not bytes. A pipeline that writes thousands of tiny files per run quietly degrades every consumer of that data. Stage 06's AQE fixes the 200 default automatically; until then it's a manual knob you must set per workload.</div>
+</div>
+
+<!-- ══════ STAGE 5 — SPILL & MEMORY (CLIMAX) ══════ -->
+<div class="stage" id="s5">
+  <p class="sec-eye">Stage 05 · Lever 4 — the climax</p>
+  <h2 class="sec-h">Spill &amp; Memory — "Just Add More RAM" Is the Wrong Reflex</h2>
+  <p class="sec-sub">This is the stage that separates people who tune Spark from people who throw money at it. When a job slows to a crawl with "spilling to disk" in the logs, the instinct is to bump executor memory. Sometimes that's right. Usually it's treating the symptom and missing that the real disease is a partition that's too big.</p>
+
+  <h3><span class="bar"></span>What "spill" actually is</h3>
+  <p>An executor's memory is split into regions; the <em>execution</em> region is the scratch space a task uses to build hash tables for joins and aggregations and to sort. When a single task's working set doesn't fit that region, Spark doesn't crash — it writes the overflow to local disk and reads it back, repeatedly. That's a spill. It's correct, and it's slow, because disk is orders of magnitude slower than RAM and you're now round-tripping through it mid-operation.</p>
+
+  <div class="note"><strong>Spill ≠ OOM.</strong> A spill is Spark gracefully degrading to disk to <em>finish the job</em>. An OutOfMemory error is a task asking for more memory than exists and the executor dying. Spill makes you slow; OOM makes you fail. They have overlapping causes but they are not the same event, and "add memory" helps OOM far more reliably than it helps spill.</div>
+
+  <h3><span class="bar"></span>The red herring, head-on</h3>
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Red herring — total memory</div>
+      <h5>"It spilled, so the cluster needs more RAM"</h5>
+      <p>You double executor memory. The spill shrinks a little, the bill doubles, and the next slightly-bigger input spills again. You've raised the ceiling, but the thing hitting the ceiling is <em>one task's slice of data</em>, and that slice grows with your data.</p>
+      <p>Spill is measured <strong>per task</strong>, against the memory <strong>one core</strong> gets.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ What actually decides it</div>
+      <h5>Data-per-task vs memory-per-task</h5>
+      <p>Spill happens when <em>one partition</em> is too big for <em>one task's</em> memory budget. Cut the partition size — <code>repartition</code> to more partitions, or fix the skew that made one partition huge — and each task's working set drops below the region it already has. No new RAM purchased.</p>
+      <p>More partitions → less data per task → no spill, at the same total memory.</p>
+    </div>
+  </div>
+
+  <p>This is why partition sizing (Stage 04) and spill (here) are the same lever viewed from two ends. A spill is almost always your cluster telling you a partition is too fat. The fix order is: (1) more/smaller partitions, (2) check for skew making <em>one</em> partition fat — Module 00's salting — and only then (3) more memory, when the per-task working set genuinely can't be made smaller.</p>
+
+  <h3><span class="bar"></span>Caching — the other memory lever, with its own trap</h3>
+  <p>Storage memory (the other region) is where <code>.cache()</code> / <code>.persist()</code> keep a DataFrame so later actions reuse it instead of recomputing from source. The win is real when a DataFrame feeds <em>several</em> downstream branches: compute it once, read it from memory three times.</p>
+
+  <div class="herring">
+    <div class="herring-col right">
+      <div class="herring-eye">✓ Cache earns its keep</div>
+      <h5>Reused by multiple actions</h5>
+      <p>Your scored candidate set feeds the review queue, the metrics report, and the cluster step. Without a cache, Spark recomputes the whole scan-block-score chain three times. <code>candidates.cache()</code> pays for itself on the second use.</p>
+    </div>
+    <div class="herring-col left">
+      <div class="herring-eye">✗ "Cache everything" anti-pattern</div>
+      <h5>Used once, or too big to hold</h5>
+      <p>Caching a DataFrame used by a single action just burns storage memory for nothing — and worse, it can <em>evict</em> other cached data or squeeze the execution region, <em>causing</em> the very spill you were trying to avoid. Cache deliberately, not reflexively.</p>
+    </div>
+  </div>
+
+  <div class="warn"><strong>Cache is lazy.</strong> <code>df.cache()</code> marks the DataFrame for caching but materializes nothing until the next <em>action</em> forces it. The first action computes and stores; only from the second action on do you read from memory. Calling <code>.cache()</code> and never triggering an action caches exactly nothing.</div>
+</div>
+
+<!-- ══════ STAGE 6 — AQE ══════ -->
+<div class="stage" id="s6">
+  <p class="sec-eye">Stage 06 · Lever 5 — let the engine tune itself</p>
+  <h2 class="sec-h">Adaptive Query Execution — Tuning That Happens at Runtime</h2>
+  <p class="sec-sub">Everything so far is something you decide before the job runs, on numbers you guessed (200 partitions? 128&nbsp;MB?). The problem is that the right numbers depend on data the planner can't see until the shuffle actually produces it. Adaptive Query Execution (AQE), on by default in modern Spark, re-optimizes the plan <em>mid-flight</em> using the real sizes it observes — turning several of your manual knobs into automatic ones.</p>
+
+  <h3><span class="bar"></span>Three things AQE does for you</h3>
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">AQE feature 1</div>
+      <div class="cc-title">Coalesce shuffle partitions</div>
+      <div class="cc-body">After a shuffle, AQE sees the real output size and merges the fixed 200 down to a sensible count of ~target-sized partitions. The "200 default" trap from Stage 04 — fixed automatically.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">AQE feature 2</div>
+      <div class="cc-title">Skew-join handling</div>
+      <div class="cc-body">Detects a partition that's far bigger than its siblings (one hot blocking key) and splits it into sub-partitions so it doesn't bottleneck the join. Module 00's skew, handled at runtime.</div>
+    </div>
+    <div class="cc" style="--acc:var(--blue)">
+      <div class="cc-num">AQE feature 3</div>
+      <div class="cc-title">Dynamic join switch</div>
+      <div class="cc-body">If a side of a join turns out small enough after filtering, AQE switches a planned sort-merge join to a broadcast join on the fly — no manual <code>broadcast()</code> hint needed.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>What AQE handles vs what stays on you</h3>
+  <p>AQE is powerful but it only re-optimizes <em>shuffle-stage</em> decisions, because that's where it gets real size statistics. It can't undo a wasteful read — it never sees the columns and rows you should have pruned, because by then the scan already happened.</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Lever</th><th>AQE handles it?</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Column pruning</td><td><span class="badge b-red">no — you</span></td><td>happens at the scan, before any shuffle stats exist</td></tr>
+        <tr><td>Predicate pushdown</td><td><span class="badge b-red">no — you</span></td><td>a scan-time decision; AQE works post-shuffle</td></tr>
+        <tr><td>Shuffle partition count</td><td><span class="badge b-green">yes — AQE</span></td><td>coalesces 200 → right-size using real output size</td></tr>
+        <tr><td>Skew in a join</td><td><span class="badge b-green">yes — AQE</span></td><td>splits the hot partition at runtime</td></tr>
+        <tr><td>Broadcast vs sort-merge</td><td><span class="badge b-amber">often — AQE</span></td><td>switches if a side is small post-filter; explicit hint still wins for certainty</td></tr>
+        <tr><td>Caching decisions</td><td><span class="badge b-red">no — you</span></td><td>AQE doesn't know your DAG's reuse pattern</td></tr>
+        <tr><td>Initial read partition size</td><td><span class="badge b-red">no — you</span></td><td>set by file/block sizes at read, pre-shuffle</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note"><strong>The mental split:</strong> AQE owns the <em>shuffle</em> (partition counts, skew, late broadcast). You own the <em>read</em> (pruning, pushdown, initial sizing) and the <em>DAG</em> (what to cache). Turn AQE on and stop hand-setting <code>shuffle.partitions</code> per job — but don't expect it to save you from a <code>SELECT *</code>.</div>
+
+  <div class="code-wrap">
+    <div class="code-header"><p class="code-label">turn AQE on (modern Spark has these on by default — set them explicitly to be sure)</p><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+<pre class="code-block">spark.conf.<span class="f">set</span>(<span class="s">"spark.sql.adaptive.enabled"</span>, <span class="s">"true"</span>)
+spark.conf.<span class="f">set</span>(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</span>, <span class="s">"true"</span>)
+spark.conf.<span class="f">set</span>(<span class="s">"spark.sql.adaptive.skewJoin.enabled"</span>, <span class="s">"true"</span>)</pre>
+  </div>
+</div>
+
+<!-- ══════ STAGE 7 — DECISION TREE ══════ -->
+<div class="stage" id="s7">
+  <p class="sec-eye">Stage 07 · Decision criteria</p>
+  <h2 class="sec-h">Symptom → Lever — A Diagnostic You Can Run From the Spark UI</h2>
+  <p class="sec-sub">Performance tuning isn't applying all levers everywhere — it's reading a symptom and reaching for the one lever that addresses it. Each of these starts from something you can actually see in the Spark UI or the query plan, and points at the fix. Run them top to bottom.</p>
+
+  <div class="decision-tree">
+    <div class="dq">
+      <div class="dq-num">Symptom 1</div>
+      <div class="dq-q">The scan reads far more bytes than the job uses — input size dwarfs the output.</div>
+      <div class="dq-a"><strong>→ Column pruning + predicate pushdown.</strong> Select only needed columns at the read; filter early and confirm <code>PushedFilters</code> in <code>.explain()</code>. Check the table is Parquet/ORC, not CSV. This is almost always the biggest single win.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">Symptom 2</div>
+      <div class="dq-q">Thousands of tiny tasks, or the write produces thousands of tiny files.</div>
+      <div class="dq-a"><strong>→ Coalesce (or AQE coalesce).</strong> Too many partitions for the data volume — usually after a heavy filter or the 200-default shuffle. <code>coalesce(n)</code> down with no shuffle; or turn on AQE's <code>coalescePartitions</code> and let it pick.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">Symptom 3</div>
+      <div class="dq-q">Tasks spilling to disk; a few tasks run far longer than the rest.</div>
+      <div class="dq-a"><strong>→ Smaller partitions first, check skew, then memory.</strong> Spill = a partition too big for one task. <code>repartition</code> to more partitions; if only <em>one</em> task is slow it's skew (salt it — Module 00, or AQE skewJoin). Add executor memory only when the per-task working set genuinely can't shrink.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">Symptom 4</div>
+      <div class="dq-q">The same DataFrame is recomputed in multiple branches of the job.</div>
+      <div class="dq-a"><strong>→ Cache / persist.</strong> If a DataFrame feeds two or more actions, <code>.cache()</code> it so the scan-and-transform runs once. Only when it's genuinely reused and fits memory — caching a single-use or oversized DataFrame backfires.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">Symptom 5</div>
+      <div class="dq-q">A join shuffles a huge table against a tiny lookup table.</div>
+      <div class="dq-a"><strong>→ Broadcast the small side.</strong> <code>F.broadcast(small_df)</code> ships the lookup to every executor and skips the shuffle of the big table entirely. AQE may do this automatically post-filter, but an explicit hint guarantees it. (Module 00's broadcast join, applied as a perf lever.)</div>
+    </div>
+  </div>
+
+  <div class="warn"><strong>One symptom, not all five.</strong> The mistake is reaching for memory because that's the knob you know. Read the actual symptom — bytes scanned, task count, spill metric, recompute, shuffle size — and the symptom names the lever. Most "Spark is slow" tickets are Symptom 1 in disguise.</div>
+</div>
+
+<!-- ══════ STAGE 8 — PYSPARK PATTERN ══════ -->
+<div class="stage" id="s8">
+  <p class="sec-eye">Stage 08 · The production pattern</p>
+  <h2 class="sec-h">All Five Levers, on One ER Pipeline</h2>
+  <p class="sec-sub">Here is the entity-resolution read from Stage 01 — the one that naively scanned 2&nbsp;TB — rewritten with every lever applied. Same candidate pairs out the other end; a fraction of the cost. Read it top to bottom; each highlighted line is one lever you just learned.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><p class="code-label">tuned_er_read.py — the pipeline with all five levers</p><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+<pre class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># ── 1. Runtime knobs: let AQE re-tune shuffles for you ──</span>
+<span class="hl">spark.conf.<span class="f">set</span>(<span class="s">"spark.sql.adaptive.enabled"</span>, <span class="s">"true"</span>)              <span class="why"># AQE on</span></span>
+<span class="hl">spark.conf.<span class="f">set</span>(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</span>, <span class="s">"true"</span>)</span>
+<span class="hl">spark.conf.<span class="f">set</span>(<span class="s">"spark.sql.adaptive.skewJoin.enabled"</span>, <span class="s">"true"</span>)</span>
+
+<span class="co"># ── 2. Read less: column pruning + predicate pushdown ──</span>
+customers = (
+    spark.<span class="f">read</span>.<span class="f">parquet</span>(<span class="s">"s3://mdm/customers"</span>)
+<span class="hl">         .<span class="f">select</span>(<span class="s">"cust_id"</span>,<span class="s">"name"</span>,<span class="s">"email"</span>,<span class="s">"phone"</span>,<span class="s">"zip"</span>,<span class="s">"status"</span>)  <span class="why"># prune 40→6</span></span>
+<span class="hl">         .<span class="f">filter</span>(F.<span class="f">col</span>(<span class="s">"status"</span>) == <span class="s">"active"</span>)                <span class="why"># pushed into scan</span></span>
+)
+
+<span class="co"># ── 3. Broadcast the small lookup — no shuffle of the big table ──</span>
+ref_zip = spark.<span class="f">read</span>.<span class="f">parquet</span>(<span class="s">"s3://mdm/zip_lookup"</span>)            <span class="co"># ~5 MB</span>
+<span class="hl">candidates = customers.<span class="f">join</span>(F.<span class="f">broadcast</span>(ref_zip), <span class="s">"zip"</span>, <span class="s">"left"</span>)  <span class="why"># ship the 5 MB side</span></span>
+
+<span class="co"># ── 4. Cache: candidates feed THREE downstream branches ──</span>
+<span class="hl">candidates.<span class="f">cache</span>()                                              <span class="why"># compute once, reuse 3×</span></span>
+scored   = <span class="f">score_pairs</span>(candidates)        <span class="co"># branch 1</span>
+review_q = <span class="f">build_review_queue</span>(scored)    <span class="co"># branch 2</span>
+metrics  = <span class="f">compute_metrics</span>(scored)       <span class="co"># branch 3</span>
+
+<span class="co"># ── 5. Right-size the write: avoid the tiny-files explosion ──</span>
+<span class="hl">scored.<span class="f">coalesce</span>(<span class="n">64</span>).<span class="f">write</span>.<span class="f">mode</span>(<span class="s">"overwrite"</span>).<span class="f">parquet</span>(<span class="s">"s3://mdm/scored"</span>)  <span class="why"># 64 files, not 200</span></span>
+
+<span class="co"># ── 6. Verify the read actually pruned + pushed down ──</span>
+<span class="hl">candidates.<span class="f">explain</span>()    <span class="why"># expect PushedFilters:[EqualTo(status,active)] + 6 cols</span></span></pre>
+  </div>
+
+  <div class="note"><strong>Want more reps on the idioms themselves?</strong> This stage shows each idiom once, anchored to this exact pipeline. The <a href="spark-performance-code.html" target="_blank" style="color:var(--amber)">Code Companion — Stage 08.1</a> drills the same five idioms (<code>.select</code>, <code>repartition</code> vs <code>coalesce</code>, <code>F.broadcast</code>, <code>.cache</code>, <code>spark.conf.set</code>) with fresh examples and multiple predict-then-check reps, separate from this walkthrough. Optional — this stage stands on its own.</div>
+
+  <div class="trap"><strong>Order matters here.</strong> The <code>select</code> and <code>filter</code> come <em>before</em> the join and cache on purpose — prune and filter first so everything downstream operates on the smaller dataset. Cache <em>after</em> the expensive read-prune-filter-join chain so what's stored is the reusable result, not the raw scan. Reorder these and you cache the wrong thing or push the filter past where it can be pushed down.</div>
+</div>
+
+<!-- ══════ STAGE 9 — WIDGET ══════ -->
+<div class="stage" id="s9">
+  <p class="sec-eye">Stage 09 · Interactive</p>
+  <h2 class="sec-h">Tuning Calculator — Feel the Two Numeric Levers</h2>
+  <p class="sec-sub">Partition sizing and the shuffle-partition count are the two levers with a real number to dial, and the cost curve in both directions is the thing to internalize. Drag the sliders and watch per-task size, parallelism, spill risk, and the tiny-files verdict move. The "healthy" band is the ~128&nbsp;MB-per-task target you're aiming for.</p>
+
+  <div class="sp-widget">
+    <div class="sp-label">Spark Tuning Calculator</div>
+    <div class="sp-tabs">
+      <button class="sp-tab on" id="tab-part" onclick="spTab('part')">Partition Sizing</button>
+      <button class="sp-tab" id="tab-shuf" onclick="spTab('shuf')">Shuffle Tuning (the 200 trap)</button>
+    </div>
+
+    <!-- MODE 1: partition sizing -->
+    <div class="sp-mode on" id="mode-part">
+      <div class="sp-layout">
+        <div class="sp-controls">
+          <div>
+            <div class="sp-ctl-label"><span>Total data to process</span><b id="pp-data-lbl">24 GB</b></div>
+            <input type="range" class="sp-slider" id="pp-data" min="1" max="512" value="24" oninput="spPart()">
+          </div>
+          <div>
+            <div class="sp-ctl-label"><span>Target partition size</span><b id="pp-target-lbl">128 MB</b></div>
+            <input type="range" class="sp-slider" id="pp-target" min="8" max="512" step="8" value="128" oninput="spPart()">
+          </div>
+          <div class="note" style="margin:0"><strong>You set the target size; Spark derives the partition count.</strong> <code>partitions = ceil(total / target)</code>. Push the target up and each task holds more (toward spill); push it down and you get more, smaller tasks (toward overhead). The sweet spot lands per-task in the green band.</div>
+        </div>
+        <div class="sp-readout">
+          <div class="sp-stat-row">
+            <div class="sp-stat"><div class="sp-stat-label">Partitions / tasks</div><div class="sp-stat-val" id="pp-parts">192</div></div>
+            <div class="sp-stat"><div class="sp-stat-label">Per task</div><div class="sp-stat-val" id="pp-per">128 MB</div></div>
+          </div>
+          <div class="sp-bar-wrap">
+            <div class="sp-ctl-label" style="font-size:10px"><span>per-task size vs spill threshold (~200 MB)</span></div>
+            <div class="sp-bar-track"><div class="sp-bar-fill" id="pp-bar" style="width:50%;background:var(--green)"></div></div>
+          </div>
+          <div class="sp-verdict v-good" id="pp-verdict">Healthy — ~128 MB per task, good parallelism, no spill pressure.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODE 2: shuffle tuning -->
+    <div class="sp-mode" id="mode-shuf">
+      <div class="sp-layout">
+        <div class="sp-controls">
+          <div>
+            <div class="sp-ctl-label"><span>Total shuffle output</span><b id="ps-data-lbl">0.05 GB</b></div>
+            <input type="range" class="sp-slider" id="ps-data" min="1" max="2000" value="50" oninput="spShuf()">
+          </div>
+          <div>
+            <div class="sp-ctl-label"><span>spark.sql.shuffle.partitions</span><b id="ps-parts-lbl">200</b></div>
+            <input type="range" class="sp-slider" id="ps-parts" min="1" max="1000" value="200" oninput="spShuf()">
+          </div>
+          <div class="note" style="margin:0"><strong>The default is 200, fixed, data-blind.</strong> Leave the output tiny (50 MB) and watch 200 partitions shatter it into 0.25 MB files. Then drag the count down — or imagine AQE doing it for you — until the average file lands in a healthy range.</div>
+        </div>
+        <div class="sp-readout">
+          <div class="sp-stat-row">
+            <div class="sp-stat"><div class="sp-stat-label">Output files</div><div class="sp-stat-val" id="ps-files">200</div></div>
+            <div class="sp-stat"><div class="sp-stat-label">Avg file size</div><div class="sp-stat-val" id="ps-avg">0.25 MB</div></div>
+          </div>
+          <div class="sp-bar-wrap">
+            <div class="sp-ctl-label" style="font-size:10px"><span>avg file size — tiny-files (&lt;10 MB) ↔ healthy ↔ too-fat (&gt;256 MB)</span></div>
+            <div class="sp-bar-track"><div class="sp-bar-fill" id="ps-bar" style="width:5%;background:var(--red)"></div></div>
+          </div>
+          <div class="sp-verdict v-bad" id="ps-verdict">Tiny-files problem — 200 files of 0.25 MB. Way too many partitions for this output.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><strong>The shape to remember:</strong> both levers have a U-shaped cost curve. Too few partitions → fat tasks, spill, idle cores. Too many → scheduler overhead, tiny files, throttled reads. The bottom of the U is ~128 MB of work per task — that's the whole target.</div>
+</div>
+
+<!-- ══════ STAGE 10 — SELF-TEST ══════ -->
+<div class="stage" id="s10">
+  <p class="sec-eye">Stage 10 · Self-test</p>
+  <h2 class="sec-h">Self-Test — Scenario Recognition</h2>
+  <p class="sec-sub">Each question is a symptom from a real MDM pipeline. Pick the lever that actually addresses it — the point is to match symptom to lever, not to recite definitions.</p>
+
+  <div class="quiz-grid" id="quiz-grid"></div>
+
+  <div class="unlock" style="margin-top:34px">
+    <span class="unlock-icon">✓</span>
+    <div class="unlock-body"><strong>Module 08 complete.</strong> You can now read a slow ER pipeline and name the lever: prune columns and push down predicates to read less, size partitions to ~128 MB with <code>repartition</code> vs <code>coalesce</code>, recognize spill as a partition-size problem before a memory problem, cache deliberately, and let AQE re-tune shuffles while you own the read. Next up: <strong>Module 09 · Pipeline Design (Capstone)</strong> — assembling every module into one end-to-end MDM architecture.</div>
+  </div>
+
+  <div class="concept-grid" style="margin-top:26px">
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Honest Gaps</div>
+      <div class="cc-title">What this module didn't cover</div>
+      <div class="cc-body">
+        <strong>Bucketing &amp; pre-sorted tables:</strong> writing data bucketed on the join key so repeated joins skip the shuffle entirely — a write-time investment for read-time speed, not covered here.<br><br>
+        <strong>The unified memory model in detail:</strong> the execution/storage split was described conceptually; the actual <code>spark.memory.fraction</code> / <code>storageFraction</code> knobs and how borrowing works between regions weren't drilled.<br><br>
+        <strong>Persistence levels:</strong> <code>MEMORY_ONLY</code> vs <code>MEMORY_AND_DISK</code> vs serialized/off-heap variants of <code>.persist()</code> were collapsed into "<code>.cache()</code>".<br><br>
+        <strong>Reading the Spark UI hands-on:</strong> the decision tree names UI metrics (spill, task skew, input size) but a guided tour of the SQL/Stages tabs is its own session.<br><br>
+        <strong>Dynamic resource allocation &amp; cluster sizing:</strong> executor count, cores-per-executor, and autoscaling are cluster-level levers above the query-level ones covered here.
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">the-learning-lab · Module 08 · Spark Performance (Remaining Levers)</span>
+    <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
+  </div>
+</footer>
+
+<script>
+/* ── STAGE NAV ── */
+function go(id, btn) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.sn').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+/* ── COPY ── */
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ══════════════════════════════════════════
+   TUNING CALCULATOR
+   ══════════════════════════════════════════ */
+function spTab(which) {
+  document.getElementById('tab-part').classList.toggle('on', which === 'part');
+  document.getElementById('tab-shuf').classList.toggle('on', which === 'shuf');
+  document.getElementById('mode-part').classList.toggle('on', which === 'part');
+  document.getElementById('mode-shuf').classList.toggle('on', which === 'shuf');
+}
+
+/* MODE 1 — partition sizing */
+function spPart() {
+  const dataGB = +document.getElementById('pp-data').value;
+  const targetMB = +document.getElementById('pp-target').value;
+  document.getElementById('pp-data-lbl').textContent = dataGB + ' GB';
+  document.getElementById('pp-target-lbl').textContent = targetMB + ' MB';
+
+  const totalMB = dataGB * 1024;
+  const parts = Math.max(1, Math.ceil(totalMB / targetMB));
+  const perMB = totalMB / parts;                       // ≈ targetMB
+  document.getElementById('pp-parts').textContent = parts.toLocaleString();
+  document.getElementById('pp-per').textContent = perMB >= 1024
+    ? (perMB / 1024).toFixed(1) + ' GB'
+    : Math.round(perMB) + ' MB';
+
+  // spill threshold reference ~200 MB per task; bar = perMB / 256 capped
+  const bar = Math.min(100, (perMB / 256) * 100);
+  const fill = document.getElementById('pp-bar');
+  fill.style.width = bar.toFixed(0) + '%';
+
+  const v = document.getElementById('pp-verdict');
+  if (targetMB < 32) {
+    fill.style.background = 'var(--amber)';
+    v.className = 'sp-verdict v-warn';
+    v.textContent = `${parts.toLocaleString()} tiny partitions of ~${Math.round(perMB)} MB — scheduler overhead and a tiny-files write. Raise the target toward 128 MB.`;
+  } else if (perMB <= 200) {
+    fill.style.background = 'var(--green)';
+    v.className = 'sp-verdict v-good';
+    v.textContent = `Healthy — ~${Math.round(perMB)} MB per task across ${parts.toLocaleString()} tasks. Good parallelism, no spill pressure.`;
+  } else {
+    fill.style.background = 'var(--red)';
+    v.className = 'sp-verdict v-bad';
+    v.textContent = `~${Math.round(perMB)} MB per task — over the ~200 MB spill threshold. Tasks will spill to disk. Lower the target or repartition to more partitions.`;
+  }
+}
+
+/* MODE 2 — shuffle tuning (the 200 trap) */
+function spShuf() {
+  const outMB = +document.getElementById('ps-data').value;   // slider in MB
+  const parts = +document.getElementById('ps-parts').value;
+  document.getElementById('ps-data-lbl').textContent = (outMB / 1024).toFixed(2) + ' GB';
+  document.getElementById('ps-parts-lbl').textContent = parts;
+
+  const avgMB = outMB / parts;
+  document.getElementById('ps-files').textContent = parts;
+  document.getElementById('ps-avg').textContent = avgMB >= 1
+    ? avgMB.toFixed(1) + ' MB'
+    : avgMB.toFixed(2) + ' MB';
+
+  // bar: log-ish position of avg between 0 and 256 MB
+  const bar = Math.min(100, (avgMB / 256) * 100);
+  const fill = document.getElementById('ps-bar');
+  fill.style.width = Math.max(3, bar).toFixed(0) + '%';
+
+  const v = document.getElementById('ps-verdict');
+  if (avgMB < 10) {
+    fill.style.background = 'var(--red)';
+    v.className = 'sp-verdict v-bad';
+    v.textContent = `Tiny-files problem — ${parts} files of ${avgMB < 1 ? avgMB.toFixed(2) : avgMB.toFixed(1)} MB. Too many partitions for this output. Coalesce down (or let AQE do it).`;
+  } else if (avgMB <= 256) {
+    fill.style.background = 'var(--green)';
+    v.className = 'sp-verdict v-good';
+    v.textContent = `Healthy — ${parts} files of ~${avgMB.toFixed(0)} MB each. This is what AQE's coalescePartitions aims for automatically.`;
+  } else {
+    fill.style.background = 'var(--amber)';
+    v.className = 'sp-verdict v-warn';
+    v.textContent = `Files of ~${avgMB.toFixed(0)} MB — fat partitions, under-parallelized. A few tasks do all the work and may spill. Raise the partition count.`;
+  }
+}
+spPart(); spShuf();
+
+/* ══════════════════════════════════════════
+   SELF-TEST
+   ══════════════════════════════════════════ */
+const questions = [
+  {
+    prompt: 'A nightly ER job reads a 2 TB, 40-column customer table. The Spark UI shows 2 TB scanned but the job only ever uses 6 identity columns and active records. Biggest single win?',
+    opts: [
+      'Add more executor memory so the scan fits in RAM',
+      'Select the 6 columns and filter status=="active" at the read, on Parquet',
+      'Increase spark.sql.shuffle.partitions to parallelize the scan',
+      'Cache the customer table after reading it'
+    ],
+    correct: 1,
+    explain: 'Input dwarfing usage is Symptom 1 — read less. Column pruning (6 of 40) plus pushed-down predicate (active only) cut the scan ~10×, with no result change. Memory, shuffle partitions, and caching do nothing about an oversized scan.'
+  },
+  {
+    prompt: 'After a heavy filter that keeps ~4% of rows, the job still has 16,000 partitions, most nearly empty, and the write produces 16,000 tiny files. What do you reach for?',
+    opts: [
+      'repartition(16000) to rebalance them',
+      'coalesce(n) down to a few hundred partitions',
+      'Increase executor memory',
+      'F.broadcast() the filtered DataFrame'
+    ],
+    correct: 1,
+    explain: 'Too many near-empty partitions after a filter is the textbook coalesce case — it merges partitions down with no shuffle. repartition would also work but pays an unnecessary full shuffle to do what coalesce does for free.'
+  },
+  {
+    prompt: 'You have 8 fat partitions and need more parallelism across a 200-core cluster. Which actually creates more partitions?',
+    opts: [
+      'coalesce(200) — it sets the partition count to 200',
+      'repartition(200) — only it can increase partition count, via a shuffle',
+      'Either one; they are interchangeable',
+      'Setting spark.sql.shuffle.partitions=200'
+    ],
+    correct: 1,
+    explain: 'coalesce can only DECREASE partitions (it merges, never splits) — coalesce(200) on 8 partitions leaves you with 8. Only repartition can increase the count, and it costs a full shuffle to redistribute the data evenly.'
+  },
+  {
+    prompt: 'Logs show tasks "spilling to disk" and the job crawls. A teammate says "double the executor memory." Best first move?',
+    opts: [
+      'Double executor memory — spill always means not enough RAM',
+      'Repartition to more, smaller partitions (and check for skew) first',
+      'Turn off AQE so partitions stay fixed',
+      'Cache everything so it stays in memory'
+    ],
+    correct: 1,
+    explain: 'Spill is per-task: one partition too big for one core\'s memory budget. More, smaller partitions drop each task\'s working set below the memory it already has — no new RAM. Memory is the last resort, after partition sizing and skew.'
+  },
+  {
+    prompt: 'A scored DataFrame feeds three branches: the review queue, the metrics report, and the cluster step. Without intervention, what does Spark do?',
+    opts: [
+      'Computes it once and reuses it automatically',
+      'Recomputes the whole scan-score chain three times, once per branch',
+      'Errors because a DataFrame can only be used once',
+      'Caches it automatically because it is used more than once'
+    ],
+    correct: 1,
+    explain: 'DataFrames are lazy and not auto-cached. Each action re-triggers the full lineage from source. With three actions, the scan-block-score chain runs three times — exactly the case where an explicit .cache() pays off.'
+  },
+  {
+    prompt: 'You call df.cache() and then never run an action on df before the program ends. What is cached?',
+    opts: [
+      'The entire DataFrame, immediately on the .cache() call',
+      'Nothing — cache is lazy and materializes only on the first action',
+      'Only the schema, not the data',
+      'It throws an error for caching without an action'
+    ],
+    correct: 1,
+    explain: '.cache() marks the DataFrame for caching but materializes nothing until an action forces computation. No action means no materialization — you cached exactly nothing. The first action computes and stores; the second onward reads from memory.'
+  },
+  {
+    prompt: 'A groupBy on a tiny 50 MB result produces 200 output partitions (0.25 MB each) and 200 tiny files. You are NOT on AQE. What is the direct fix?',
+    opts: [
+      'Lower spark.sql.shuffle.partitions for this workload (e.g. to 4)',
+      'Add more executor memory',
+      'Use F.broadcast on the grouped result',
+      'Switch the file format to CSV'
+    ],
+    correct: 0,
+    explain: 'The 200 comes from the data-blind shuffle.partitions default. For a 50 MB shuffle, set it to a handful. (AQE\'s coalescePartitions does this automatically by reading the real output size — which is exactly why turning AQE on removes this manual chore.)'
+  },
+  {
+    prompt: 'Which of these will AQE NOT fix for you at runtime?',
+    opts: [
+      'Coalescing the 200-default shuffle partitions to a sensible count',
+      'Splitting a skewed hot partition in a join',
+      'A SELECT * that read 34 columns you never use',
+      'Switching a sort-merge join to broadcast when a side turns out small'
+    ],
+    correct: 2,
+    explain: 'AQE re-optimizes shuffle-stage decisions using runtime statistics — partition counts, skew, late broadcast. It never sees the wasted columns/rows of an untuned scan, because the scan already happened before any shuffle stats exist. Pruning and pushdown stay on you.'
+  }
+];
+
+const qg = document.getElementById('quiz-grid');
+questions.forEach((q, i) => {
+  const card = document.createElement('div');
+  card.className = 'qcard';
+  card.innerHTML = `<div class="q-prompt"><strong>Q${i+1}.</strong> ${q.prompt}</div>
+    <div class="q-opts">${q.opts.map((o,j) => `<button class="q-opt" onclick="answerQ(${i},${j},this)">${o}</button>`).join('')}</div>
+    <div class="q-fb" id="qfb-${i}"></div>`;
+  qg.appendChild(card);
+});
+
+function answerQ(qi, oi, btn) {
+  const q = questions[qi];
+  const card = btn.closest('.qcard');
+  card.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  btn.classList.add(oi === q.correct ? 'correct' : 'wrong');
+  if (oi !== q.correct) card.querySelectorAll('.q-opt')[q.correct].classList.add('correct');
+  const fb = document.getElementById(`qfb-${qi}`);
+  fb.className = 'q-fb ' + (oi === q.correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = (oi === q.correct ? '✓ ' : '✗ ') + q.explain;
+  fb.style.display = 'block';
+}
+</script>
+
+</body>
+</html>

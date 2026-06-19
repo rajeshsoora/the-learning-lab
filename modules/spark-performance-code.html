@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Companion — Stage 08.1 — Performance Idioms — Module 08</title>
+<meta name="description" content="A standalone drill page for the PySpark performance idioms in Module 08 — select pruning, repartition vs coalesce, F.broadcast, .cache, and shuffle.partitions — multiple fresh reps per idiom.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--teal)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--violet)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:48px 24px 72px}
+
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:40px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--violet);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--teal)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+
+.debug-trace{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.dt-step{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dt-step:last-child{border-bottom:0}
+.dt-line{font-family:var(--mo);font-size:12px;color:var(--ink);margin-bottom:6px}
+.dt-state{font-family:var(--mo);font-size:12px;color:var(--teal);padding:8px 12px;background:var(--teal-dim);border-radius:6px;margin:6px 0}
+.dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.dt-why em{color:var(--amber);font-style:normal}
+.dt-why code{font-size:11px}
+
+.predict{border-left:3px solid var(--violet);background:var(--violet-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.predict strong{color:var(--violet)}
+.predict code{font-size:11px}
+.reveal{margin:10px 0 16px}
+.reveal summary{font-family:var(--mo);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);cursor:pointer;padding:8px 0;list-style:none}
+.reveal summary::-webkit-details-marker{display:none}
+.reveal summary::before{content:'▶ ';font-size:9px}
+.reveal[open] summary::before{content:'▼ '}
+.reveal[open] summary{margin-bottom:4px}
+.predict-row{display:flex;gap:8px;margin-top:10px}
+.predict-input{flex:1;font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--ink)}
+.predict-input:focus{outline:none;border-color:var(--violet)}
+.predict-check{font-family:var(--mo);font-size:11px;padding:7px 14px;border-radius:6px;border:1px solid var(--violet);background:var(--violet-dim);color:var(--violet);cursor:pointer;transition:all .15s;flex-shrink:0}
+.predict-check:hover{background:var(--violet);color:#fff}
+.predict-fb{font-size:12px;margin-top:8px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+
+.idiom-nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 8px}
+.idiom-chip{font-family:var(--mo);font-size:11px;padding:6px 12px;border-radius:99px;border:1px solid var(--line);color:var(--faint)}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--violet)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="../index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 08 · Code Companion</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Stage 08.1</span>
+  </div>
+</nav>
+
+<div class="wrap">
+  <p class="sec-eye">Stage 08.1 · Code Companion</p>
+  <h2 class="sec-h">Performance Idioms — Drilled, Not Just Shown</h2>
+  <p class="sec-sub">Module 08's <a href="spark-performance.html#s8" style="color:var(--violet)">Stage 08</a> shows each PySpark performance idiom once, anchored to the tuned ER pipeline. This page exists for a different job: drilling the same five idioms with <strong>fresh setups you haven't seen</strong>, two reps each, so a single correct read in the main module doesn't get mistaken for fluency. Nothing here is new conceptually — same pruning/sizing/broadcast/cache logic — this is purely about getting comfortable reading the code.</p>
+
+  <div class="warn"><strong>How to use this page:</strong> work top to bottom, idiom by idiom. Each gets a plain-language explanation, then two predict-then-check drills against a fresh toy setup. Each drill asks for the <em>literal result of the idiom itself</em> — how many partitions, how many MB, which side ships — not the higher-level "is this fast." Getting both right is a real signal; that's what <code>references/code-fluency.md</code> calls a "pass."</div>
+
+  <div class="note"><strong>Why "logical result," not literal execution order.</strong> These are PySpark transformations — lazy and distributed. <code>.cache()</code> stores nothing until an action; <code>.select</code>/<code>filter</code> are pushed into the scan; <code>repartition</code>/<code>coalesce</code> act on a whole distributed dataset at once. Each reveal shows the <em>logical</em> outcome (final partition count, bytes read, what's materialized), not a literal row-by-row, line-by-line execution trace — Spark plans the whole DAG and runs it across the cluster, not statement by statement.</div>
+
+  <div class="idiom-nav">
+    <span class="idiom-chip">.select() pruning</span>
+    <span class="idiom-chip">repartition vs coalesce</span>
+    <span class="idiom-chip">F.broadcast()</span>
+    <span class="idiom-chip">.cache() laziness</span>
+    <span class="idiom-chip">shuffle.partitions</span>
+  </div>
+
+  <!-- ─────────────── IDIOM 1 ─────────────── -->
+  <h3><span class="bar"></span>Idiom 1 — .select(cols) for column pruning</h3>
+  <p><strong>What it is, generally:</strong> picks a subset of columns. On a <em>columnar</em> format (Parquet/ORC) that's not just a projection — the file reader physically skips the unselected columns' bytes on disk. On a <em>row-major</em> format (CSV) it can't skip anything: the reader must read whole rows, so <code>.select</code> drops columns only <em>after</em> reading them all.</p>
+  <p><strong>Where it shows up in the pipeline:</strong> <code>.select("cust_id","name","email","phone","zip","status")</code> right at the read — pruning 40 columns to 6.</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>column</th><th>size on disk</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>100 MB</td></tr>
+        <tr><td>name</td><td>100 MB</td></tr>
+        <tr><td>email</td><td>100 MB</td></tr>
+        <tr><td>notes</td><td>100 MB</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> the table above is <strong>Parquet</strong> (400 MB total, 4 columns × 100 MB). You run <code>df.select("id","name")</code>. How many MB does the scan read off disk?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d1a" placeholder="a number in MB">
+      <button class="predict-check" onclick="checkPredict('d1a','d1af',null,{numeric:true,target:200,tolerance:0.5})">check</button>
+    </div>
+    <div class="predict-fb" id="d1af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">select("id","name") on Parquet → reader touches only the id + name column-runs</div><div class="dt-state">→ 100 + 100 = 200 MB read (notes + email skipped on disk)</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2 — the gotcha:</strong> same four columns, but the table is stored as <strong>CSV</strong> instead of Parquet. You run the identical <code>df.select("id","name")</code>. How many MB does the scan read off disk now?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d1b" placeholder="a number in MB">
+      <button class="predict-check" onclick="checkPredict('d1b','d1bf',null,{numeric:true,target:400,tolerance:0.5})">check</button>
+    </div>
+    <div class="predict-fb" id="d1bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">select("id","name") on CSV → CSV is row-major, columns interleaved per row</div><div class="dt-state">→ 400 MB read (all 4 columns), then id+name kept in memory</div><div class="dt-why">Same <code>.select</code> call, opposite cost. The pruning <em>win</em> lives in the file format, not the API. This is why "store it as Parquet" is a prerequisite for column pruning to mean anything.</div></div></div>
+  </details>
+
+  <!-- ─────────────── IDIOM 2 ─────────────── -->
+  <h3><span class="bar"></span>Idiom 2 — repartition(n) vs coalesce(n)</h3>
+  <p><strong>What it is, generally:</strong> both set the number of partitions, but <code>repartition(n)</code> does a <em>full shuffle</em> and can set the count to anything — up or down. <code>coalesce(n)</code> only <em>merges existing</em> partitions with no shuffle, so it can only <em>decrease</em> the count; asking it for more than you have is a no-op.</p>
+  <p><strong>Where it shows up:</strong> <code>scored.coalesce(64)</code> before the write — shrinking many post-shuffle partitions down to 64 files without paying a shuffle.</p>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> a DataFrame currently has <strong>100 partitions</strong>. You call <code>df.coalesce(25)</code>. How many partitions does the result have?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d2a" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d2a','d2af',null,{numeric:true,target:25,tolerance:0.5})">check</button>
+    </div>
+    <div class="predict-fb" id="d2af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">100 partitions → coalesce(25) → merge down, no shuffle</div><div class="dt-state">→ 25 partitions</div><div class="dt-why">Decreasing is exactly what coalesce is for — it merges existing partitions locally, no network shuffle.</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2 — the gotcha:</strong> a DataFrame currently has <strong>12 partitions</strong>. You call <code>df.coalesce(40)</code>, hoping for more parallelism. How many partitions does the result actually have?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d2b" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d2b','d2bf',null,{numeric:true,target:12,tolerance:0.5})">check</button>
+    </div>
+    <div class="predict-fb" id="d2bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">12 partitions → coalesce(40) → coalesce can only merge, never split</div><div class="dt-state">→ 12 partitions (the 40 is ignored)</div><div class="dt-why">To actually <em>get</em> 40 you'd need <code>repartition(40)</code>, which splits and redistributes via a full shuffle. <code>coalesce(40)</code> on 12 silently leaves you at 12 — a classic "why is my job still not parallel" bug.</div></div></div>
+  </details>
+
+  <!-- ─────────────── IDIOM 3 ─────────────── -->
+  <h3><span class="bar"></span>Idiom 3 — F.broadcast(df)</h3>
+  <p><strong>What it is, generally:</strong> wrapping a DataFrame in <code>F.broadcast(...)</code> tells Spark to copy that <em>whole</em> DataFrame to every executor and join locally — instead of shuffling both sides across the network to line up matching keys. It's only safe when the wrapped side is small (fits in each executor's memory).</p>
+  <p><strong>Where it shows up:</strong> <code>customers.join(F.broadcast(ref_zip), "zip")</code> — the 5 MB zip lookup ships; the huge customers table doesn't move.</p>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> <code>big</code> is 500 GB, <code>small</code> is 8 MB. You run <code>big.join(F.broadcast(small), "k")</code>. Which DataFrame gets copied to every executor — <code>big</code> or <code>small</code>?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d3a" placeholder="big / small">
+      <button class="predict-check" onclick="checkPredict('d3a','d3af',['small'])">check</button>
+    </div>
+    <div class="predict-fb" id="d3af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">F.broadcast(small) → the wrapped (small) side is shipped to every executor</div><div class="dt-state">→ small (the 8 MB side) is broadcast</div><div class="dt-why">You broadcast the <em>small</em> side precisely because copying 8 MB everywhere is cheap. Broadcasting <code>big</code> would be the disaster you're avoiding.</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2:</strong> with that same <code>big.join(F.broadcast(small), "k")</code>, is the 500 GB <code>big</code> table shuffled across the network? (yes / no)
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d3b" placeholder="yes / no">
+      <button class="predict-check" onclick="checkPredict('d3b','d3bf',['no'])">check</button>
+    </div>
+    <div class="predict-fb" id="d3bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">small is on every executor → each big partition joins locally against it</div><div class="dt-state">→ no — big stays put, no shuffle of the 500 GB side</div><div class="dt-why">Skipping the shuffle of the big side is the <em>entire point</em> of a broadcast join. The big table is read once where it already lives and joined in place.</div></div></div>
+  </details>
+
+  <!-- ─────────────── IDIOM 4 ─────────────── -->
+  <h3><span class="bar"></span>Idiom 4 — .cache() is lazy</h3>
+  <p><strong>What it is, generally:</strong> <code>.cache()</code> <em>marks</em> a DataFrame to be kept in memory after it's computed — but it computes nothing on its own. Like every transformation, it's lazy: the DataFrame is materialized and stored only when the next <em>action</em> (count, write, show, collect) forces the computation. From the second action onward, that action reads from the cache instead of recomputing.</p>
+  <p><strong>Where it shows up:</strong> <code>candidates.cache()</code> before three branches — the first branch's action materializes it; branches two and three reuse it.</p>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> you run <code>df.cache()</code>, then <code>df.count()</code> (action 1), then <code>df.filter(...).show()</code> (action 2). On <strong>action 2</strong>, does Spark re-read <code>df</code> from the source? (yes / no)
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d4a" placeholder="yes / no">
+      <button class="predict-check" onclick="checkPredict('d4a','d4af',['no'])">check</button>
+    </div>
+    <div class="predict-fb" id="d4af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">action 1 (count) computes df and fills the cache → action 2 reads the cache</div><div class="dt-state">→ no — action 2 reads from memory, source is not re-read</div><div class="dt-why">The first action pays the full cost <em>and</em> populates the cache. Every action after it skips the lineage and reads the stored result.</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2 — the gotcha:</strong> you call <code>df.cache()</code> and then the program ends — <strong>no action ever runs</strong> on <code>df</code>. How many rows of <code>df</code> are stored in memory?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d4b" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d4b','d4bf',null,{numeric:true,target:0,tolerance:0.5})">check</button>
+    </div>
+    <div class="predict-fb" id="d4bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">cache() marks for caching, but nothing triggers materialization</div><div class="dt-state">→ 0 rows stored (cache is lazy; no action = nothing cached)</div><div class="dt-why">A <code>.cache()</code> with no following action is a no-op — people add it "to be safe" and are surprised it changed nothing. Materialization needs an action.</div></div></div>
+  </details>
+
+  <!-- ─────────────── IDIOM 5 ─────────────── -->
+  <h3><span class="bar"></span>Idiom 5 — spark.conf.set("spark.sql.shuffle.partitions", n)</h3>
+  <p><strong>What it is, generally:</strong> a runtime config knob. Every wide transformation (<code>groupBy</code>, <code>join</code>, <code>distinct</code>, window) repartitions its shuffle output to this number. The default is <strong>200</strong>, fixed and data-blind — it's set the same whether you shuffle 50 MB or 5 TB. (With AQE on, AQE coalesces this number down at runtime; these drills assume AQE off, to test the raw knob.)</p>
+  <p><strong>Where it shows up:</strong> <code>spark.conf.set("spark.sql.shuffle.partitions", "200")</code> in the runtime-knobs block.</p>
+
+  <div class="predict">
+    <strong>Drill 1 of 2:</strong> you run <code>spark.conf.set("spark.sql.shuffle.partitions", "16")</code> with AQE off, then a <code>groupBy("k").count()</code>. How many output partitions does that shuffle produce?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d5a" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d5a','d5af',null,{numeric:true,target:16,tolerance:0.5})">check</button>
+    </div>
+    <div class="predict-fb" id="d5af"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">shuffle.partitions = 16 → the groupBy shuffle writes 16 output partitions</div><div class="dt-state">→ 16 partitions</div><div class="dt-why">The knob directly sets the post-shuffle partition count — regardless of input size or row count.</div></div></div>
+  </details>
+
+  <div class="predict">
+    <strong>Drill 2 of 2:</strong> in a fresh session you <em>never</em> set <code>spark.sql.shuffle.partitions</code>, AQE is off, and you run a <code>join</code>. How many output partitions does the join's shuffle produce by default?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="d5b" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('d5b','d5bf',null,{numeric:true,target:200,tolerance:0.5})">check</button>
+    </div>
+    <div class="predict-fb" id="d5bf"></div>
+  </div>
+  <details class="reveal">
+    <summary>Reveal</summary>
+    <div class="debug-trace"><div class="dt-step"><div class="dt-line">unset → falls back to the default value of spark.sql.shuffle.partitions</div><div class="dt-state">→ 200 partitions</div><div class="dt-why">This is the "200 trap": shuffle a tiny result and you still get 200 partitions — 200 tiny files. AQE's coalescePartitions exists specifically to trim this 200 down using the real output size.</div></div></div>
+  </details>
+
+  <div class="divider"></div>
+  <p>Back to <a href="spark-performance.html#s8" style="color:var(--violet)">Module 08, Stage 08</a> to see these same five idioms anchored to the real tuned ER pipeline.</p>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">the-learning-lab · Module 08 · Code Companion (Stage 08.1)</span>
+    <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
+  </div>
+</footer>
+
+<script>
+function checkPredict(inputId, fbId, accepted, opts) {
+  opts = opts || {};
+  const input = document.getElementById(inputId);
+  const fb = document.getElementById(fbId);
+  const raw = input.value.trim().toLowerCase();
+  let correct = false;
+  if (opts.numeric) {
+    let num = NaN;
+    const fracMatch = raw.match(/^(-?\d*\.?\d+)\s*\/\s*(-?\d*\.?\d+)$/);
+    if (fracMatch) {
+      num = parseFloat(fracMatch[1]) / parseFloat(fracMatch[2]);
+    } else {
+      num = parseFloat(raw);
+    }
+    correct = !isNaN(num) && Math.abs(num - opts.target) <= (opts.tolerance ?? 0.02);
+  } else {
+    const norm = raw.replace(/[\s-]/g, '');
+    correct = accepted.some(a => a.replace(/[\s-]/g, '') === norm);
+  }
+  fb.style.display = 'block';
+  fb.className = 'predict-fb ' + (correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = correct
+    ? 'Correct — open the trace below to see why.'
+    : 'Not quite — open the trace below, then try the next drill with that in mind.';
+}
+
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>

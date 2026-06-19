@@ -106,6 +106,22 @@ code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:
 .dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
 .dt-why em{color:var(--amber);font-style:normal}
 
+/* predict-then-reveal */
+.predict{border-left:3px solid var(--violet);background:var(--violet-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.predict strong{color:var(--violet)}
+.reveal{margin:10px 0 16px}
+.reveal summary{font-family:var(--mo);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);cursor:pointer;padding:8px 0;list-style:none}
+.reveal summary::-webkit-details-marker{display:none}
+.reveal summary::before{content:'▶ ';font-size:9px}
+.reveal[open] summary::before{content:'▼ '}
+.reveal[open] summary{margin-bottom:4px}
+.predict-row{display:flex;gap:8px;margin-top:10px}
+.predict-input{flex:1;font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--ink)}
+.predict-input:focus{outline:none;border-color:var(--violet)}
+.predict-check{font-family:var(--mo);font-size:11px;padding:7px 14px;border-radius:6px;border:1px solid var(--violet);background:var(--violet-dim);color:var(--violet);cursor:pointer;transition:all .15s;flex-shrink:0}
+.predict-check:hover{background:var(--violet);color:#fff}
+.predict-fb{font-size:12px;margin-top:8px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+
 /* data table */
 .data-table-wrap{overflow-x:auto;margin:16px 0}
 .data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
@@ -802,12 +818,267 @@ df = df.withColumn(<span class="s">"confidence"</span>, confidence)
 <!-- ══════ STAGE 7 — THRESHOLD TUNER PATTERN ══════ -->
 <div class="stage" id="s7">
 <div class="wrap">
-  <p class="sec-eye">Stage 07</p>
+  <p class="sec-eye">Stage 07.2</p>
   <h2 class="sec-h">The Full ThresholdTuner Pattern</h2>
-  <p class="sec-sub">Every mechanism from the last six stages — labeled data, confusion matrix, precision/recall, PR curve, confidence calibration, queue sizing — assembles into one utility that runs alongside your ScoringPlugin. This is the shape of the tuning layer: labeled pairs in, recommended thresholds and diagnostics out.</p>
+  <p class="sec-sub">Every mechanism from the last six stages — labeled data, confusion matrix, precision/recall, PR curve, confidence calibration, queue sizing — assembles into one utility that runs alongside your ScoringPlugin. Built one method at a time below, against the same toy dataset throughout, so you can watch real numbers move at each step before seeing the whole class together.</p>
 
-  <h3><span class="bar"></span>The ThresholdTuner, end to end</h3>
-  <p>Read it top to bottom — every piece comes from an earlier stage. The comments mark which stage each block implements.</p>
+  <div class="note"><strong>Looking for more reps on the PySpark idioms themselves?</strong> This stage shows each idiom once, anchored to this exact class. <a href="score-aggregation-confidence-code.html" target="_blank">Stage 07.1 — the code companion</a> drills the same idioms with fresh examples, multiple reps each, separate from this walkthrough. Optional — this stage stands on its own.</div>
+
+  <h3><span class="bar"></span>The toy dataset</h3>
+  <p>Eight labeled pairs — a human already said which ones are real matches. Every method below runs against these same eight rows.</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>pair_id</th><th>composite</th><th>human_label</th></tr></thead>
+      <tbody>
+        <tr><td>P1</td><td>0.95</td><td>true_match</td></tr>
+        <tr><td>P2</td><td>0.88</td><td>true_match</td></tr>
+        <tr><td>P3</td><td>0.82</td><td>false_match</td></tr>
+        <tr><td>P4</td><td>0.70</td><td>true_match</td></tr>
+        <tr><td>P5</td><td>0.58</td><td>false_match</td></tr>
+        <tr><td>P6</td><td>0.45</td><td>true_match</td></tr>
+        <tr><td>P7</td><td>0.30</td><td>false_match</td></tr>
+        <tr><td>P8</td><td>0.15</td><td>false_match</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3><span class="bar"></span>confusion_matrix — counting TP/FP/FN/TN at one threshold</h3>
+  <p>This method's whole job: given a cutoff score, sort every pair into one of four buckets — caught a real match (TP), wrongly merged (FP), wrongly rejected (FN), or correctly rejected (TN).</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">ThresholdTuner.confusion_matrix (PySpark)</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">def</span> <span class="f">confusion_matrix</span>(self, match_threshold):
+    is_match = F.col(self.label_col) == <span class="s">"true_match"</span>
+    predicted = F.col(self.score_col) >= match_threshold
+
+    <span class="k">return</span> self.df.select(
+        F.sum(F.when( predicted &  is_match, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"tp"</span>),
+        F.sum(F.when( predicted & ~is_match, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"fp"</span>),
+        F.sum(F.when(~predicted &  is_match, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"fn"</span>),
+        F.sum(F.when(~predicted & ~is_match, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"tn"</span>),
+    ).first()</div>
+  </div>
+
+  <div class="note"><strong>What F.when(cond, 1).otherwise(0) does:</strong> read it as "for every row: 1 if cond is true, else 0" — it's PySpark's per-row if/else. <code>F.sum(...)</code> then adds that 0/1 column across all rows into a single number. This is the classification-pattern idiom: build a per-row condition, turn it into a 0/1, then sum.</div>
+
+  <div class="note"><strong>What & and ~ mean here:</strong> <code>predicted</code> and <code>is_match</code> are each a column of True/False — one value per row, not a single boolean. <code>&</code> and <code>~</code> are PySpark's per-row AND / NOT for columns; Python's own <code>and</code>/<code>not</code> can't be used here because there's no single value to test.</div>
+
+  <div class="warn"><strong>One caveat before you predict:</strong> the trace below shows row P1, then P2, then P3... as if Spark works through them one at a time. That's the <em>logical</em> result, not literally how it runs — Spark evaluates this across the whole column at once, in parallel, possibly out of row order. The table is the right mental model for "what answer comes out," not for "what order things happen in."</div>
+
+  <div class="predict">
+    <strong>Predict before you reveal:</strong> for P3, <code>composite=0.82</code> so <code>predicted = (0.82 >= 0.80) = True</code>, and <code>human_label="false_match"</code> so <code>is_match = False</code>. What does the expression <code>predicted &amp; is_match</code> evaluate to for this row — True or False?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="pq-cm" placeholder="True / False">
+      <button class="predict-check" onclick="checkPredict('pq-cm','pf-cm',['false','no'])">check</button>
+    </div>
+    <div class="predict-fb" id="pf-cm"></div>
+  </div>
+
+  <details class="reveal">
+    <summary>Reveal the trace</summary>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>pair_id</th><th>composite</th><th>is_match</th><th>predicted</th><th>bucket</th></tr></thead>
+        <tbody>
+          <tr><td>P1</td><td>0.95</td><td>True</td><td>True</td><td>TP</td></tr>
+          <tr><td>P2</td><td>0.88</td><td>True</td><td>True</td><td>TP</td></tr>
+          <tr class="hl-row"><td>P3</td><td>0.82</td><td>False</td><td>True</td><td>FP</td></tr>
+          <tr><td>P4</td><td>0.70</td><td>True</td><td>False</td><td>FN</td></tr>
+          <tr><td>P5</td><td>0.58</td><td>False</td><td>False</td><td>TN</td></tr>
+          <tr><td>P6</td><td>0.45</td><td>True</td><td>False</td><td>FN</td></tr>
+          <tr><td>P7</td><td>0.30</td><td>False</td><td>False</td><td>TN</td></tr>
+          <tr><td>P8</td><td>0.15</td><td>False</td><td>False</td><td>TN</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="debug-trace">
+      <div class="dt-header">confusion_matrix(match_threshold=0.80)</div>
+      <div class="dt-step">
+        <div class="dt-line">tp = count(predicted & is_match) → P1, P2</div>
+        <div class="dt-state">tp = 2</div>
+      </div>
+      <div class="dt-step">
+        <div class="dt-line">P3: predicted &amp; is_match → True &amp; False</div>
+        <div class="dt-state">predicted &amp; is_match = False</div>
+        <div class="dt-why">That's the line you just predicted. P3 doesn't count toward <code>tp</code> because of it — instead it falls into <code>predicted &amp; ~is_match</code> (True &amp; True = True), which is the <code>fp</code> condition.</div>
+      </div>
+      <div class="dt-step">
+        <div class="dt-line">fp = count(predicted & ~is_match) → P3</div>
+        <div class="dt-state">fp = 1</div>
+        <div class="dt-why">P3 scored high (0.82) but a human said it's <em>not</em> a real match — a false merge.</div>
+      </div>
+      <div class="dt-step">
+        <div class="dt-line">fn = count(~predicted & is_match) → P4, P6</div>
+        <div class="dt-state">fn = 2</div>
+      </div>
+      <div class="dt-step">
+        <div class="dt-line">tn = count(~predicted & ~is_match) → P5, P7, P8</div>
+        <div class="dt-state">tn = 3</div>
+      </div>
+    </div>
+  </details>
+
+  <h3><span class="bar"></span>pr_at — precision/recall from those counts</h3>
+  <p>This method's job: turn the four raw counts into the two numbers that actually answer "is this threshold any good" — precision (of what we merged, how much was right) and recall (of what should've merged, how much did we catch).</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">ThresholdTuner.pr_at (PySpark + plain Python)</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">def</span> <span class="f">pr_at</span>(self, match_threshold):
+    cm = self.confusion_matrix(match_threshold)
+    tp, fp, fn = cm.tp, cm.fp, cm.fn
+    precision = tp / (tp + fp) <span class="k">if</span> (tp + fp) > <span class="n">0</span> <span class="k">else</span> <span class="n">1.0</span>
+    recall    = tp / (tp + fn) <span class="k">if</span> (tp + fn) > <span class="n">0</span> <span class="k">else</span> <span class="n">0.0</span>
+    <span class="k">return</span> {<span class="s">"threshold"</span>: match_threshold,
+            <span class="s">"precision"</span>: precision, <span class="s">"recall"</span>: recall,
+            <span class="s">"tp"</span>: tp, <span class="s">"fp"</span>: fp, <span class="s">"fn"</span>: fn}</div>
+  </div>
+
+  <div class="note"><strong>What cm.tp is doing:</strong> <code>.first()</code> (inside confusion_matrix) returns one <code>Row</code> object — think of it like a dict you can also dot-access. <code>cm.tp</code> reaches into that Row and pulls out the column named "tp" by name. Everything after that line is plain Python arithmetic — nothing PySpark-specific.</div>
+
+  <div class="predict">
+    <strong>Predict before you reveal:</strong> <code>cm</code> is the <code>Row</code> object returned by <code>.first()</code>: <code>Row(tp=2, fp=1, fn=2, tn=3)</code>. What does <code>cm.fp</code> evaluate to?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="pq-pr" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('pq-pr','pf-pr',null,{numeric:true,target:1,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="pf-pr"></div>
+  </div>
+
+  <details class="reveal">
+    <summary>Reveal the trace</summary>
+    <div class="debug-trace">
+      <div class="dt-header">pr_at(match_threshold=0.80)</div>
+      <div class="dt-step">
+        <div class="dt-line">cm = Row(tp=2, fp=1, fn=2, tn=3) → cm.fp</div>
+        <div class="dt-state">cm.fp = 1</div>
+        <div class="dt-why">That's the line you just predicted — dot-access into the Row by column name, same as a dict lookup by key.</div>
+      </div>
+      <div class="dt-step">
+        <div class="dt-line">precision = tp / (tp + fp) = 2 / (2 + 1)</div>
+        <div class="dt-state">precision = 2/3 ≈ 0.667</div>
+      </div>
+      <div class="dt-step">
+        <div class="dt-line">recall = tp / (tp + fn) = 2 / (2 + 2)</div>
+        <div class="dt-state">recall = 2/4 = 0.5</div>
+        <div class="dt-why">At this threshold: two-thirds of what got auto-merged was actually right, and only half of the real matches got caught. Both numbers being mediocre is exactly why Stage 04's PR curve sweeps many thresholds instead of trusting one.</div>
+      </div>
+    </div>
+  </details>
+
+  <h3><span class="bar"></span>calibration_table — match rate per score bin</h3>
+  <p>This method's job: bucket pairs by score range and check whether the score is actually trustworthy — does "0.8-something" really mean an 80% chance of being a real match?</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">ThresholdTuner.calibration_table (PySpark)</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">def</span> <span class="f">calibration_table</span>(self, bins=<span class="n">10</span>):
+    binned = self.df.withColumn(
+        <span class="s">"bin"</span>,
+        (F.col(self.score_col) * bins).cast(<span class="s">"int"</span>) / bins
+    )
+    <span class="k">return</span> binned.groupBy(<span class="s">"bin"</span>).agg(
+        F.count(<span class="s">"*"</span>).alias(<span class="s">"total"</span>),
+        F.sum(F.when(
+            F.col(self.label_col) == <span class="s">"true_match"</span>, <span class="n">1</span>
+        ).otherwise(<span class="n">0</span>)).alias(<span class="s">"matches"</span>),
+    ).withColumn(
+        <span class="s">"match_rate"</span>,
+        F.col(<span class="s">"matches"</span>) / F.col(<span class="s">"total"</span>)
+    ).orderBy(<span class="s">"bin"</span>)</div>
+  </div>
+
+  <div class="note"><strong>.withColumn("bin", expr):</strong> adds a column to every row — it doesn't change <code>self.df</code> in place, it returns a brand-new DataFrame. You've seen this idiom once before (Module 01); here it's just computing which bin a score falls into.</div>
+
+  <div class="note"><strong>.groupBy("bin").agg(...) — the pivot-table move:</strong> this is the SQL <code>GROUP BY</code> equivalent. Before this call, you have 8 rows (one per pair). <code>groupBy("bin")</code> says "collapse every row that shares the same bin value into one row." <code>.agg(F.count("*"), F.sum(...))</code> says what to compute per group. Concretely: P2 (bin 0.8) and P3 (bin 0.8) go in as two separate rows and come out as <em>one</em> row — <code>bin=0.8, total=2, matches=1</code> — while every other bin in this toy set has only one row in it, so it passes through as <code>total=1</code>.</div>
+
+  <div class="note"><strong>.orderBy("bin"):</strong> sorts the grouped result, ascending by default. This isn't cosmetic — <code>groupBy</code> on its own makes no promise about what order the output rows come out in (Spark groups across a distributed cluster; there's no inherent "first bin, second bin" order until you ask for one). Without <code>.orderBy</code>, the calibration table could print bins in any order on different runs.</div>
+
+  <div class="predict">
+    <strong>Predict before you reveal:</strong> the bin expression is <code>(F.col(score_col) * 10).cast("int")</code>. For P2, <code>composite = 0.88</code>, so <code>0.88 * 10 = 8.8</code>. What integer does <code>.cast("int")</code> produce for 8.8 — does it round to the nearest integer, or truncate?
+    <div class="predict-row">
+      <input type="text" class="predict-input" id="pq-cal" placeholder="a number">
+      <button class="predict-check" onclick="checkPredict('pq-cal','pf-cal',null,{numeric:true,target:8,tolerance:0.001})">check</button>
+    </div>
+    <div class="predict-fb" id="pf-cal"></div>
+  </div>
+
+  <details class="reveal">
+    <summary>Reveal the trace</summary>
+    <div class="debug-trace">
+      <div class="dt-header">calibration_table bin expression, for P2</div>
+      <div class="dt-step">
+        <div class="dt-line">0.88 * 10 = 8.8 → .cast("int")</div>
+        <div class="dt-state">8.8 → 8 (not 9)</div>
+        <div class="dt-why"><code>.cast("int")</code> truncates — it chops the decimal part off, it does not round. This is the kind of thing that's easy to get wrong once and never wrong again: 8.8 and 8.1 both cast to 8.</div>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>bin</th><th>total</th><th>matches</th><th>match_rate</th></tr></thead>
+        <tbody>
+          <tr><td>0.1</td><td>1</td><td>0</td><td>0.00</td></tr>
+          <tr><td>0.3</td><td>1</td><td>0</td><td>0.00</td></tr>
+          <tr><td>0.4</td><td>1</td><td>1</td><td>1.00</td></tr>
+          <tr><td>0.5</td><td>1</td><td>0</td><td>0.00</td></tr>
+          <tr><td>0.7</td><td>1</td><td>1</td><td>1.00</td></tr>
+          <tr class="hl-row"><td>0.8</td><td>2</td><td>1</td><td>0.50</td></tr>
+          <tr><td>0.9</td><td>1</td><td>1</td><td>1.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="dt-why" style="margin-top:8px">Bin 0.8 holds both P2 (0.88 → truncates to bin 0.8) and P3 (0.82 → also bin 0.8) — one true match, one false match — so its match_rate is 1/2 = 0.50, not a clean 1.0 or 0.0. On a real labeled set with thousands of pairs, this is exactly the table that tells you whether "score 0.85" reliably means "85% likely a real match."</div>
+  </details>
+
+  <h3><span class="bar"></span>queue_size — counting pairs in each operational band</h3>
+  <p>This method's job is domain logic you've already seen the syntax for — same boolean-mask-and-sum pattern as confusion_matrix, just bucketing by score range instead of by TP/FP/FN/TN.</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">ThresholdTuner.queue_size (PySpark)</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">def</span> <span class="f">queue_size</span>(self, full_df, match_t, review_t):
+    <span class="k">return</span> full_df.select(
+        F.sum(F.when(F.col(<span class="s">"composite"</span>) >= match_t,  <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"auto_merge"</span>),
+        F.sum(F.when(
+            (F.col(<span class="s">"composite"</span>) >= review_t) &
+            (F.col(<span class="s">"composite"</span>) < match_t), <span class="n">1</span>
+        ).otherwise(<span class="n">0</span>)).alias(<span class="s">"review"</span>),
+        F.sum(F.when(F.col(<span class="s">"composite"</span>) < review_t, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"auto_reject"</span>),
+    ).first()</div>
+  </div>
+
+  <details class="reveal">
+    <summary>Reveal the trace</summary>
+    <div class="debug-trace">
+      <div class="dt-header">queue_size(match_t=0.80, review_t=0.50)</div>
+      <div class="dt-step">
+        <div class="dt-line">auto_merge = count(composite ≥ 0.80) → P1, P2, P3</div>
+        <div class="dt-state">auto_merge = 3</div>
+      </div>
+      <div class="dt-step">
+        <div class="dt-line">review = count(0.50 ≤ composite &lt; 0.80) → P4, P5</div>
+        <div class="dt-state">review = 2</div>
+      </div>
+      <div class="dt-step">
+        <div class="dt-line">auto_reject = count(composite &lt; 0.50) → P6, P7, P8</div>
+        <div class="dt-state">auto_reject = 3</div>
+        <div class="dt-why">3 + 2 + 3 = 8 — every pair lands in exactly one band, which is the sanity check this method's output should always pass.</div>
+      </div>
+    </div>
+  </details>
+
+  <h3><span class="bar"></span>See it all together</h3>
+  <p>Same four methods, same toy dataset reasoning — just assembled into the one class you'd actually paste into a project.</p>
 
   <div class="code-wrap">
     <div class="code-header">
@@ -822,13 +1093,11 @@ df = df.withColumn(<span class="s">"confidence"</span>, confidence)
 
     <span class="k">def</span> <span class="f">__init__</span>(self, labeled_df, score_col=<span class="s">"composite"</span>,
                  label_col=<span class="s">"human_label"</span>):
-        <span class="co"># labeled_df has: composite score + human label per pair</span>
-        self.df = labeled_df                               <span class="co"># Stage 02</span>
+        self.df = labeled_df
         self.score_col = score_col
         self.label_col = label_col
 
     <span class="k">def</span> <span class="f">confusion_matrix</span>(self, match_threshold):
-        <span class="co"># Stage 03: count TP, FP, FN, TN at a given threshold</span>
         is_match = F.col(self.label_col) == <span class="s">"true_match"</span>
         predicted = F.col(self.score_col) >= match_threshold
 
@@ -840,7 +1109,6 @@ df = df.withColumn(<span class="s">"confidence"</span>, confidence)
         ).first()
 
     <span class="k">def</span> <span class="f">pr_at</span>(self, match_threshold):
-        <span class="co"># Stage 03: precision and recall at one threshold</span>
         cm = self.confusion_matrix(match_threshold)
         tp, fp, fn = cm.tp, cm.fp, cm.fn
         precision = tp / (tp + fp) <span class="k">if</span> (tp + fp) > <span class="n">0</span> <span class="k">else</span> <span class="n">1.0</span>
@@ -850,12 +1118,10 @@ df = df.withColumn(<span class="s">"confidence"</span>, confidence)
                 <span class="s">"tp"</span>: tp, <span class="s">"fp"</span>: fp, <span class="s">"fn"</span>: fn}
 
     <span class="k">def</span> <span class="f">pr_curve</span>(self, steps=<span class="n">20</span>):
-        <span class="co"># Stage 04: sweep thresholds, collect PR at each</span>
         thresholds = [i / steps <span class="k">for</span> i <span class="k">in</span> range(steps + <span class="n">1</span>)]
         <span class="k">return</span> [self.pr_at(t) <span class="k">for</span> t <span class="k">in</span> thresholds]
 
     <span class="k">def</span> <span class="f">calibration_table</span>(self, bins=<span class="n">10</span>):
-        <span class="co"># Stage 05: match rate per score bin</span>
         binned = self.df.withColumn(
             <span class="s">"bin"</span>,
             (F.col(self.score_col) * bins).cast(<span class="s">"int"</span>) / bins
@@ -871,7 +1137,6 @@ df = df.withColumn(<span class="s">"confidence"</span>, confidence)
         ).orderBy(<span class="s">"bin"</span>)
 
     <span class="k">def</span> <span class="f">queue_size</span>(self, full_df, match_t, review_t):
-        <span class="co"># Stage 06: count pairs in each band on the full dataset</span>
         <span class="k">return</span> full_df.select(
             F.sum(F.when(F.col(<span class="s">"composite"</span>) >= match_t,  <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"auto_merge"</span>),
             F.sum(F.when(
@@ -1010,6 +1275,33 @@ function go(id, btn) {
   document.getElementById(id).classList.add('on');
   if (btn) btn.classList.add('on');
   window.scrollTo(0, 0);
+}
+
+/* ── PREDICT-THEN-REVEAL CHECK ── */
+function checkPredict(inputId, fbId, accepted, opts) {
+  opts = opts || {};
+  const input = document.getElementById(inputId);
+  const fb = document.getElementById(fbId);
+  const raw = input.value.trim().toLowerCase();
+  let correct = false;
+  if (opts.numeric) {
+    let num = NaN;
+    const fracMatch = raw.match(/^(-?\d*\.?\d+)\s*\/\s*(-?\d*\.?\d+)$/);
+    if (fracMatch) {
+      num = parseFloat(fracMatch[1]) / parseFloat(fracMatch[2]);
+    } else {
+      num = parseFloat(raw);
+    }
+    correct = !isNaN(num) && Math.abs(num - opts.target) <= (opts.tolerance ?? 0.02);
+  } else {
+    const norm = raw.replace(/[\s-]/g, '');
+    correct = accepted.some(a => a.replace(/[\s-]/g, '') === norm);
+  }
+  fb.style.display = 'block';
+  fb.className = 'predict-fb ' + (correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = correct
+    ? 'Correct — open the trace below to see why.'
+    : 'Not quite — open the trace below, then try the next one with that in mind.';
 }
 
 /* ── COPY ── */

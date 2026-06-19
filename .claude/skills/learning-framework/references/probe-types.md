@@ -88,6 +88,36 @@ The principle: a probe must be the kind of question that the declared depth woul
 
 ---
 
+## Code-Comprehension Probe (construct-fluency, not depth-tied)
+
+A separate axis from the three depth-tied probes above — it tracks whether
+Rajesh has built real fluency with a Python/PySpark *syntax idiom*, not
+whether he understands the domain concept the code implements. Used to
+advance an idiom's status in `references/code-fluency.md`.
+
+Embedded directly in a code walkthrough as a **Predict-then-reveal** step
+(the Predict-Run model used for teaching code reading), not a separate
+bolted-on quiz: show the code + a small concrete dataset, ask for the
+prediction on one key line, *then* reveal the real computed value as
+confirmation.
+
+**Probe shape — Predict-the-value:**
+- "Given this row, what does `F.when(cond, 1).otherwise(0)` return?"
+- "`cm` is `Row(tp=2, fp=1, fn=0, tn=2)` after `.first()` — what's `cm.fp`?"
+- "Walk me through what this `&` is doing here, on these two columns."
+
+**Pass criterion:** Rajesh predicts the correct value on a sample not already
+traced in that walkthrough, without needing the mechanism re-explained.
+
+**Effect on the ledger:** Pass → advance the idiom one tier in
+`code-fluency.md` (needs a pass in a *different* module to count toward the
+next tier — no two passes in the same walkthrough count, same anti-pattern as
+the source-recycled probe below). Fail → tier unchanged, log the attempt.
+An explicit "I've got this, stop explaining" also advances one tier
+immediately, logged as a manual override rather than a probe pass.
+
+---
+
 ## Anti-patterns
 
 - **The leading probe:** "So idempotency means same-result-on-retry, right?" — answers itself. Useless.
