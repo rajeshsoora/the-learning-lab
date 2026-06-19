@@ -9,7 +9,7 @@
 
 ---
 
-## Progress snapshot (as of 2026-06-19) — 5 / 9 modules complete
+## Progress snapshot (as of 2026-06-19) — 6 / 9 modules complete
 
 ### Phase 1 — Spark Foundations  (~2–2.5 sessions) ✅
 - ✅ **00 — Entity Resolution Overview** — `entity-resolution-walkthrough.html`
@@ -29,12 +29,12 @@
 - ✅ **04 — Match Scoring & Classification** — `match-scoring-classification.html` *(built 2026-06-19)*
   - Topics: field weighting, composite scores, thresholds, null handling
   - Unlocks: combine per-field similarity scores into a single match/review/no-match verdict — the heart of the ScoringPlugin.
-- 🔜 **05 — Score Aggregation & Confidence** — up next (~1 session)
+- ✅ **05 — Score Aggregation & Confidence** — `score-aggregation-confidence.html` *(built 2026-06-19)*
   - Topics: weighted aggregation, confidence bands, review queues, precision vs recall
   - Unlocks: tune the thresholds that decide which pairs auto-merge, which go to human review, and which are rejected.
 
 ### Phase 3 — ER at Scale  (~2 sessions)
-- ⬜ **06 — LSH & MinHash** (~1 session)
+- 🔜 **06 — LSH & MinHash** (~1 session)
   - Topics: minhash, banding, jaccard, candidate generation
   - Unlocks: find candidate pairs at scale without all-pairs comparison — approximate blocking that complements the self-join.
 - ⬜ **07 — Graph Theory & Clustering** (~1 session)
@@ -70,9 +70,22 @@
 - **Stage 07** Interactive Score Builder — live sliders + absent toggles, renormalizing math readout, 4 presets (household trap, moved person, absent SSN, reset).
 - **Stage 08** Self-test — 8 scenario-recognition questions (the format that re-energizes Rajesh).
 
+## Module 05 — what was covered (built 2026-06-19)
+10-stage flow-module-builder treatment, matching the Module 04 style.
+- **Stage 00** Overview — where Module 05 picks up from Mod 04's threshold guessing; the four core concepts (labeled data, confusion matrix, precision/recall, confidence bands).
+- **Stage 01** Why fixed thresholds fail — the implicit promise, two datasets same thresholds opposite disasters, the distribution problem.
+- **Stage 02** Labeled data — what a labeled set looks like, how much you need, stratified sampling, the "label everything later" red herring.
+- **Stage 03** Precision & recall — confusion matrix (TP/FP/FN/TN), worked 200-pair example, precision as "how clean are my merges", recall as "how many did I catch", the trade-off concretely with raise/lower threshold contrast.
+- **Stage 04** The PR curve — sweeping every threshold, reading the curve, the "elbow" (diminishing returns analogy), two thresholds not one.
+- **Stage 05** Confidence bands — calibration table (score bin → match rate), the "score height means confidence" red herring, adding a confidence column to the pipeline, calibration drift warning.
+- **Stage 06** Review queue sizing — the three-way budget (auto-merge / review / auto-reject), worked 50k-pair queue sizing, the capacity formula, queue overflow as the silent killer, the tuning loop end to end.
+- **Stage 07** ThresholdTuner pattern — full PySpark class (confusion_matrix, pr_at, pr_curve, calibration_table, queue_size methods), usage alongside ScoringPlugin.
+- **Stage 08** Interactive Threshold Tuner — live sliders for match/review thresholds, 200 simulated labeled pairs, real-time precision/recall/F1/queue readouts, 5 presets (conservative, balanced, aggressive, tight review, reset).
+- **Stage 09** Self-test — 8 scenario-recognition questions covering precision failures, sampling bias, queue overflow, calibration per-dataset, the elbow, F1 limitations, calibration table interpretation, calibration drift.
+
 ## Parked / for later
-- Nothing parked from Module 04 itself.
-- Module 05 should open by reusing the Stage 05 precision/recall lever and turning the two thresholds into something tuned against labeled data + review-queue size.
+- Nothing parked from Module 05 itself.
+- Module 06 should introduce LSH & MinHash for candidate generation at scale — approximate blocking that complements the self-join from Module 00.
 - **Carried from an earlier Module 01 planning note (not confirmed resolved on the live site):** null handling inside arrays · schema evolution mechanics (Delta `mergeSchema`) · array-of-structs (the real MDM shape) · `transform`/`inline`. Worth a 15-min warm-up check next time nested-data content resurfaces, to confirm these were actually covered.
 
 ## Calibration notes that held this session

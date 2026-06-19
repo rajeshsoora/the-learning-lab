@@ -64,3 +64,19 @@ Last updated: 2026-06-19
 **Artifact:** nested-types-decision-card.html (interactive, matches Module 00's HTML walkthrough format).
 
 **Sustain:** Solid full module across loops 1–4 at energy 3, no crash this time. Scenario-drilling re-energized him near the end rather than draining — recognition practice is a good "second wind" activity for him.
+
+---
+
+## Module 05 — Score Aggregation & Confidence (2026-06-19)
+
+**Covered (depth `use`):** Why fixed thresholds fail (distribution problem), labeled data (stratified sampling, sizing), confusion matrix (TP/FP/FN/TN), precision ("how clean are merges") and recall ("how many matches caught"), PR curve (sweep + elbow), confidence bands (calibration table: score bin → match rate), review queue sizing (capacity formula, overflow risk), ThresholdTuner PySpark pattern (confusion_matrix, pr_at, pr_curve, calibration_table, queue_size methods), interactive threshold tuner widget.
+
+**Key calibration insight (standing note):** For website module creation, treat budget as **unlimited** — max energy, max time, maximum detail. These are permanent artifacts and should be as comprehensive as possible. Do not ask for budget/energy on website module sessions.
+
+**What worked:** 10-stage flow matching Module 04's structure. Table-driven teaching throughout. "X is a red herring; Y decides" contrast used for: (1) score height vs calibrated match rate, (2) "label everything later" vs label small stratified sample now. Analogies: exam grade boundary (thresholds without seeing distributions), fishing net mesh (the elbow on PR curve). Every code block shows its output; wrong→right pairs show both outputs. Interactive widget with 200 simulated labeled pairs for immediate feel.
+
+**Known gaps:** F1 score touched but not drilled. Automated threshold selection (Youden's J, F-beta optimizer) mentioned only. Active learning for label selection not covered. Multi-threshold joint optimization (grid search) mentioned but not implemented. Calibration drift monitoring (how to detect it automatically) described conceptually but no pattern shown.
+
+**Artifact:** score-aggregation-confidence.html (interactive, matches Module 04's HTML walkthrough format with 10 stages, live threshold tuner, 8-question self-test).
+
+**Sustain:** Website module session — treated as unlimited budget per standing note. Full 10-stage module produced in one pass.

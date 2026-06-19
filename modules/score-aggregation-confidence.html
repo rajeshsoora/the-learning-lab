@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Score Aggregation &amp; Confidence — Module 05</title>
+<meta name="description" content="Learn how to tune match/review/no-match thresholds using labeled data, precision/recall curves, confidence bands, and review queue sizing — Module 05 of The Learning Lab's MDM/Spark track.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--teal)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--teal)}
+
+.stage-nav{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:99;overflow-x:auto}
+.stage-nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;gap:6px;height:48px;align-items:center}
+.sn{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sn:hover{color:var(--ink);border-color:var(--faint)}
+.sn.on{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.stage{display:none;padding:48px 0 72px}.stage.on{display:block}
+
+/* typography */
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--teal);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--teal)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+/* concept cards */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:20px 0}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:20px;position:relative}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0;background:var(--acc,var(--teal))}
+.cc-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:8px}
+.cc-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:6px}
+.cc-body{font-size:13px;color:var(--muted);line-height:1.6}
+.cc-body code{font-size:11px}
+
+/* analogy box */
+.analogy{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:20px 22px;margin:20px 0}
+.analogy-eye{font-family:var(--mo);font-size:10px;color:var(--violet);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.analogy-body{font-size:14px;color:var(--ink);line-height:1.75}
+.analogy-body em{color:var(--violet);font-style:normal;font-weight:600}
+
+/* callouts */
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+.trap{border-left:3px solid var(--red);background:var(--red-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.trap strong{color:var(--red)}
+
+/* code windows */
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:2;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .k{color:var(--violet)}
+.code-block .f{color:var(--teal)}
+.code-block .s{color:var(--amber)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+.code-block .hl{background:rgba(94,200,194,.08);display:inline-block;width:100%;border-left:2px solid var(--teal);padding-left:6px;margin-left:-8px}
+.code-block .why{color:var(--teal);font-style:italic}
+
+/* debug trace */
+.debug-trace{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.dt-header{background:var(--surf2);padding:10px 16px;font-family:var(--mo);font-size:11px;color:var(--violet);letter-spacing:.08em;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.dt-header::before{content:'▶';font-size:9px}
+.dt-step{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dt-step:last-child{border-bottom:0}
+.dt-line{font-family:var(--mo);font-size:12px;color:var(--ink);margin-bottom:6px}
+.dt-state{font-family:var(--mo);font-size:12px;color:var(--teal);padding:8px 12px;background:var(--teal-dim);border-radius:6px;margin:6px 0}
+.dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.dt-why em{color:var(--amber);font-style:normal}
+
+/* data table */
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+.data-table .hl-row td{background:var(--teal-dim) !important}
+.data-table .hl-row td:first-child{border-left:3px solid var(--teal)}
+.data-table .tot-row td{background:var(--surf2);font-weight:600;color:var(--ink);border-top:2px solid var(--line)}
+.data-table .new-col{color:var(--teal);font-weight:600}
+.data-table .faint{color:var(--faint)}
+.badge{display:inline-block;font-family:var(--mo);font-size:10px;padding:2px 7px;border-radius:4px}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #1A3D5C}
+.b-violet{background:var(--violet-dim);color:var(--violet);border:1px solid #3A3060}
+
+/* wrong vs right */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.compare-panel{border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.compare-header{padding:10px 14px;font-family:var(--mo);font-size:11px;letter-spacing:.06em;border-bottom:1px solid var(--line)}
+.wrong-header{background:var(--red-dim);color:var(--red)}
+.right-header{background:var(--green-dim);color:var(--green)}
+.compare-body{background:var(--surf2);padding:14px 16px;font-family:var(--mo);font-size:12px;line-height:1.9;white-space:pre;overflow-x:auto;color:var(--muted)}
+.compare-output{background:var(--panel);padding:10px 14px;border-top:1px solid var(--line);font-family:var(--mo);font-size:12px;color:var(--muted);line-height:1.7}
+.output-label{font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+
+/* red herring contrast */
+.herring{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:18px 0;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.herring-col{padding:18px 20px}
+.herring-col.left{background:var(--red-dim);border-right:1px solid var(--line)}
+.herring-col.right{background:var(--green-dim)}
+.herring-eye{font-family:var(--mo);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.herring-col.left .herring-eye{color:var(--red)}
+.herring-col.right .herring-eye{color:var(--green)}
+.herring-col h5{font-family:var(--dp);font-weight:600;font-size:14px;color:var(--ink);margin-bottom:8px}
+.herring-col p{font-size:13px;line-height:1.6;margin-bottom:8px}
+.herring-col p:last-child{margin-bottom:0}
+.herring-col code{font-size:11px}
+@media(max-width:600px){.herring{grid-template-columns:1fr}.herring-col.left{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* threshold band viz */
+.band-viz{margin:20px 0}
+.band-bar{position:relative;height:46px;border-radius:9px;overflow:hidden;display:flex;border:1px solid var(--line)}
+.band-seg{display:flex;align-items:center;justify-content:center;font-family:var(--mo);font-size:11px;font-weight:600}
+.band-no{background:var(--red-dim);color:var(--red)}
+.band-rev{background:var(--amber-dim);color:var(--amber)}
+.band-yes{background:var(--green-dim);color:var(--green)}
+.band-scale{display:flex;justify-content:space-between;font-family:var(--mo);font-size:10px;color:var(--faint);margin-top:6px}
+.band-marks{position:relative;height:18px;font-family:var(--mo);font-size:10px;color:var(--muted)}
+.band-mark{position:absolute;transform:translateX(-50%);white-space:nowrap}
+
+/* pipeline viz */
+.pipeline-viz{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:24px 0}
+.pv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.pv-flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pv-box{background:var(--surf);border:1px solid var(--line);border-radius:7px;padding:7px 13px;font-family:var(--mo);font-size:12px;color:var(--muted)}
+.pv-box.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.pv-box.hl{background:var(--violet-dim);border-color:var(--violet);color:var(--violet)}
+.pv-arr{color:var(--faint);font-size:13px;padding:0 2px}
+
+.unlock{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:18px 20px;margin:26px 0;display:flex;gap:14px;align-items:flex-start}
+.unlock-icon{font-size:20px;flex-shrink:0}
+.unlock-body{font-size:13px;color:var(--ink);line-height:1.7}
+.unlock-body strong{color:var(--violet)}
+
+/* tuner widget */
+.tuner{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:22px 0}
+.tuner-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.tuner-row{display:grid;grid-template-columns:160px 1fr 80px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.tuner-row:last-of-type{border-bottom:0}
+.tuner-fname{font-family:var(--mo);font-size:12px;color:var(--ink)}
+.tuner-slider{width:100%;accent-color:var(--teal);cursor:pointer}
+.tuner-sval{font-family:var(--mo);font-size:12px;color:var(--teal);text-align:center}
+.tuner-band-live{margin:20px 0}
+.tuner-readout{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+.tuner-stat{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;text-align:center}
+.tuner-stat-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.tuner-stat-val{font-family:var(--dp);font-weight:700;font-size:26px;line-height:1}
+.tuner-presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.tuner-preset{font-family:var(--mo);font-size:11px;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.tuner-preset:hover{border-color:var(--teal);color:var(--teal)}
+.tuner-pairs-table{margin-top:18px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tuner-math{font-family:var(--mo);font-size:11px;color:var(--muted);background:var(--surf2);border-radius:8px;padding:12px 14px;margin-top:14px;line-height:1.8}
+.tuner-math .hl-n{color:var(--teal)}
+
+/* confusion matrix */
+.cm{display:grid;grid-template-columns:auto 1fr 1fr;gap:0;margin:16px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-family:var(--mo);font-size:12px}
+.cm-corner{background:var(--surf2);padding:12px 14px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--faint)}
+.cm-th{background:var(--surf2);padding:12px 14px;border-bottom:1px solid var(--line);text-align:center;font-weight:600;color:var(--muted)}
+.cm-th:first-of-type{border-right:1px solid var(--line)}
+.cm-rh{background:var(--surf2);padding:12px 14px;border-right:1px solid var(--line);font-weight:600;color:var(--muted);display:flex;align-items:center}
+.cm-cell{padding:16px 14px;text-align:center;font-weight:600;font-size:14px}
+.cm-tp{background:var(--green-dim);color:var(--green);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.cm-fp{background:var(--red-dim);color:var(--red);border-bottom:1px solid var(--line)}
+.cm-fn{background:var(--amber-dim);color:var(--amber);border-right:1px solid var(--line)}
+.cm-tn{background:var(--blue-dim);color:var(--blue)}
+.cm-sub{font-size:10px;display:block;margin-top:4px;opacity:.7;font-weight:400}
+
+/* pr chart */
+.pr-chart-wrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:22px 0}
+.pr-chart-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.pr-canvas{position:relative;width:100%;aspect-ratio:2/1;max-height:320px}
+.pr-canvas canvas{width:100%;height:100%;border-radius:8px}
+
+/* quiz */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:20px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.q-prompt{font-size:13px;line-height:1.65;margin-bottom:14px;color:var(--muted)}
+.q-prompt strong{color:var(--ink)}
+.q-opts{display:flex;flex-direction:column;gap:7px}
+.q-opt{font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);padding:8px 12px;border-radius:6px;cursor:pointer;text-align:left;color:var(--muted);transition:all .15s}
+.q-opt:hover{border-color:var(--teal);color:var(--ink)}
+.q-opt.correct{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.q-opt.wrong{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.q-fb{font-size:12px;margin-top:10px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--teal)}
+
+@media(max-width:600px){.compare-grid{grid-template-columns:1fr}.tuner-readout{grid-template-columns:1fr}.tuner-row{grid-template-columns:120px 1fr 60px;gap:8px}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="../index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 05</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Score Aggregation &amp; Confidence</span>
+  </div>
+</nav>
+
+<div class="stage-nav">
+  <div class="stage-nav-inner">
+    <button class="sn on" onclick="go('s0',this)">00 · Overview</button>
+    <button class="sn" onclick="go('s1',this)">01 · Why Guessing Fails</button>
+    <button class="sn" onclick="go('s2',this)">02 · Labeled Data</button>
+    <button class="sn" onclick="go('s3',this)">03 · Precision & Recall</button>
+    <button class="sn" onclick="go('s4',this)">04 · The PR Curve</button>
+    <button class="sn" onclick="go('s5',this)">05 · Confidence Bands</button>
+    <button class="sn" onclick="go('s6',this)">06 · Review Queue</button>
+    <button class="sn" onclick="go('s7',this)">07 · ThresholdTuner</button>
+    <button class="sn" onclick="go('s8',this)">08 · Tuner Widget</button>
+    <button class="sn" onclick="go('s9',this)">09 · Self-Test</button>
+  </div>
+</div>
+
+
+<!-- ══════ STAGE 0 — OVERVIEW ══════ -->
+<div class="stage on" id="s0">
+<div class="wrap">
+  <p class="sec-eye">Module 05 · MDM / Spark Track · Phase 2 — The ER Algorithms</p>
+  <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">Score Aggregation &amp; Confidence</h1>
+  <p class="sec-sub">Module 04 gave you the ScoringPlugin — field weights, null renormalization, a composite score, and two thresholds that slice the number line into match / review / no-match. But those thresholds were <em>guesses</em>: 0.80 and 0.55, chosen by intuition. This module replaces intuition with evidence. You'll learn to <strong>measure</strong> how good your thresholds are, <strong>tune</strong> them against labeled data, and <strong>size</strong> the review queue so it actually fits your team's capacity.</p>
+
+  <div class="pipeline-viz">
+    <div class="pv-label">What this module adds to your pipeline</div>
+    <div class="pv-flow">
+      <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Block</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Self-Join</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Field Scoring</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Combine &amp; Classify</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Tune &amp; Calibrate</span><span class="pv-arr">→</span>
+      <span class="pv-box">Cluster</span>
+    </div>
+  </div>
+
+  <p>In Module 04 you met the <em>lever</em> — precision vs recall — and saw that moving a threshold trades one for the other. But you didn't have the tools to <em>measure</em> either one, or to know where the best trade-off sits for your data. That's the gap this module fills.</p>
+
+  <h3><span class="bar"></span>The exact question, stated once</h3>
+  <p>You have a working scorer. It produces a composite number for every candidate pair. You've picked two thresholds — match_threshold and review_threshold — that slice that number into verdicts. <strong>How do you know those thresholds are any good?</strong> How do you know you're not auto-merging too aggressively (corrupting records) or too conservatively (flooding your review queue with pairs that should have auto-merged)?</p>
+
+  <p>The answer is: <strong>you measure it.</strong> You get a set of pairs where a human has already said "yes, same person" or "no, different people." You run your scorer on those pairs, compare its verdicts to the human labels, and compute precision and recall. Then you slide the thresholds and watch how the numbers move. The threshold that gives you the best balance — for <em>your</em> business, not in the abstract — is the one you ship.</p>
+
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--violet)">
+      <div class="cc-num">Concept 01</div>
+      <div class="cc-title">Labeled data</div>
+      <div class="cc-body">A sample of candidate pairs where a human has verified: <code>true_match</code> or <code>true_non_match</code>. This is your ground truth — the exam answer key your scorer is graded against.</div>
+    </div>
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Concept 02</div>
+      <div class="cc-title">Confusion matrix</div>
+      <div class="cc-body">A 2×2 table: true positives, false positives, false negatives, true negatives. Every scored pair lands in exactly one cell. This table is the raw material for precision and recall.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Concept 03</div>
+      <div class="cc-title">Precision & Recall</div>
+      <div class="cc-body">Precision = "of the pairs I merged, how many were real?" Recall = "of the real matches, how many did I catch?" Moving a threshold trades one for the other.</div>
+    </div>
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Concept 04</div>
+      <div class="cc-title">Confidence bands</div>
+      <div class="cc-body">Not every pair at score 0.65 is equally ambiguous. Calibrating the score to a probability — "65% of pairs scoring 0.65 are true matches" — lets you set thresholds with a meaning, not just a position.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>How to use this module:</strong> Each stage builds one mechanism. Stages 01–04 build the measurement and tuning apparatus. Stages 05–06 add the calibration and operational layers. Stage 07 shows the PySpark pattern. The Threshold Tuner widget in Stage 08 lets you drag thresholds and watch precision, recall, and queue size move in real time. The Self-Test at the end hands you tuning scenarios.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 1 — WHY GUESSING FAILS ══════ -->
+<div class="stage" id="s1">
+<div class="wrap">
+  <p class="sec-eye">Stage 01</p>
+  <h2 class="sec-h">Why Fixed Thresholds Fail</h2>
+  <p class="sec-sub">In Module 04 you set <code>match_threshold = 0.80</code> and <code>review_threshold = 0.55</code> by instinct. That's fine for a first run. But those numbers make an implicit promise about your data that you never checked — and on real data, the promise almost always breaks.</p>
+
+  <h3><span class="bar"></span>The implicit promise</h3>
+  <p>When you set <code>match_threshold = 0.80</code>, you're implicitly saying: <strong>"every pair above 0.80 is a real match."</strong> When you set <code>review_threshold = 0.55</code>, you're saying: <strong>"no real match falls below 0.55."</strong> Both of those are empirical claims about the distribution of true matches in your data — and you made them without looking at the distribution.</p>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — the exam grade boundary</div>
+    <div class="analogy-body">
+      Imagine you're setting the pass mark for an exam before you've seen a single student's paper. You pick <em>70%</em> because it "feels right." But what if the exam was unusually hard and the best students scored in the 60s? Or unusually easy and everyone clears 80?<br><br>
+      A pass mark only means something when you've <em>seen the score distribution</em>. In ER, the "exam" is your scorer and the "students" are candidate pairs. The threshold is the pass mark. Setting it before you see how real matches and non-matches distribute is the same mistake — and the consequences are merging wrong records or splitting right ones.
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Two datasets, same thresholds, opposite disasters</h3>
+  <p>The problem is concrete. Here are two real score distributions — same scorer, same thresholds, completely different outcomes:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Dataset</th><th>True matches score range</th><th>True non-matches score range</th><th>Overlap zone</th><th>Result at threshold 0.80</th></tr>
+    <tr><td><strong>Dataset A</strong><br><span class="faint">Clean CRM data, strong identifiers</span></td><td class="new-col">0.82 – 1.00</td><td>0.00 – 0.45</td><td>None</td><td><span class="badge b-green">Works great</span><br>Clean separation; 0.80 catches nearly all true matches</td></tr>
+    <tr><td><strong>Dataset B</strong><br><span class="faint">Messy vendor data, sparse fields</span></td><td class="new-col">0.55 – 0.85</td><td>0.20 – 0.72</td><td>0.55 – 0.72</td><td><span class="badge b-red">Disaster</span><br>Half the true matches score below 0.80 and are rejected. 15% of non-matches score above 0.55 and flood review.</td></tr>
+  </table>
+  </div>
+
+  <p>Same thresholds. One dataset separates cleanly — the other doesn't. The problem isn't the scorer's logic (Module 04 got that right). The problem is that <strong>where you cut the number line needs to be fitted to the actual score distribution</strong>, not guessed.</p>
+
+  <div class="trap"><strong>The silent damage:</strong> a misplaced threshold doesn't error. It doesn't warn. It just silently splits real matches (missed merges → duplicates in your golden record) or merges false ones (corrupted entities → bad downstream analytics). You can run the pipeline for weeks before someone notices the golden record quality degrading — and by then you're hunting across the whole pipeline for the bug, when it was just a threshold that didn't fit the data.</div>
+
+  <h3><span class="bar"></span>What you need to replace guessing</h3>
+  <p>Three things, in order:</p>
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--violet)">
+      <div class="cc-num">Step 1</div>
+      <div class="cc-title">Labeled data</div>
+      <div class="cc-body">A sample of pairs where a human says ground truth — <code>true_match</code> or <code>true_non_match</code>. Without this, there is literally no way to measure whether your scorer is right or wrong.</div>
+    </div>
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Step 2</div>
+      <div class="cc-title">A measurement framework</div>
+      <div class="cc-body">Precision, recall, and the confusion matrix — the vocabulary for saying "this threshold catches 92% of true matches and wrongly merges 3% of non-matches."</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Step 3</div>
+      <div class="cc-title">A tuning loop</div>
+      <div class="cc-body">Sweep the threshold across the score range, compute precision and recall at each point, and pick the threshold that gives your business the best trade-off — informed, not guessed.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>The rest of this module</strong> builds these three pieces. Stage 02 covers labeled data. Stage 03 builds precision and recall from the confusion matrix. Stage 04 puts them on a curve. Stage 05 adds calibration. Stage 06 sizes the review queue. Stage 07 assembles the PySpark pattern.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 2 — LABELED DATA ══════ -->
+<div class="stage" id="s2">
+<div class="wrap">
+  <p class="sec-eye">Stage 02</p>
+  <h2 class="sec-h">Labeled Data — The Ground Truth You Need</h2>
+  <p class="sec-sub">Before you can measure anything about your scorer, you need an answer key. Labeled data is a sample of candidate pairs where a human has verified the truth: this pair <em>is</em> the same entity, or it <em>isn't</em>. Without it, you're optimizing in the dark.</p>
+
+  <h3><span class="bar"></span>What a labeled set looks like</h3>
+  <p>Take a random sample of candidate pairs from your pipeline's output. For each pair, a human reviewer — someone who can look at the source records and decide — assigns a label:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Pair ID</th><th>Record A</th><th>Record B</th><th>Composite score</th><th>Human label</th></tr>
+    <tr><td>P-001</td><td>Jon Smith, jsmith@acme.io</td><td>Jonathan Smith, jsmith@acme.io</td><td>0.87</td><td><span class="badge b-green">true_match</span></td></tr>
+    <tr><td>P-002</td><td>Maria Garcia, mg@corp.com</td><td>Maria Garcia, mgarcia@other.io</td><td>0.71</td><td><span class="badge b-green">true_match</span></td></tr>
+    <tr><td>P-003</td><td>Bob Lee, bob@startup.co</td><td>Robert Lee, bob@startup.co</td><td>0.82</td><td><span class="badge b-green">true_match</span></td></tr>
+    <tr><td>P-004</td><td>Sarah Kim, sk@firm.com</td><td>Sarah Kim, sk@firm2.com</td><td>0.63</td><td><span class="badge b-red">true_non_match</span></td></tr>
+    <tr><td>P-005</td><td>James Wilson, jw@acme.io</td><td>James Wilson, jw@acme.io</td><td>0.94</td><td><span class="badge b-green">true_match</span></td></tr>
+    <tr><td>P-006</td><td>Li Chen, lc@mega.com</td><td>Li Chen, lchen@mega.com</td><td>0.58</td><td><span class="badge b-red">true_non_match</span></td></tr>
+  </table>
+  </div>
+
+  <p>The composite score is what your <em>scorer</em> said. The human label is what's <em>actually true</em>. The gap between the two is what you're measuring.</p>
+
+  <h3><span class="bar"></span>How much labeled data do you need?</h3>
+  <p>There's no magic number, but there are practical guardrails:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Label set size</th><th>What you can do</th><th>Limitation</th></tr>
+    <tr><td><strong>50–100 pairs</strong></td><td>Rough sanity check — are your thresholds in the right ballpark?</td><td>Precision/recall estimates are noisy; ±10–15% confidence.</td></tr>
+    <tr><td><strong>200–500 pairs</strong></td><td>Useful PR curve. Enough to spot obviously misplaced thresholds and tune within ±0.05.</td><td>May miss rare edge cases (sparse fields, unusual name formats).</td></tr>
+    <tr><td><strong>1000+ pairs</strong></td><td>Statistically reliable. Can tune thresholds precisely, validate across subsets, detect calibration drift over time.</td><td>Expensive to produce — requires significant human review time.</td></tr>
+  </table>
+  </div>
+
+  <div class="warn"><strong>Sampling matters as much as size.</strong> If you only label pairs that scored above 0.70, you'll never know how many true matches your scorer placed below 0.70. A good labeled set is <em>stratified</em>: take some pairs from each score band (0–0.3, 0.3–0.5, 0.5–0.7, 0.7–0.9, 0.9–1.0) so you can see the full picture, not just the confident middle.</div>
+
+  <h3><span class="bar"></span>The red herring: "we'll label everything later"</h3>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Red herring — what sounds responsible</div>
+      <h5>"We'll label the full dataset when we have time."</h5>
+      <p>The temptation is to delay tuning until you have a massive, perfectly labeled set. But that delays <em>the only feedback loop that tells you whether your scorer is working</em>.</p>
+      <p>Meanwhile, every pipeline run ships verdicts based on thresholds that are unvalidated.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ What actually decides</div>
+      <h5>Label a small stratified sample <em>now</em>, tune, and iterate.</h5>
+      <p>200 well-sampled pairs, labeled in a few hours, are enough to catch gross threshold misplacement — the kind that silently corrupts 20% of your merges.</p>
+      <p>Start small, tune, ship, label more later. A rough measurement beats no measurement every time.</p>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Where labels go in your pipeline</h3>
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">labeled_pairs.csv — the format your tuner reads</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># pair_id, composite_score, human_label</span>
+<span class="s">"P-001"</span>, <span class="n">0.87</span>, <span class="s">"true_match"</span>
+<span class="s">"P-002"</span>, <span class="n">0.71</span>, <span class="s">"true_match"</span>
+<span class="s">"P-003"</span>, <span class="n">0.82</span>, <span class="s">"true_match"</span>
+<span class="s">"P-004"</span>, <span class="n">0.63</span>, <span class="s">"true_non_match"</span>
+<span class="s">"P-005"</span>, <span class="n">0.94</span>, <span class="s">"true_match"</span>
+<span class="s">"P-006"</span>, <span class="n">0.58</span>, <span class="s">"true_non_match"</span>
+<span class="co"># ... 200+ rows, stratified across score bands</span></div>
+  </div>
+
+  <div class="note"><strong>Hold onto:</strong> the labeled set is just data until you have a measurement framework. The next stage builds that framework — the confusion matrix, precision, and recall — by comparing your scorer's verdicts to these human labels, one pair at a time.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 3 — PRECISION & RECALL ══════ -->
+<div class="stage" id="s3">
+<div class="wrap">
+  <p class="sec-eye">Stage 03</p>
+  <h2 class="sec-h">Precision &amp; Recall — Measuring Your Scorer</h2>
+  <p class="sec-sub">You have labels and you have verdicts. Now you compare them — systematically. Every scored pair falls into exactly one of four buckets in a confusion matrix. Precision and recall are two ratios you read straight off that matrix. Together they tell you exactly what your threshold is doing right and wrong.</p>
+
+  <h3><span class="bar"></span>The confusion matrix</h3>
+  <p>Take your labeled set. Run each pair through the scorer. For each pair, compare what the <strong>scorer said</strong> (above match threshold → "predicted match") to what the <strong>human said</strong> (true_match / true_non_match). Each pair lands in one cell:</p>
+
+  <div class="cm">
+    <div class="cm-corner" style="font-size:10px;letter-spacing:.05em">PREDICTED ↓<br>ACTUAL →</div>
+    <div class="cm-th">Actually a match</div>
+    <div class="cm-th">Actually NOT a match</div>
+    <div class="cm-rh">Scorer says MATCH</div>
+    <div class="cm-cell cm-tp">TP<span class="cm-sub">True Positive — correct merge</span></div>
+    <div class="cm-cell cm-fp">FP<span class="cm-sub">False Positive — wrong merge</span></div>
+    <div class="cm-rh">Scorer says NO MATCH</div>
+    <div class="cm-cell cm-fn">FN<span class="cm-sub">False Negative — missed match</span></div>
+    <div class="cm-cell cm-tn">TN<span class="cm-sub">True Negative — correct rejection</span></div>
+  </div>
+
+  <p>Every pair goes into exactly one cell. The counts in these four cells are the <em>only</em> raw data you need — everything else (precision, recall, F1) is derived from them.</p>
+
+  <h3><span class="bar"></span>Worked example — 200 labeled pairs</h3>
+  <p>You labeled 200 pairs and ran the scorer at <code>match_threshold = 0.80</code>. Here's where they landed:</p>
+
+  <div class="cm">
+    <div class="cm-corner" style="font-size:10px">PREDICTED ↓<br>ACTUAL →</div>
+    <div class="cm-th">Actually a match (80 total)</div>
+    <div class="cm-th">Actually NOT (120 total)</div>
+    <div class="cm-rh">Scorer says MATCH</div>
+    <div class="cm-cell cm-tp">68<span class="cm-sub">True Positives</span></div>
+    <div class="cm-cell cm-fp">4<span class="cm-sub">False Positives</span></div>
+    <div class="cm-rh">Scorer says NO MATCH</div>
+    <div class="cm-cell cm-fn">12<span class="cm-sub">False Negatives</span></div>
+    <div class="cm-cell cm-tn">116<span class="cm-sub">True Negatives</span></div>
+  </div>
+
+  <h3><span class="bar"></span>Precision: "of the ones I merged, how many were right?"</h3>
+  <p>Precision reads <strong>across the top row</strong> — the pairs the scorer said "match" to:</p>
+
+  <div class="debug-trace">
+    <div class="dt-header">precision calculation</div>
+    <div class="dt-step">
+      <div class="dt-line">precision = TP / (TP + FP)</div>
+      <div class="dt-state">precision = 68 / (68 + 4) = 68 / 72 = 0.944</div>
+      <div class="dt-why"><em>94.4%</em> of the pairs the scorer merged were genuine matches. The other 5.6% were wrong merges — two different people incorrectly combined into one entity.</div>
+    </div>
+  </div>
+
+  <p><strong>Precision answers the business question:</strong> "how clean are my auto-merges?" High precision = few false merges = low record corruption. When a wrong merge is expensive (financial data, healthcare, legal), you want precision as high as possible.</p>
+
+  <h3><span class="bar"></span>Recall: "of the real matches, how many did I catch?"</h3>
+  <p>Recall reads <strong>down the left column</strong> — the pairs that are actually matches:</p>
+
+  <div class="debug-trace">
+    <div class="dt-header">recall calculation</div>
+    <div class="dt-step">
+      <div class="dt-line">recall = TP / (TP + FN)</div>
+      <div class="dt-state">recall = 68 / (68 + 12) = 68 / 80 = 0.850</div>
+      <div class="dt-why"><em>85.0%</em> of the real matches were caught by the scorer. The other 15% were missed — genuine same-person pairs that fell below the threshold and were rejected (or sent to review).</div>
+    </div>
+  </div>
+
+  <p><strong>Recall answers the business question:</strong> "how many real matches am I missing?" High recall = few missed matches = few duplicate records surviving in the golden record. When duplicate records are expensive (marketing overcounting, fragmented customer view), you want recall as high as possible.</p>
+
+  <h3><span class="bar"></span>The trade-off, concretely</h3>
+
+  <div class="herring">
+    <div class="herring-col left" style="background:var(--blue-dim);border-right:1px solid var(--line)">
+      <div class="herring-eye" style="color:var(--blue)">Raise match_threshold → 0.90</div>
+      <h5>Precision ↑  Recall ↓</h5>
+      <p>Fewer pairs clear the bar → fewer auto-merges → almost all of them are correct (precision rises). But some real matches that scored 0.80–0.89 now drop into review or rejection (recall falls).</p>
+      <p><strong>You gain:</strong> cleaner golden record, fewer corrupt merges.<br><strong>You lose:</strong> more unresolved duplicates, bigger review queue.</p>
+    </div>
+    <div class="herring-col right" style="background:var(--violet-dim)">
+      <div class="herring-eye" style="color:var(--violet)">Lower match_threshold → 0.70</div>
+      <h5>Recall ↑  Precision ↓</h5>
+      <p>More pairs clear the bar → more auto-merges → you catch more real matches (recall rises). But some false matches that scored 0.70–0.79 slip through as wrong merges (precision falls).</p>
+      <p><strong>You gain:</strong> fewer duplicates, more resolved entities.<br><strong>You lose:</strong> more corrupt merges, dirtier golden record.</p>
+    </div>
+  </div>
+
+  <div class="note"><strong>This is why you can't maximize both.</strong> Precision and recall pull in opposite directions as you move the threshold. The art is finding the point that balances the cost of false merges against the cost of missed matches — for <em>your</em> business, in <em>your</em> data. The PR curve in Stage 04 is the tool that shows you every possible balance at once.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 4 — PR CURVE ══════ -->
+<div class="stage" id="s4">
+<div class="wrap">
+  <p class="sec-eye">Stage 04</p>
+  <h2 class="sec-h">The PR Curve — Every Threshold at Once</h2>
+  <p class="sec-sub">Instead of evaluating one threshold, sweep across <em>every possible</em> threshold from 0.0 to 1.0, compute precision and recall at each, and plot them. The result is a precision-recall curve — a single picture that shows you every trade-off your scorer can make, so you can pick the right one with evidence.</p>
+
+  <h3><span class="bar"></span>How to build it</h3>
+  <p>The algorithm is mechanical. For each threshold <em>t</em> from 0.0 to 1.0 in small steps:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">build a PR curve from labeled data</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">def</span> <span class="f">pr_curve</span>(labeled_pairs, thresholds):
+    <span class="co">"""labeled_pairs: list of (composite_score, is_true_match)"""</span>
+    points = []
+    <span class="k">for</span> t <span class="k">in</span> thresholds:
+        tp = <span class="f">sum</span>(<span class="n">1</span> <span class="k">for</span> score, label <span class="k">in</span> labeled_pairs
+                 <span class="k">if</span> score >= t <span class="k">and</span> label == <span class="k">True</span>)
+        fp = <span class="f">sum</span>(<span class="n">1</span> <span class="k">for</span> score, label <span class="k">in</span> labeled_pairs
+                 <span class="k">if</span> score >= t <span class="k">and</span> label == <span class="k">False</span>)
+        fn = <span class="f">sum</span>(<span class="n">1</span> <span class="k">for</span> score, label <span class="k">in</span> labeled_pairs
+                 <span class="k">if</span> score < t <span class="k">and</span> label == <span class="k">True</span>)
+
+        precision = tp / (tp + fp) <span class="k">if</span> (tp + fp) > <span class="n">0</span> <span class="k">else</span> <span class="n">1.0</span>
+        recall    = tp / (tp + fn) <span class="k">if</span> (tp + fn) > <span class="n">0</span> <span class="k">else</span> <span class="n">0.0</span>
+        points.append((t, precision, recall))
+    <span class="k">return</span> points</div>
+  </div>
+
+  <h3><span class="bar"></span>Reading the curve</h3>
+  <p>The PR curve is plotted with <strong>recall on the X axis</strong> and <strong>precision on the Y axis</strong>. Each point on the curve is one possible threshold. As you move from left to right (increasing recall), precision typically drops — you're catching more true matches, but some false ones sneak in.</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Threshold</th><th>Precision</th><th>Recall</th><th>What's happening</th></tr>
+    <tr><td>0.95</td><td class="new-col">0.99</td><td>0.55</td><td>Very selective. Almost every merge is correct, but you're missing 45% of real matches.</td></tr>
+    <tr><td>0.85</td><td class="new-col">0.96</td><td>0.78</td><td>A good balance for conservative environments. Few false merges, most matches caught.</td></tr>
+    <tr class="hl-row"><td>0.80</td><td class="new-col">0.94</td><td>0.85</td><td><strong>The "elbow"</strong> — where lowering the threshold starts costing precision faster than it gains recall.</td></tr>
+    <tr><td>0.70</td><td class="new-col">0.87</td><td>0.92</td><td>Aggressive. Catches 92% of matches, but 13% of auto-merges are wrong.</td></tr>
+    <tr><td>0.55</td><td class="new-col">0.72</td><td>0.97</td><td>Very aggressive. Almost no match is missed, but nearly 1 in 3 merges is false.</td></tr>
+  </table>
+  </div>
+
+  <h3><span class="bar"></span>The "elbow" — where to cut</h3>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — diminishing returns</div>
+    <div class="analogy-body">
+      Imagine you're fishing in a pond with a net. A tight-mesh net catches every fish (high recall) but also scoops up rocks and weeds (low precision). A wide-mesh net only catches the big fish (high precision) but the small ones swim through (low recall).<br><br>
+      The <em>elbow</em> is the mesh size where making the net just a little tighter starts catching more rocks than fish. Past that point, you're paying a lot of precision for very little extra recall. That's your optimal threshold — the point where the trade-off turns bad.
+    </div>
+  </div>
+
+  <p>In the table above, the elbow sits around <strong>0.80</strong>: going from 0.85 → 0.80 gained 7 points of recall (0.78 → 0.85) while only losing 2 points of precision (0.96 → 0.94). That's a great deal. But going from 0.80 → 0.70 gained only 7 points of recall (0.85 → 0.92) while losing 7 points of precision (0.94 → 0.87). That's expensive.</p>
+
+  <div class="note"><strong>The elbow isn't universal.</strong> Where it sits depends on your data. A dataset with clean, separable scores has the elbow at a high threshold. A messy dataset with overlapping distributions has it lower — or might not have a sharp elbow at all, meaning you'll always live with a painful trade-off and a bigger review queue.</div>
+
+  <h3><span class="bar"></span>Two thresholds, not one</h3>
+  <p>Remember: your scorer uses <em>two</em> thresholds (match and review). The PR curve helps you set the match threshold — the line above which you auto-merge. But you also need the review threshold — the line below which you auto-reject.</p>
+
+  <p>Set the review threshold the same way, but reading the curve from the other direction: <strong>how low can you go before you start catching too many true matches in the "no match" band?</strong> The review threshold's job is to keep true matches <em>out</em> of the rejection zone — it's the <em>recall floor</em> for the review+match bands combined.</p>
+
+  <div class="warn"><strong>Operational reality:</strong> the review threshold also controls how big your review queue is. A wide review band (e.g. 0.40–0.80) catches more edge cases but might send 50,000 pairs to human review. A narrow band (0.70–0.85) sends fewer, but risks auto-rejecting real matches that scored in the 0.50s. Stage 06 addresses queue sizing explicitly.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 5 — CONFIDENCE BANDS ══════ -->
+<div class="stage" id="s5">
+<div class="wrap">
+  <p class="sec-eye">Stage 05</p>
+  <h2 class="sec-h">Confidence Bands — What a Score Actually Means</h2>
+  <p class="sec-sub">A composite score of 0.75 tells you something — but what, exactly? Is it "probably a match"? "Coin flip"? "Slightly more likely than not"? The raw number is unitless. Confidence calibration maps it to a <em>probability</em>: "of all pairs that scored 0.75 in our labeled set, X% turned out to be true matches." That turns a number into a meaning.</p>
+
+  <h3><span class="bar"></span>The calibration table</h3>
+  <p>Take your labeled data. Group pairs into score bins. For each bin, count how many were true matches vs total:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Score bin</th><th>Total pairs</th><th>True matches</th><th>Match rate</th><th>Confidence label</th></tr>
+    <tr><td>0.90 – 1.00</td><td>42</td><td>41</td><td class="new-col">97.6%</td><td><span class="badge b-green">very high confidence</span></td></tr>
+    <tr><td>0.80 – 0.90</td><td>38</td><td>34</td><td class="new-col">89.5%</td><td><span class="badge b-green">high confidence</span></td></tr>
+    <tr><td>0.70 – 0.80</td><td>35</td><td>22</td><td class="new-col">62.9%</td><td><span class="badge b-amber">moderate confidence</span></td></tr>
+    <tr><td>0.60 – 0.70</td><td>30</td><td>11</td><td class="new-col">36.7%</td><td><span class="badge b-amber">low confidence</span></td></tr>
+    <tr><td>0.50 – 0.60</td><td>28</td><td>4</td><td class="new-col">14.3%</td><td><span class="badge b-red">very low confidence</span></td></tr>
+    <tr><td>0.00 – 0.50</td><td>27</td><td>1</td><td class="new-col">3.7%</td><td><span class="badge b-red">negligible</span></td></tr>
+  </table>
+  </div>
+
+  <p>Now the score <em>means</em> something. A pair scoring 0.85 sits in a bin where <strong>89.5% of historical pairs with similar scores were genuine matches</strong>. That's a statement you can reason about — and it's a lot more useful than "the number is 0.85."</p>
+
+  <h3><span class="bar"></span>Why calibration matters for thresholds</h3>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Red herring — "the score is high, so it's confident"</div>
+      <h5>"0.85 is a high score — clearly a match."</h5>
+      <p>In Dataset A (clean CRM), 0.85 might be only moderate — true matches routinely score 0.95+. An 0.85 in that world means "something is off — maybe a field was fuzzy."</p>
+      <p>The raw score height is relative to your data distribution, not absolute.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ What actually decides</div>
+      <h5>The match rate at that score in <em>your</em> data.</h5>
+      <p>In Dataset B (messy vendor data), 0.85 might be the <em>highest</em> true matches ever score. The calibration table confirms: 89.5% match rate at that level.</p>
+      <p>Calibration tells you what a score means <em>for this data</em>, not in the abstract.</p>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Confidence bands in your pipeline</h3>
+  <p>Instead of just <code>match_decision</code>, add a <code>confidence</code> column. This gives downstream consumers (dashboards, analysts, the review UI) a human-readable signal:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">adding a confidence column</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># After computing composite and match_decision:</span>
+confidence = (
+    F.when(F.col(<span class="s">"composite"</span>) >= <span class="n">0.90</span>, F.lit(<span class="s">"very_high"</span>))
+     .when(F.col(<span class="s">"composite"</span>) >= <span class="n">0.80</span>, F.lit(<span class="s">"high"</span>))
+     .when(F.col(<span class="s">"composite"</span>) >= <span class="n">0.70</span>, F.lit(<span class="s">"moderate"</span>))
+     .when(F.col(<span class="s">"composite"</span>) >= <span class="n">0.60</span>, F.lit(<span class="s">"low"</span>))
+     .otherwise(F.lit(<span class="s">"very_low"</span>))
+)
+df = df.withColumn(<span class="s">"confidence"</span>, confidence)
+
+<span class="co"># The band boundaries come from your calibration table</span>
+<span class="co"># — the YAML config holds them alongside the thresholds.</span></div>
+  </div>
+
+  <div class="warn"><strong>Calibration drift:</strong> these match rates are computed from a specific labeled set at a specific time. As your source data changes (new data providers, schema changes, population shifts), the calibration can drift. Re-run the calibration quarterly or whenever you see review queue anomalies. The calibration table is a <em>living instrument</em>, not a one-time computation.</div>
+
+  <div class="note"><strong>Hold onto:</strong> confidence bands are what the review queue operator actually sees. A reviewer looking at a pair labeled "moderate confidence — 63% match rate" makes a better decision than one looking at "composite = 0.74." The calibration table translates your scorer's internal math into a signal a human can act on.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 6 — REVIEW QUEUE ══════ -->
+<div class="stage" id="s6">
+<div class="wrap">
+  <p class="sec-eye">Stage 06</p>
+  <h2 class="sec-h">Review Queue Sizing — The Operational Lever</h2>
+  <p class="sec-sub">The review band catches uncertain pairs. But "uncertain" isn't free — every pair in the review queue costs human time. If your review band is too wide, you drown the team. Too narrow, and ambiguous pairs auto-merge or auto-reject without oversight. This stage shows you how to size the queue so it's operationally viable.</p>
+
+  <h3><span class="bar"></span>The three-way budget</h3>
+  <p>Every pair goes to one of three places. The thresholds control how many go where:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Destination</th><th>Threshold control</th><th>Cost</th></tr>
+    <tr><td><span class="badge b-green">Auto-merge</span></td><td>score ≥ match_threshold</td><td>Zero human cost — but false merges corrupt records.</td></tr>
+    <tr><td><span class="badge b-amber">Review queue</span></td><td>review_threshold ≤ score < match_threshold</td><td>Human time per pair — typically 1–3 minutes each.</td></tr>
+    <tr><td><span class="badge b-red">Auto-reject</span></td><td>score < review_threshold</td><td>Zero human cost — but false rejections leave duplicates unresolved.</td></tr>
+  </table>
+  </div>
+
+  <h3><span class="bar"></span>Worked example — sizing the queue</h3>
+  <p>Your pipeline produces <strong>50,000 candidate pairs</strong> per run. Here's how different threshold settings distribute them:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Setting</th><th>Match (auto-merge)</th><th>Review (human queue)</th><th>No match (auto-reject)</th><th>Review hours (at 2 min/pair)</th></tr>
+    <tr><td><strong>Conservative</strong><br>match=0.90, review=0.50</td><td>8,000 (16%)</td><td class="new-col">18,000 (36%)</td><td>24,000 (48%)</td><td>~600 hrs ❌</td></tr>
+    <tr class="hl-row"><td><strong>Balanced</strong><br>match=0.80, review=0.60</td><td>14,000 (28%)</td><td class="new-col">9,000 (18%)</td><td>27,000 (54%)</td><td>~300 hrs ✓</td></tr>
+    <tr><td><strong>Aggressive</strong><br>match=0.70, review=0.65</td><td>22,000 (44%)</td><td class="new-col">3,000 (6%)</td><td>25,000 (50%)</td><td>~100 hrs ⚡</td></tr>
+  </table>
+  </div>
+
+  <p>The conservative setting sends 36% of pairs to review — 600 hours of human work. If your team has 2 reviewers doing 8 hours/day, that's <strong>37 business days</strong> to clear the queue. The aggressive setting clears it in <strong>6 days</strong> — but it's auto-merging pairs with only 70% composite scores, which may include false merges.</p>
+
+  <h3><span class="bar"></span>The capacity formula</h3>
+
+  <div class="debug-trace">
+    <div class="dt-header">queue sizing calculation</div>
+    <div class="dt-step">
+      <div class="dt-line">review_pairs = pairs_in_review_band</div>
+      <div class="dt-state">= 9,000 pairs (from the balanced setting)</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">review_time_per_pair = 2 minutes (your team's average)</div>
+      <div class="dt-state">total_hours = 9,000 × 2 / 60 = 300 hours</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">team_capacity = reviewers × hours_per_day × days_until_next_run</div>
+      <div class="dt-state">= 2 × 8 × 20 = 320 hours/month</div>
+      <div class="dt-why">300 < 320 → the queue <em>just fits</em> within one pipeline cycle. Safe to ship.</div>
+    </div>
+  </div>
+
+  <div class="trap"><strong>Queue overflow is the silent killer of ER pipelines.</strong> If the review queue is bigger than the team can process before the next pipeline run, it grows monotonically — every run adds more pairs than reviewers can clear. Within a few cycles, the queue is months behind, reviews are stale (the underlying records may have changed), and the whole review process collapses. <strong>Size the queue to fit your team, not the other way around.</strong></div>
+
+  <h3><span class="bar"></span>The tuning loop, end to end</h3>
+  <p>Here's the full decision process for setting both thresholds:</p>
+
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--violet)">
+      <div class="cc-num">Step 1</div>
+      <div class="cc-title">Set match_threshold</div>
+      <div class="cc-body">Use the PR curve. Find the elbow or the precision you need. This determines how many pairs auto-merge and at what quality.</div>
+    </div>
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Step 2</div>
+      <div class="cc-title">Set review_threshold</div>
+      <div class="cc-body">Pick the point where the review queue fits your team's capacity. Lower = safer (catches more edge cases) but more expensive. Raise until the queue fits.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Step 3</div>
+      <div class="cc-title">Validate on labeled data</div>
+      <div class="cc-body">Check: how many true matches land in the rejection zone (below review_threshold)? If more than you can tolerate, widen the review band — or improve the scorer itself.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>This is iterative, not one-shot.</strong> You tune, run a pipeline, sample new pairs for labeling, recalibrate, and tune again. Each cycle tightens the thresholds closer to optimal. The first pass gets you from "guessing" to "roughly right." The second pass gets you to "production-ready."</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 7 — THRESHOLD TUNER PATTERN ══════ -->
+<div class="stage" id="s7">
+<div class="wrap">
+  <p class="sec-eye">Stage 07</p>
+  <h2 class="sec-h">The Full ThresholdTuner Pattern</h2>
+  <p class="sec-sub">Every mechanism from the last six stages — labeled data, confusion matrix, precision/recall, PR curve, confidence calibration, queue sizing — assembles into one utility that runs alongside your ScoringPlugin. This is the shape of the tuning layer: labeled pairs in, recommended thresholds and diagnostics out.</p>
+
+  <h3><span class="bar"></span>The ThresholdTuner, end to end</h3>
+  <p>Read it top to bottom — every piece comes from an earlier stage. The comments mark which stage each block implements.</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">ThresholdTuner — the assembled pattern (PySpark)</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+<span class="k">from</span> pyspark.sql <span class="k">import</span> Window
+
+<span class="k">class</span> <span class="f">ThresholdTuner</span>:
+    <span class="s">"""Evaluates and tunes match/review thresholds against labeled data."""</span>
+
+    <span class="k">def</span> <span class="f">__init__</span>(self, labeled_df, score_col=<span class="s">"composite"</span>,
+                 label_col=<span class="s">"human_label"</span>):
+        <span class="co"># labeled_df has: composite score + human label per pair</span>
+        self.df = labeled_df                               <span class="co"># Stage 02</span>
+        self.score_col = score_col
+        self.label_col = label_col
+
+    <span class="k">def</span> <span class="f">confusion_matrix</span>(self, match_threshold):
+        <span class="co"># Stage 03: count TP, FP, FN, TN at a given threshold</span>
+        is_match = F.col(self.label_col) == <span class="s">"true_match"</span>
+        predicted = F.col(self.score_col) >= match_threshold
+
+        <span class="k">return</span> self.df.select(
+            F.sum(F.when( predicted &  is_match, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"tp"</span>),
+            F.sum(F.when( predicted & ~is_match, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"fp"</span>),
+            F.sum(F.when(~predicted &  is_match, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"fn"</span>),
+            F.sum(F.when(~predicted & ~is_match, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"tn"</span>),
+        ).first()
+
+    <span class="k">def</span> <span class="f">pr_at</span>(self, match_threshold):
+        <span class="co"># Stage 03: precision and recall at one threshold</span>
+        cm = self.confusion_matrix(match_threshold)
+        tp, fp, fn = cm.tp, cm.fp, cm.fn
+        precision = tp / (tp + fp) <span class="k">if</span> (tp + fp) > <span class="n">0</span> <span class="k">else</span> <span class="n">1.0</span>
+        recall    = tp / (tp + fn) <span class="k">if</span> (tp + fn) > <span class="n">0</span> <span class="k">else</span> <span class="n">0.0</span>
+        <span class="k">return</span> {<span class="s">"threshold"</span>: match_threshold,
+                <span class="s">"precision"</span>: precision, <span class="s">"recall"</span>: recall,
+                <span class="s">"tp"</span>: tp, <span class="s">"fp"</span>: fp, <span class="s">"fn"</span>: fn}
+
+    <span class="k">def</span> <span class="f">pr_curve</span>(self, steps=<span class="n">20</span>):
+        <span class="co"># Stage 04: sweep thresholds, collect PR at each</span>
+        thresholds = [i / steps <span class="k">for</span> i <span class="k">in</span> range(steps + <span class="n">1</span>)]
+        <span class="k">return</span> [self.pr_at(t) <span class="k">for</span> t <span class="k">in</span> thresholds]
+
+    <span class="k">def</span> <span class="f">calibration_table</span>(self, bins=<span class="n">10</span>):
+        <span class="co"># Stage 05: match rate per score bin</span>
+        binned = self.df.withColumn(
+            <span class="s">"bin"</span>,
+            (F.col(self.score_col) * bins).cast(<span class="s">"int"</span>) / bins
+        )
+        <span class="k">return</span> binned.groupBy(<span class="s">"bin"</span>).agg(
+            F.count(<span class="s">"*"</span>).alias(<span class="s">"total"</span>),
+            F.sum(F.when(
+                F.col(self.label_col) == <span class="s">"true_match"</span>, <span class="n">1</span>
+            ).otherwise(<span class="n">0</span>)).alias(<span class="s">"matches"</span>),
+        ).withColumn(
+            <span class="s">"match_rate"</span>,
+            F.col(<span class="s">"matches"</span>) / F.col(<span class="s">"total"</span>)
+        ).orderBy(<span class="s">"bin"</span>)
+
+    <span class="k">def</span> <span class="f">queue_size</span>(self, full_df, match_t, review_t):
+        <span class="co"># Stage 06: count pairs in each band on the full dataset</span>
+        <span class="k">return</span> full_df.select(
+            F.sum(F.when(F.col(<span class="s">"composite"</span>) >= match_t,  <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"auto_merge"</span>),
+            F.sum(F.when(
+                (F.col(<span class="s">"composite"</span>) >= review_t) &
+                (F.col(<span class="s">"composite"</span>) < match_t), <span class="n">1</span>
+            ).otherwise(<span class="n">0</span>)).alias(<span class="s">"review"</span>),
+            F.sum(F.when(F.col(<span class="s">"composite"</span>) < review_t, <span class="n">1</span>).otherwise(<span class="n">0</span>)).alias(<span class="s">"auto_reject"</span>),
+        ).first()</div>
+  </div>
+
+  <h3><span class="bar"></span>How it fits with the ScoringPlugin</h3>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">using the tuner alongside your pipeline</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># 1. Run your existing ScoringPlugin on the full dataset</span>
+scored_df = scoring_plugin.run(candidate_pairs_df)
+
+<span class="co"># 2. Load labeled pairs (Stage 02)</span>
+labeled_df = spark.read.csv(<span class="s">"labeled_pairs.csv"</span>, header=<span class="k">True</span>)
+
+<span class="co"># 3. Build the tuner</span>
+tuner = ThresholdTuner(labeled_df)
+
+<span class="co"># 4. Sweep thresholds and inspect (Stage 04)</span>
+<span class="k">for</span> point <span class="k">in</span> tuner.pr_curve(steps=<span class="n">20</span>):
+    <span class="f">print</span>(f<span class="s">"t={point['threshold']:.2f}  "</span>
+          f<span class="s">"P={point['precision']:.3f}  "</span>
+          f<span class="s">"R={point['recall']:.3f}"</span>)
+
+<span class="co"># 5. Check calibration (Stage 05)</span>
+tuner.calibration_table(bins=<span class="n">10</span>).show()
+
+<span class="co"># 6. Size the review queue (Stage 06)</span>
+q = tuner.queue_size(scored_df, match_t=<span class="n">0.80</span>, review_t=<span class="n">0.60</span>)
+<span class="f">print</span>(f<span class="s">"Auto-merge: {q.auto_merge}, Review: {q.review}, "</span>
+      f<span class="s">"Auto-reject: {q.auto_reject}"</span>)
+
+<span class="co"># 7. Once satisfied, update scoring_plugin.yaml thresholds</span></div>
+  </div>
+
+  <p><strong>The ScoringPlugin doesn't change.</strong> It still does weighted sums, null renormalization, and three-band classification — exactly as Module 04 built it. The ThresholdTuner sits <em>beside</em> it: it reads the scored output, measures quality against labels, and tells you whether to adjust the thresholds in the YAML config. Same plugin code, better config values.</p>
+
+  <div class="note"><strong>The shape to remember:</strong> ScoringPlugin computes scores and classifies (hot path, runs on every pair). ThresholdTuner evaluates and tunes (cold path, runs on labeled sample). The tuner's output — recommended thresholds — flows back into the plugin's YAML config. Two separate tools, one feedback loop.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 8 — INTERACTIVE TUNER ══════ -->
+<div class="stage" id="s8">
+<div class="wrap">
+  <p class="sec-eye">Stage 08</p>
+  <h2 class="sec-h">Interactive — Tune Thresholds, Watch the Numbers Move</h2>
+  <p class="sec-sub">Every concept from the last seven stages, live. Drag the match threshold and review threshold sliders and watch precision, recall, F1, review queue size, and the band distribution update in real time. This is the tuning loop you'd run on your own labeled data — compressed into one widget.</p>
+
+  <div class="tuner" id="tuner-widget">
+    <div class="tuner-label">Threshold Tuner — 200 simulated labeled pairs</div>
+
+    <div class="tuner-row">
+      <div class="tuner-fname">Match threshold</div>
+      <input type="range" class="tuner-slider" id="match-slider" min="0" max="1" step="0.01" value="0.80">
+      <div class="tuner-sval" id="match-val">0.80</div>
+    </div>
+    <div class="tuner-row">
+      <div class="tuner-fname">Review threshold</div>
+      <input type="range" class="tuner-slider" id="review-slider" min="0" max="1" step="0.01" value="0.55">
+      <div class="tuner-sval" id="review-val">0.55</div>
+    </div>
+
+    <div class="tuner-band-live">
+      <div class="band-viz" id="live-band"></div>
+    </div>
+
+    <div class="tuner-readout" id="tuner-readout"></div>
+
+    <div class="tuner-math" id="tuner-math"></div>
+
+    <div class="tuner-presets">
+      <button class="tuner-preset" onclick="loadTunerPreset('conservative')">Conservative (P=0.90, R=0.55)</button>
+      <button class="tuner-preset" onclick="loadTunerPreset('balanced')">Balanced (elbow)</button>
+      <button class="tuner-preset" onclick="loadTunerPreset('aggressive')">Aggressive (high recall)</button>
+      <button class="tuner-preset" onclick="loadTunerPreset('tight_review')">Tight review band</button>
+      <button class="tuner-preset" onclick="loadTunerPreset('reset')">Reset</button>
+    </div>
+  </div>
+
+  <div class="note"><strong>Things worth trying:</strong> (1) Set match_threshold to 0.95 and watch precision climb to near-100% while recall collapses — the net is too tight. (2) Drop match_threshold to 0.60 and watch recall climb to 95%+ while precision drops below 80% — the net is too loose. (3) Narrow the review band (move both sliders close together) and watch the review queue shrink to almost nothing — but now uncertain pairs are either auto-merged or auto-rejected with no human check. (4) Widen the review band and watch the queue explode past your team's capacity.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 9 — SELF-TEST ══════ -->
+<div class="stage" id="s9">
+<div class="wrap">
+  <p class="sec-eye">Stage 09</p>
+  <h2 class="sec-h">Self-Test — Scenario Recognition</h2>
+  <p class="sec-sub">Not recall — recognition. Each question hands you a tuning scenario from a real ER pipeline and asks which mechanism or decision applies. If you can read the scenario and name the right move without scrolling back, the module is in.</p>
+
+  <div class="quiz-grid" id="quiz-grid"></div>
+
+  <div class="unlock" style="margin-top:34px">
+    <span class="unlock-icon">✓</span>
+    <div class="unlock-body"><strong>Module 05 complete.</strong> You can now tune thresholds against labeled data, read a precision-recall trade-off, size a review queue for your team, and calibrate composite scores into confidence bands. Your ScoringPlugin's thresholds are no longer guesses — they're evidence-based settings fitted to your data. Next up: <strong>Module 06 · LSH &amp; MinHash</strong>, where you move from scoring pairs to <em>finding</em> pairs at scale without comparing everything to everything.</div>
+  </div>
+
+  <div class="concept-grid" style="margin-top:26px">
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Honest Gaps</div>
+      <div class="cc-title">What this module didn't cover</div>
+      <div class="cc-body">
+        <strong>F1 score:</strong> the harmonic mean of precision and recall. Mentioned in the widget but not drilled — it's a useful single-number summary but doesn't replace understanding the P/R trade-off directly.<br><br>
+        <strong>Automated threshold selection:</strong> algorithms like Youden's J statistic or the F-beta optimizer that pick the "best" threshold mathematically. These exist and are useful but require the foundation this module just built.<br><br>
+        <strong>Active learning:</strong> instead of labeling random pairs, selecting the pairs near the decision boundary for labeling to get maximum information per label. Important for efficiency when labeling is expensive — a future session.<br><br>
+        <strong>Multi-threshold optimization:</strong> tuning match_threshold and review_threshold jointly (rather than sequentially) using a grid search over both. The widget approximates this but the formal approach needs a labeled set larger than this module assumed.
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">the-learning-lab · Module 05 · Score Aggregation &amp; Confidence</span>
+    <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
+  </div>
+</footer>
+
+<script>
+/* ── NAV ── */
+function go(id, btn) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.sn').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+/* ── COPY ── */
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ══════════════════════════════════════════
+   SIMULATED LABELED DATA — 200 pairs
+   ══════════════════════════════════════════ */
+// Generate a realistic labeled dataset:
+// - True matches: scores drawn mostly from 0.65-0.98 (with some hard cases in 0.50-0.65)
+// - True non-matches: scores drawn mostly from 0.10-0.55 (with some tricky ones in 0.55-0.72)
+const LABELED = [];
+const rng = (function(){let s=42;return()=>{s=(s*16807)%2147483647;return s/2147483647}})();
+
+// 80 true matches
+for(let i=0;i<80;i++){
+  let score;
+  const r = rng();
+  if(r < 0.15)      score = 0.45 + rng() * 0.20;  // hard matches: 0.45-0.65
+  else if(r < 0.40) score = 0.65 + rng() * 0.15;  // moderate: 0.65-0.80
+  else               score = 0.80 + rng() * 0.20;  // easy: 0.80-1.00
+  LABELED.push({score: Math.min(score, 1.0), label: true});
+}
+// 120 true non-matches
+for(let i=0;i<120;i++){
+  let score;
+  const r = rng();
+  if(r < 0.60)      score = 0.05 + rng() * 0.40;  // clear non-matches: 0.05-0.45
+  else if(r < 0.85) score = 0.45 + rng() * 0.15;  // moderate: 0.45-0.60
+  else               score = 0.55 + rng() * 0.17;  // tricky non-matches: 0.55-0.72
+  LABELED.push({score: Math.min(score, 1.0), label: false});
+}
+
+function computeMetrics(matchT, reviewT) {
+  let tp=0, fp=0, fn=0, tn=0;
+  let autoMerge=0, review=0, autoReject=0;
+
+  LABELED.forEach(p => {
+    const predicted = p.score >= matchT;
+    if(predicted && p.label)  tp++;
+    if(predicted && !p.label) fp++;
+    if(!predicted && p.label) fn++;
+    if(!predicted && !p.label) tn++;
+
+    if(p.score >= matchT) autoMerge++;
+    else if(p.score >= reviewT) review++;
+    else autoReject++;
+  });
+
+  const precision = (tp+fp) > 0 ? tp/(tp+fp) : 1;
+  const recall = (tp+fn) > 0 ? tp/(tp+fn) : 0;
+  const f1 = (precision+recall) > 0 ? 2*precision*recall/(precision+recall) : 0;
+
+  return {tp, fp, fn, tn, precision, recall, f1, autoMerge, review, autoReject};
+}
+
+/* ── TUNER WIDGET ── */
+const matchSlider = document.getElementById('match-slider');
+const reviewSlider = document.getElementById('review-slider');
+const matchVal = document.getElementById('match-val');
+const reviewVal = document.getElementById('review-val');
+
+function updateTuner() {
+  let mt = parseFloat(matchSlider.value);
+  let rt = parseFloat(reviewSlider.value);
+
+  // Enforce review <= match
+  if(rt > mt) { rt = mt; reviewSlider.value = rt; }
+
+  matchVal.textContent = mt.toFixed(2);
+  reviewVal.textContent = rt.toFixed(2);
+
+  const m = computeMetrics(mt, rt);
+
+  // Band viz
+  const noW = Math.max(rt * 100, 0);
+  const revW = Math.max((mt - rt) * 100, 0);
+  const yesW = Math.max((1 - mt) * 100, 0);
+  document.getElementById('live-band').innerHTML = `
+    <div class="band-bar">
+      <div class="band-seg band-no" style="width:${noW}%">${noW > 8 ? 'NO MATCH' : ''}</div>
+      <div class="band-seg band-rev" style="width:${revW}%">${revW > 8 ? 'REVIEW' : ''}</div>
+      <div class="band-seg band-yes" style="width:${yesW}%">${yesW > 8 ? 'MATCH' : ''}</div>
+    </div>
+    <div class="band-scale"><span>0.0</span><span>${rt.toFixed(2)}</span><span>${mt.toFixed(2)}</span><span>1.0</span></div>
+  `;
+
+  // Readout
+  const pColor = m.precision >= 0.90 ? 'var(--green)' : m.precision >= 0.75 ? 'var(--amber)' : 'var(--red)';
+  const rColor = m.recall >= 0.85 ? 'var(--green)' : m.recall >= 0.65 ? 'var(--amber)' : 'var(--red)';
+  const f1Color = m.f1 >= 0.85 ? 'var(--green)' : m.f1 >= 0.70 ? 'var(--amber)' : 'var(--red)';
+
+  document.getElementById('tuner-readout').innerHTML = `
+    <div class="tuner-stat">
+      <div class="tuner-stat-label">Precision</div>
+      <div class="tuner-stat-val" style="color:${pColor}">${(m.precision*100).toFixed(1)}%</div>
+    </div>
+    <div class="tuner-stat">
+      <div class="tuner-stat-label">Recall</div>
+      <div class="tuner-stat-val" style="color:${rColor}">${(m.recall*100).toFixed(1)}%</div>
+    </div>
+    <div class="tuner-stat">
+      <div class="tuner-stat-label">F1 Score</div>
+      <div class="tuner-stat-val" style="color:${f1Color}">${(m.f1*100).toFixed(1)}%</div>
+    </div>
+  `;
+
+  // Math readout
+  const totalPairs = LABELED.length;
+  const reviewHours = (m.review * 2 / 60).toFixed(1);
+  document.getElementById('tuner-math').innerHTML =
+    `<strong style="color:var(--ink)">Confusion matrix:</strong> TP=<span class="hl-n">${m.tp}</span> · FP=<span class="hl-n">${m.fp}</span> · FN=<span class="hl-n">${m.fn}</span> · TN=<span class="hl-n">${m.tn}</span><br>` +
+    `<strong style="color:var(--ink)">Distribution:</strong> Auto-merge: <span class="hl-n">${m.autoMerge}</span> (${(m.autoMerge/totalPairs*100).toFixed(0)}%) · ` +
+    `Review: <span class="hl-n">${m.review}</span> (${(m.review/totalPairs*100).toFixed(0)}%) · ` +
+    `Auto-reject: <span class="hl-n">${m.autoReject}</span> (${(m.autoReject/totalPairs*100).toFixed(0)}%)<br>` +
+    `<strong style="color:var(--ink)">Review load:</strong> ${m.review} pairs × 2 min = <span class="hl-n">${reviewHours}</span> hours ` +
+    `<span style="color:${m.review > 80 ? 'var(--red)' : m.review > 40 ? 'var(--amber)' : 'var(--green)'}">${m.review > 80 ? '⚠ heavy' : m.review > 40 ? '○ moderate' : '✓ light'}</span><br>` +
+    `precision = ${m.tp} / (${m.tp} + ${m.fp}) = <span class="hl-n">${m.precision.toFixed(3)}</span> · ` +
+    `recall = ${m.tp} / (${m.tp} + ${m.fn}) = <span class="hl-n">${m.recall.toFixed(3)}</span>`;
+}
+
+matchSlider.addEventListener('input', updateTuner);
+reviewSlider.addEventListener('input', updateTuner);
+
+const TUNER_PRESETS = {
+  conservative: {match: 0.90, review: 0.50},
+  balanced:     {match: 0.80, review: 0.55},
+  aggressive:   {match: 0.65, review: 0.55},
+  tight_review: {match: 0.80, review: 0.75},
+  reset:        {match: 0.80, review: 0.55},
+};
+
+function loadTunerPreset(name) {
+  const p = TUNER_PRESETS[name];
+  matchSlider.value = p.match;
+  reviewSlider.value = p.review;
+  updateTuner();
+}
+
+updateTuner();
+
+/* ══════════════════════════════════════════
+   QUIZ
+   ══════════════════════════════════════════ */
+const questions = [
+  {
+    prompt: 'Your pipeline has been running with <strong>match_threshold = 0.80</strong> for two months. A data steward reports that <strong>15% of auto-merged pairs are actually different people</strong>. Which metric is failing, and what\'s the fix?',
+    opts: [
+      'Recall is too low — lower the threshold to catch more matches',
+      'Precision is too low — raise the threshold so only higher-confidence pairs auto-merge',
+      'The review queue is too big — narrow the review band',
+      'Calibration drift — relabel everything and start over'
+    ],
+    correct: 1,
+    explain: '15% wrong merges means precision is 85% — too many false positives are getting through. Raising match_threshold (e.g. 0.80 → 0.88) shrinks the auto-merge pool to only higher-confidence pairs, increasing precision. Some real matches will drop into review, but the auto-merges that remain will be cleaner.'
+  },
+  {
+    prompt: 'Your labeled set has <strong>500 pairs, all sampled from the score range 0.60–1.00</strong>. You compute a PR curve and it looks great — 95% precision at 90% recall. Should you ship those thresholds?',
+    opts: [
+      'Yes — 500 pairs is plenty and the numbers are excellent',
+      'No — the labeled set isn\'t stratified. You have no data below 0.60, so you don\'t know how many true matches your scorer placed there (recall is overestimated)',
+      'No — 500 is too few pairs to draw any conclusion',
+      'Yes — but only if you also check F1'
+    ],
+    correct: 1,
+    explain: 'Sampling bias. If you only label pairs above 0.60, every true match below that threshold is invisible — your recall estimate ignores them entirely. The real recall could be much lower. A stratified sample across the full score range is essential to get an honest picture.'
+  },
+  {
+    prompt: 'Your review queue receives <strong>25,000 pairs per pipeline run</strong>. Your team of 3 reviewers can process <strong>200 pairs/day</strong>. The pipeline runs monthly. What happens?',
+    opts: [
+      'The queue is fine — they have 30 days to clear 25,000 pairs',
+      'Queue overflow — 3 × 200 × 20 work days = 12,000 capacity. The queue grows by ~13,000 per month and will never be cleared',
+      'The queue is fine if they work weekends',
+      'Raise the review threshold to fix it, but that\'s only cosmetic'
+    ],
+    correct: 1,
+    explain: 'Team capacity is 3 reviewers × 200/day × 20 work days = 12,000 pairs/month. The queue sends 25,000. Each month, ~13,000 unreviewed pairs accumulate. By month 3, you\'re 39,000 pairs behind. The fix: narrow the review band (raise review_threshold or lower match_threshold) until the queue fits capacity — or add reviewers.'
+  },
+  {
+    prompt: 'Two datasets produce the <strong>same composite scores</strong> from the same scorer. In Dataset A, a score of 0.75 has a <strong>85% match rate</strong>. In Dataset B, 0.75 has a <strong>40% match rate</strong>. Should you use the same thresholds for both?',
+    opts: [
+      'Yes — the scorer is the same, so the thresholds should be the same',
+      'No — the same score means different things in different data. Calibrate per dataset and set thresholds accordingly',
+      'Yes — but add a confidence column',
+      'No — the scorer itself is broken for Dataset B'
+    ],
+    correct: 1,
+    explain: 'This is exactly what calibration reveals. A score of 0.75 is "probably a match" in Dataset A but barely better than a coin flip in Dataset B. Same number, different meaning. Each dataset needs its own calibration table and its own thresholds. A universal threshold applied blindly would either over-merge in B or under-merge in A.'
+  },
+  {
+    prompt: 'You\'re tuning thresholds and see this on the PR curve: lowering match_threshold from 0.85 to 0.80 <strong>gains 8 points of recall</strong> (0.72 → 0.80) but <strong>loses only 2 points of precision</strong> (0.96 → 0.94). Should you do it?',
+    opts: [
+      'No — any precision loss is unacceptable',
+      'Yes — that\'s an excellent trade: a big recall gain for a small precision cost. You\'re on the "good" side of the elbow',
+      'Only if F1 also improves',
+      'Only if the review queue doesn\'t grow'
+    ],
+    correct: 1,
+    explain: 'This is the elbow in action. 8 recall points for 2 precision points is a great deal — you\'re catching significantly more true matches while barely increasing false merges. Moving past this point (e.g. 0.80 → 0.70) would likely reverse the ratio: small recall gains, large precision losses. Take the deal.'
+  },
+  {
+    prompt: 'A stakeholder says: <strong>"Just set the threshold so F1 is maximized."</strong> Is that always the right approach?',
+    opts: [
+      'Yes — F1 is the standard metric and maximizing it is always correct',
+      'No — F1 weights precision and recall equally, but in many ER contexts they have very different business costs. Maximizing F1 might give you acceptable precision but not enough, if false merges are extremely expensive',
+      'Yes — as long as you also check the review queue',
+      'No — F1 is deprecated; use accuracy instead'
+    ],
+    correct: 1,
+    explain: 'F1 is the harmonic mean of precision and recall — it treats both as equally important. But in healthcare ER, a false merge could mix two patients\' medical records (catastrophic), while a missed match just means a duplicate chart (inconvenient). Here you\'d want much higher precision, even at the cost of recall. F1 is a useful default but the right metric depends on your business\'s cost asymmetry.'
+  },
+  {
+    prompt: 'Your calibration table shows that pairs scoring <strong>0.50–0.60</strong> have a <strong>14% match rate</strong>. Your current review_threshold is 0.55. Should you be worried?',
+    opts: [
+      'No — 14% is low, so most of those pairs are correctly rejected',
+      'Yes — 14% means roughly 1 in 7 pairs you\'re auto-rejecting (below 0.55) are actually true matches. That\'s a significant number of missed matches being silently dropped',
+      'No — the review queue catches them',
+      'Yes — but only if the total pair count in that bin is high'
+    ],
+    correct: 1,
+    explain: 'At review_threshold = 0.55, pairs scoring below 0.55 are auto-rejected. But the calibration table shows that 14% of pairs in the 0.50–0.60 bin are true matches. Every one of those below 0.55 is a real match being silently dropped. If there are 1,000 pairs in that bin, ~140 are real matches being lost. Consider lowering review_threshold to 0.50 to at least send those to human review instead of auto-rejecting them.'
+  },
+  {
+    prompt: 'You tune thresholds on a labeled set from January. It\'s now June. The pipeline is running fine, but a new data provider was onboarded in March with <strong>messier, sparser data</strong>. Should you re-tune?',
+    opts: [
+      'No — the thresholds were validated and haven\'t changed',
+      'No — the scorer handles null renormalization, so sparse data is fine',
+      'Yes — the new data provider likely shifted the score distribution. The calibration and optimal thresholds may have drifted. Re-label a sample from recent data and re-run the PR curve',
+      'Yes — but only re-calibrate, don\'t re-tune thresholds'
+    ],
+    correct: 2,
+    explain: 'Calibration drift. The labeled set from January reflects the old data distribution. A new, messier data provider changes which scores true matches land at, how many fields are null (shifting the renormalized composites), and the overall score distribution. Thresholds that were optimal in January may now be over- or under-merging the new provider\'s records. Re-label a stratified sample from recent data and re-run the full tuning loop.'
+  }
+];
+
+const qg = document.getElementById('quiz-grid');
+questions.forEach((q, i) => {
+  const card = document.createElement('div');
+  card.className = 'qcard';
+  card.innerHTML = `<div class="q-prompt"><strong>Q${i+1}.</strong> ${q.prompt}</div>
+    <div class="q-opts">${q.opts.map((o,j) => `<button class="q-opt" onclick="answerQ(${i},${j},this)">${o}</button>`).join('')}</div>
+    <div class="q-fb" id="qfb-${i}"></div>`;
+  qg.appendChild(card);
+});
+
+function answerQ(qi, oi, btn) {
+  const q = questions[qi];
+  const card = btn.closest('.qcard');
+  card.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  btn.classList.add(oi === q.correct ? 'correct' : 'wrong');
+  if (oi !== q.correct) card.querySelectorAll('.q-opt')[q.correct].classList.add('correct');
+  const fb = document.getElementById(`qfb-${qi}`);
+  fb.className = 'q-fb ' + (oi === q.correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = (oi === q.correct ? '✓ ' : '✗ ') + q.explain;
+  fb.style.display = 'block';
+}
+</script>
+</body>
+</html>
