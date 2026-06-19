@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String Processing & Normalization — Module 02</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1000px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--teal)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--violet)}
+
+/* stage nav pills */
+.stage-nav{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:99;overflow-x:auto}
+.stage-nav-inner{max-width:1000px;margin:0 auto;padding:0 24px;display:flex;gap:6px;height:48px;align-items:center}
+.sn{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sn:hover{color:var(--ink);border-color:var(--faint)}
+.sn.on{background:var(--violet-dim);border-color:var(--violet);color:var(--violet)}
+
+/* ── LAYOUT ── */
+.wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+.stage{display:none;padding:52px 0 72px}.stage.on{display:block}
+
+/* ── HERO STAGE ── */
+.hero-eye{font-family:var(--mo);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--violet);margin-bottom:14px}
+.hero-h{font-family:var(--dp);font-weight:700;font-size:clamp(28px,4vw,46px);line-height:1.08;letter-spacing:-.022em;margin-bottom:16px}
+.hero-h em{font-style:normal;color:var(--teal)}
+.hero-sub{color:var(--muted);font-size:15px;line-height:1.72;max-width:58ch;margin-bottom:36px}
+.stage-map{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:40px}
+.smap-item{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s}
+.smap-item:hover{border-color:var(--violet)}
+.smap-num{font-family:var(--mo);font-size:10px;color:var(--faint)}
+.smap-title{font-size:13px;font-weight:500}
+.smap-status{width:7px;height:7px;border-radius:50%;background:var(--faint);flex-shrink:0}
+.smap-status.live{background:var(--green)}
+
+.pipeline-viz{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;margin-top:8px}
+.pv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.pv-flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;gap:4px}
+.pv-box{background:var(--surf);border:1px solid var(--line);border-radius:7px;padding:8px 14px;font-family:var(--mo);font-size:12px;color:var(--muted);transition:all .2s}
+.pv-box.hl{background:var(--violet-dim);border-color:var(--violet);color:var(--violet)}
+.pv-box.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.pv-arr{color:var(--faint);font-size:14px;padding:0 2px}
+
+/* ── SECTION HEADERS ── */
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(20px,3vw,28px);letter-spacing:-.015em;margin-bottom:8px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.7;max-width:62ch;margin-bottom:32px}
+
+/* ── CONCEPT CARDS ── */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:24px 0}
+.concept-card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:20px;position:relative}
+.concept-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0;background:var(--acc,var(--teal))}
+.cc-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:8px}
+.cc-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:6px}
+.cc-body{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* ── CODE BLOCKS ── */
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:14px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:1.95;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .c{color:var(--faint)}
+.code-block .k{color:var(--violet)}
+.code-block .s{color:var(--amber)}
+.code-block .f{color:var(--teal)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+
+/* ── NOTES & CALLOUTS ── */
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0}
+.warn strong{color:var(--amber)}
+.trap{border-left:3px solid var(--red);background:var(--red-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0}
+.trap strong{color:var(--red)}
+
+/* ── TABLES ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--surf2);color:var(--muted);font-family:var(--mo);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 13px;text-align:left;border-bottom:1px solid var(--line)}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:var(--surf)}
+.badge{display:inline-block;font-family:var(--mo);font-size:10px;padding:2px 7px;border-radius:4px}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #1A3D5C}
+
+/* ── INTERACTIVE PLAYGROUNDS ── */
+.playground{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;margin:20px 0}
+.pg-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.pg-title .badge{font-size:10px}
+.pg-sub{font-size:13px;color:var(--muted);margin-bottom:18px}
+.pg-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.pg-field label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:6px}
+.pg-input{width:100%;background:var(--surf2);border:1px solid var(--line);border-radius:7px;padding:10px 13px;font-family:var(--mo);font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
+.pg-input:focus{border-color:var(--teal)}
+.pg-btn{background:var(--teal-dim);border:1px solid var(--teal);color:var(--teal);font-family:var(--mo);font-size:12px;padding:9px 20px;border-radius:7px;cursor:pointer;transition:all .15s}
+.pg-btn:hover{background:var(--teal);color:var(--bg)}
+.pg-output{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:14px;min-height:80px}
+.pg-result-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.result-row:last-child{border-bottom:0}
+.result-key{font-family:var(--mo);font-size:12px;color:var(--muted)}
+.result-val{font-family:var(--mo);font-size:13px;font-weight:600}
+.score-bar-wrap{margin-top:8px}
+.score-bar-bg{background:var(--surf);border-radius:4px;height:6px;overflow:hidden;margin-top:4px}
+.score-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
+
+/* char highlight */
+.char-diff{display:inline-flex;gap:2px;flex-wrap:wrap;margin:8px 0}
+.ch{display:inline-block;padding:3px 6px;border-radius:4px;font-family:var(--mo);font-size:13px;border:1px solid transparent}
+.ch-match{background:var(--green-dim);border-color:#1E5A35;color:var(--green)}
+.ch-sub{background:var(--amber-dim);border-color:#5A4A15;color:var(--amber)}
+.ch-ins{background:var(--blue-dim);border-color:#1A3D5C;color:var(--blue)}
+.ch-del{background:var(--red-dim);border-color:#5A1A30;color:var(--red);text-decoration:line-through}
+.ch-legend{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.ch-leg-item{display:flex;align-items:center;gap:5px;font-family:var(--mo);font-size:11px;color:var(--muted)}
+
+/* pipeline trace */
+.trace-box{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:16px;margin:10px 0}
+.trace-step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.trace-step:last-child{border-bottom:0}
+.trace-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.trace-content{flex:1}
+.trace-op{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px}
+.trace-before{font-family:var(--mo);font-size:13px;color:var(--muted)}
+.trace-after{font-family:var(--mo);font-size:13px;color:var(--teal);margin-top:2px}
+.trace-arrow{color:var(--faint);font-size:11px;margin:2px 0}
+
+/* phonetic */
+.phonetic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin:16px 0}
+.ph-card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:16px}
+.ph-algo{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.ph-group{margin-bottom:8px}
+.ph-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.ph-names{display:flex;gap:6px;flex-wrap:wrap}
+.ph-name{font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);padding:3px 8px;border-radius:4px;color:var(--ink)}
+.ph-code{font-family:var(--mo);font-size:14px;font-weight:600;color:var(--violet);margin-top:8px}
+
+/* quiz */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:20px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.q-prompt{font-size:13px;line-height:1.6;margin-bottom:14px}
+.q-input{width:100%;background:var(--surf2);border:1px solid var(--line);border-radius:6px;padding:8px 12px;font-family:var(--mo);font-size:12px;color:var(--ink);outline:none;margin-bottom:10px}
+.q-input:focus{border-color:var(--violet)}
+.q-btns{display:flex;gap:8px}
+.q-btn{font-family:var(--mo);font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;border:1px solid;transition:all .15s}
+.q-btn-check{background:var(--violet-dim);border-color:var(--violet);color:var(--violet)}
+.q-btn-check:hover{background:var(--violet);color:var(--bg)}
+.q-fb{font-size:12px;padding:8px 12px;border-radius:6px;margin-top:10px;display:none;line-height:1.5}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+/* divider */
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+h3{font-family:var(--dp);font-weight:600;font-size:17px;margin:28px 0 10px;display:flex;align-items:center;gap:8px}
+h3 .bar{width:3px;height:16px;border-radius:2px;background:var(--violet);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:14px;color:var(--muted);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+p{font-size:14px;color:var(--muted);line-height:1.72;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--teal)}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1000px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--teal);transition:opacity .15s}.foot-r a:hover{opacity:.7}
+
+@media(max-width:600px){
+  .pg-row{grid-template-columns:1fr}
+  .ch-legend{gap:8px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="index.html">the-learning-lab</a>
+      <span class="sep">/</span>
+      <span>MDM · Spark</span>
+      <span class="sep">/</span>
+      <span class="nav-mod">Module 02</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">String Processing</span>
+  </div>
+</nav>
+
+<div class="stage-nav">
+  <div class="stage-nav-inner">
+    <button class="sn on" onclick="go('s0',this)">00 · Overview</button>
+    <button class="sn" onclick="go('s1',this)">01 · Why Normalize</button>
+    <button class="sn" onclick="go('s2',this)">02 · Normalization Pipeline</button>
+    <button class="sn" onclick="go('s3',this)">03 · Levenshtein</button>
+    <button class="sn" onclick="go('s4',this)">04 · Jaro-Winkler</button>
+    <button class="sn" onclick="go('s5',this)">05 · Phonetic Encoding</button>
+    <button class="sn" onclick="go('s6',this)">06 · Choosing an Algorithm</button>
+    <button class="sn" onclick="go('s7',this)">07 · Live Playground</button>
+    <button class="sn" onclick="go('s8',this)">08 · Self-Test</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 0 — OVERVIEW
+══════════════════════════════════════════════════ -->
+<div class="stage on" id="s0">
+<div class="wrap">
+  <p class="hero-eye">Module 02 · MDM / Spark Track</p>
+  <h1 class="hero-h">String Processing &amp; <em>Normalization</em></h1>
+  <p class="hero-sub">Before two records can be compared, their strings need to speak the same language. This module covers every transformation that happens inside your <code>StandardizationPlugin</code> — and every similarity algorithm your <code>ScoringPlugin</code> uses to decide whether two names, addresses, or emails are the same entity.</p>
+
+  <div class="stage-map">
+    <div class="smap-item" onclick="go('s1',document.querySelectorAll('.sn')[1])">
+      <span class="smap-num">01</span><span class="smap-title">Why Normalize</span><span class="smap-status live"></span>
+    </div>
+    <div class="smap-item" onclick="go('s2',document.querySelectorAll('.sn')[2])">
+      <span class="smap-num">02</span><span class="smap-title">Normalization Pipeline</span><span class="smap-status live"></span>
+    </div>
+    <div class="smap-item" onclick="go('s3',document.querySelectorAll('.sn')[3])">
+      <span class="smap-num">03</span><span class="smap-title">Levenshtein</span><span class="smap-status live"></span>
+    </div>
+    <div class="smap-item" onclick="go('s4',document.querySelectorAll('.sn')[4])">
+      <span class="smap-num">04</span><span class="smap-title">Jaro-Winkler</span><span class="smap-status live"></span>
+    </div>
+    <div class="smap-item" onclick="go('s5',document.querySelectorAll('.sn')[5])">
+      <span class="smap-num">05</span><span class="smap-title">Phonetic Encoding</span><span class="smap-status live"></span>
+    </div>
+    <div class="smap-item" onclick="go('s6',document.querySelectorAll('.sn')[6])">
+      <span class="smap-num">06</span><span class="smap-title">Choosing an Algorithm</span><span class="smap-status live"></span>
+    </div>
+    <div class="smap-item" onclick="go('s7',document.querySelectorAll('.sn')[7])">
+      <span class="smap-num">07</span><span class="smap-title">Live Playground</span><span class="smap-status live"></span>
+    </div>
+    <div class="smap-item" onclick="go('s8',document.querySelectorAll('.sn')[8])">
+      <span class="smap-num">08</span><span class="smap-title">Self-Test</span><span class="smap-status live"></span>
+    </div>
+  </div>
+
+  <div class="pipeline-viz">
+    <div class="pv-label">Where this module fits in your pipeline</div>
+    <div class="pv-flow">
+      <span class="pv-box done">Ingest</span>
+      <span class="pv-arr">→</span>
+      <span class="pv-box hl">StandardizationPlugin</span>
+      <span class="pv-arr">→</span>
+      <span class="pv-box">Block</span>
+      <span class="pv-arr">→</span>
+      <span class="pv-box">Self-Join</span>
+      <span class="pv-arr">→</span>
+      <span class="pv-box hl">ScoringPlugin</span>
+      <span class="pv-arr">→</span>
+      <span class="pv-box">Classify</span>
+      <span class="pv-arr">→</span>
+      <span class="pv-box">Golden Record</span>
+    </div>
+  </div>
+
+  <div style="margin-top:32px">
+    <div class="concept-grid">
+      <div class="concept-card" style="--acc:var(--teal)">
+        <div class="cc-num">Normalization</div>
+        <div class="cc-title">Collapse variation before comparison</div>
+        <div class="cc-body">Lowercase, strip punctuation, expand abbreviations, standardize phone/email formats. This is your <code>StandardizationPlugin</code>. Without this step, "John Smith" and "JOHN SMITH" score 0 similarity.</div>
+      </div>
+      <div class="concept-card" style="--acc:var(--violet)">
+        <div class="cc-num">Edit Distance</div>
+        <div class="cc-title">Count the edits to transform A into B</div>
+        <div class="cc-body">Levenshtein distance — how many single-character insertions, deletions, or substitutions does it take to turn one string into another? The raw mechanic behind most fuzzy matching.</div>
+      </div>
+      <div class="concept-card" style="--acc:var(--amber)">
+        <div class="cc-num">Similarity Scoring</div>
+        <div class="cc-title">Jaro-Winkler for names</div>
+        <div class="cc-body">A transposition-aware similarity designed for short strings and personal names. Boosts scores when the prefix matches — because "John" and "Johnny" share more intent than "John" and "Bohn".</div>
+      </div>
+      <div class="concept-card" style="--acc:var(--green)">
+        <div class="cc-num">Phonetic Encoding</div>
+        <div class="cc-title">Sound-alike keys for blocking</div>
+        <div class="cc-body">Soundex and Metaphone convert names to pronunciation codes. "Smith" and "Smyth" both become S530. Critical for blocking — you need these in the same partition before scoring.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 1 — WHY NORMALIZE
+══════════════════════════════════════════════════ -->
+<div class="stage" id="s1">
+<div class="wrap">
+  <p class="sec-eye">Stage 01</p>
+  <h2 class="sec-h">Why Normalize First</h2>
+  <p class="sec-sub">Similarity algorithms measure string distance. If "John Smith" and "john smith" score 0 because of case, you've wasted the scoring stage entirely. Normalization collapses surface variation so algorithms measure semantic distance — not formatting noise.</p>
+
+  <h3><span class="bar"></span>The Core Problem: Same Entity, Different Strings</h3>
+  <p>Your pipeline receives records from multiple source systems — CRM, ERP, billing, support — each with its own formatting conventions. These are all the same person:</p>
+
+  <div class="trace-box">
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--surf2)">📁</div>
+      <div class="trace-content">
+        <div class="trace-op">CRM System</div>
+        <div class="trace-before">JOHN A. SMITH-JONES</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--surf2)">📁</div>
+      <div class="trace-content">
+        <div class="trace-op">ERP System</div>
+        <div class="trace-before">Smith-Jones, John</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--surf2)">📁</div>
+      <div class="trace-content">
+        <div class="trace-op">Billing System</div>
+        <div class="trace-before">J. Smith Jones</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--surf2)">📁</div>
+      <div class="trace-content">
+        <div class="trace-op">Support Ticket</div>
+        <div class="trace-before">john smithjones</div>
+      </div>
+    </div>
+  </div>
+
+  <p>Without normalization, Levenshtein distance between "JOHN A. SMITH-JONES" and "john smithjones" is <strong>8 edits</strong> — which looks like two very different entities. After normalization both become <code>john smithjones</code> — distance drops to <strong>0</strong>.</p>
+
+  <div class="note"><strong>The rule:</strong> Normalization is not about making strings "pretty." It's about ensuring that surface variation that carries no semantic meaning (case, punctuation, whitespace) does not consume your edit budget.</div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>What Normalization Fixes vs What Scoring Handles</h3>
+  <p>These are two different jobs. Mixing them up leads to either over-normalizing (losing real signal) or under-normalizing (wasting scoring budget on noise).</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Variation Type</th><th>Example</th><th>Fix Where</th><th>Why</th></tr>
+      <tr><td>Case difference</td><td>JOHN vs john</td><td><span class="badge b-green">Normalization</span></td><td>No semantic difference, pure formatting</td></tr>
+      <tr><td>Punctuation</td><td>Smith-Jones vs Smith Jones</td><td><span class="badge b-green">Normalization</span></td><td>Hyphen carries no identity signal</td></tr>
+      <tr><td>Whitespace</td><td>John  Smith vs John Smith</td><td><span class="badge b-green">Normalization</span></td><td>Extra spaces are data entry noise</td></tr>
+      <tr><td>Abbreviation</td><td>St. vs Street</td><td><span class="badge b-green">Normalization</span></td><td>Known equivalence, deterministic mapping</td></tr>
+      <tr><td>Typo / transposition</td><td>John vs Jon</td><td><span class="badge b-blue">Scoring</span></td><td>Genuine variation — needs fuzzy algorithm</td></tr>
+      <tr><td>Nickname</td><td>Bill vs William</td><td><span class="badge b-blue">Scoring</span></td><td>Semantic equivalence — lookup table or model</td></tr>
+      <tr><td>Missing middle name</td><td>John A Smith vs John Smith</td><td><span class="badge b-blue">Scoring</span></td><td>Structural difference — scoring handles weight</td></tr>
+      <tr><td>Completely different name</td><td>John Smith vs Sarah Jones</td><td><span class="badge b-red">Neither — not a match</span></td><td>No normalization or scoring rescues this</td></tr>
+    </table>
+  </div>
+
+  <div class="trap"><strong>Common trap:</strong> Teams add nickname expansion (Bill→William) to the normalization plugin. This loses the signal that the original said "Bill" — which might matter for confidence scoring. Keep deterministic equivalences in normalization, probabilistic ones in scoring.</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 2 — NORMALIZATION PIPELINE
+══════════════════════════════════════════════════ -->
+<div class="stage" id="s2">
+<div class="wrap">
+  <p class="sec-eye">Stage 02</p>
+  <h2 class="sec-h">The Normalization Pipeline</h2>
+  <p class="sec-sub">Normalization is a sequence of deterministic transformations — each step shrinks the variation space. Order matters: lowercase before stripping so you don't accidentally lose case-sensitive abbreviations; strip before tokenizing so you split on clean tokens.</p>
+
+  <h3><span class="bar"></span>Step-by-Step: Tracing a Real Name</h3>
+  <p>Watch <code>"Dr. PRIYA  PATEL-SHARMA, PhD"</code> flow through each stage of your <code>StandardizationPlugin</code>:</p>
+
+  <div class="trace-box">
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--violet-dim);color:var(--violet)">1</div>
+      <div class="trace-content">
+        <div class="trace-op">Lowercase</div>
+        <div class="trace-before">"Dr. PRIYA  PATEL-SHARMA, PhD"</div>
+        <div class="trace-arrow">↓</div>
+        <div class="trace-after">"dr. priya  patel-sharma, phd"</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--violet-dim);color:var(--violet)">2</div>
+      <div class="trace-content">
+        <div class="trace-op">Strip titles & suffixes (config-driven)</div>
+        <div class="trace-before">"dr. priya  patel-sharma, phd"</div>
+        <div class="trace-arrow">↓</div>
+        <div class="trace-after">"priya  patel-sharma"</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--violet-dim);color:var(--violet)">3</div>
+      <div class="trace-content">
+        <div class="trace-op">Replace punctuation with space</div>
+        <div class="trace-before">"priya  patel-sharma"</div>
+        <div class="trace-arrow">↓</div>
+        <div class="trace-after">"priya  patel sharma"</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--violet-dim);color:var(--violet)">4</div>
+      <div class="trace-content">
+        <div class="trace-op">Collapse whitespace</div>
+        <div class="trace-before">"priya  patel sharma"</div>
+        <div class="trace-arrow">↓</div>
+        <div class="trace-after">"priya patel sharma"</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--violet-dim);color:var(--violet)">5</div>
+      <div class="trace-content">
+        <div class="trace-op">Sort tokens (optional — for name reordering)</div>
+        <div class="trace-before">"priya patel sharma"</div>
+        <div class="trace-arrow">↓</div>
+        <div class="trace-after">"patel priya sharma" ← tokens sorted alphabetically</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="warn"><strong>Token sorting is a double-edged sword.</strong> It lets "Smith John" match "John Smith" — but it also makes "John Williams" match "Williams John" (a different person with a transposed first/last). Only use token sort when your source data has known first/last name ordering inconsistencies. Don't apply it globally.</div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Your StandardizationPlugin in PySpark</h3>
+  <p>This maps directly to what your plugin YAML config controls. Each step below corresponds to a plugin config key:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — StandardizationPlugin transform method</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+<span class="k">import</span> re
+
+<span class="k">def</span> <span class="f">normalize_name</span>(df, col_name):
+    <span class="co"># Step 1: Lowercase</span>
+    df = df.withColumn(col_name, F.<span class="f">lower</span>(F.col(col_name)))
+
+    <span class="co"># Step 2: Strip titles/suffixes (your YAML config list)</span>
+    titles = [<span class="s">"dr"</span>, <span class="s">"mr"</span>, <span class="s">"mrs"</span>, <span class="s">"ms"</span>, <span class="s">"phd"</span>, <span class="s">"jr"</span>, <span class="s">"sr"</span>, <span class="s">"md"</span>]
+    pattern = <span class="s">r'\b('</span> + <span class="s">'|'</span>.join(titles) + <span class="s">r')\.?\b'</span>
+    df = df.withColumn(col_name,
+        F.<span class="f">regexp_replace</span>(F.col(col_name), pattern, <span class="s">""</span>))
+
+    <span class="co"># Step 3: Replace punctuation with space</span>
+    df = df.withColumn(col_name,
+        F.<span class="f">regexp_replace</span>(F.col(col_name), <span class="s">r"[^a-z0-9\s]"</span>, <span class="s">" "</span>))
+
+    <span class="co"># Step 4: Collapse whitespace + trim</span>
+    df = df.withColumn(col_name,
+        F.<span class="f">trim</span>(F.<span class="f">regexp_replace</span>(F.col(col_name), <span class="s">r"\s+"</span>, <span class="s">" "</span>)))
+
+    <span class="k">return</span> df
+
+<span class="k">def</span> <span class="f">normalize_phone</span>(df, col_name):
+    <span class="co"># Strip all non-digits</span>
+    df = df.withColumn(col_name,
+        F.<span class="f">regexp_replace</span>(F.col(col_name), <span class="s">r"[^\d]"</span>, <span class="s">""</span>))
+    <span class="co"># Strip leading country code (1 for US)</span>
+    df = df.withColumn(col_name,
+        F.<span class="f">when</span>(F.<span class="f">length</span>(F.col(col_name)) == <span class="n">11</span>,
+            F.<span class="f">substring</span>(F.col(col_name), <span class="n">2</span>, <span class="n">10</span>))
+        .otherwise(F.col(col_name)))
+    <span class="k">return</span> df
+
+<span class="k">def</span> <span class="f">normalize_email</span>(df, col_name):
+    <span class="co"># Lowercase + trim only — email is case-insensitive by spec</span>
+    df = df.withColumn(col_name,
+        F.<span class="f">trim</span>(F.<span class="f">lower</span>(F.col(col_name))))
+    <span class="k">return</span> df
+  </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Normalization by Field Type</h3>
+  <p>Each field type needs different treatment. Applying name normalization to a phone number destroys it.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Field</th><th>Key Steps</th><th>Watch Out For</th></tr>
+      <tr><td><strong>Name</strong></td><td>lowercase → strip titles → strip punctuation → collapse whitespace</td><td>Hyphenated surnames, initials, "Jr/Sr" that are part of identity</td></tr>
+      <tr><td><strong>Email</strong></td><td>lowercase → trim → extract domain separately</td><td>Sub-addressing (john+work@gmail.com) — strip <code>+tag</code> before comparing</td></tr>
+      <tr><td><strong>Phone</strong></td><td>strip non-digits → strip country code → assert 10 digits</td><td>Extensions (x123), formatting variants (+1-555-123-4567 vs 15551234567)</td></tr>
+      <tr><td><strong>Address</strong></td><td>lowercase → expand abbreviations (St→Street) → strip punctuation → normalize state/country codes</td><td>Suite/Apt formats vary wildly — treat as separate token</td></tr>
+      <tr><td><strong>Date of Birth</strong></td><td>parse to ISO-8601 (YYYY-MM-DD)</td><td>US format (MM/DD/YYYY) vs EU (DD/MM/YYYY) ambiguity for dates like 01/02/2000</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 3 — LEVENSHTEIN
+══════════════════════════════════════════════════ -->
+<div class="stage" id="s3">
+<div class="wrap">
+  <p class="sec-eye">Stage 03</p>
+  <h2 class="sec-h">Levenshtein Distance</h2>
+  <p class="sec-sub">The foundation of all edit-based similarity. Levenshtein distance counts the minimum number of single-character operations — insert, delete, substitute — to transform string A into string B. It's the "how far apart are these strings?" question answered as an integer.</p>
+
+  <h3><span class="bar"></span>The Three Operations</h3>
+  <div class="concept-grid">
+    <div class="concept-card" style="--acc:var(--green)">
+      <div class="cc-num">Insert</div>
+      <div class="cc-title">Add a character</div>
+      <div class="cc-body"><code>color</code> → <code>colour</code><br>Insert 'u' at position 5. Cost: 1.</div>
+    </div>
+    <div class="concept-card" style="--acc:var(--red)">
+      <div class="cc-num">Delete</div>
+      <div class="cc-title">Remove a character</div>
+      <div class="cc-body"><code>colour</code> → <code>color</code><br>Delete 'u' at position 5. Cost: 1.</div>
+    </div>
+    <div class="concept-card" style="--acc:var(--amber)">
+      <div class="cc-num">Substitute</div>
+      <div class="cc-title">Replace a character</div>
+      <div class="cc-body"><code>Jon</code> → <code>John</code><br>Wait — that's actually an insert, not a sub. Levenshtein finds the <em>minimum</em> path.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Step-by-Step: "kitten" → "sitting" — Read This First</h3>
+
+  <div class="trace-box" style="margin-bottom:20px">
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">1</div>
+      <div class="trace-content">
+        <div class="trace-op">What does the matrix represent?</div>
+        <div class="trace-before">Rows = characters of A ("kitten"), Columns = characters of B ("sitting"). The "" row/column = the empty string.</div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-after">Cell [i][j] = minimum edits to turn the first i characters of A into the first j characters of B. The bottom-right cell [6][7] = the final answer.</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">2</div>
+      <div class="trace-content">
+        <div class="trace-op">Why does column 0 go 0, 1, 2, 3, 4, 5, 6?</div>
+        <div class="trace-before">Column 0 = "how many edits to turn the first i chars of A into the EMPTY string?"</div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-after">You need i deletions. "k"→"" = 1 delete. "ki"→"" = 2 deletes. "kit"→"" = 3 deletes. Column 0 is just the row index.</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">3</div>
+      <div class="trace-content">
+        <div class="trace-op">Why does row 0 go 0, 1, 2, 3, 4, 5, 6, 7?</div>
+        <div class="trace-before">Row 0 = "how many edits to build the first j chars of B from the EMPTY string?"</div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-after">You need j insertions. ""→"s" = 1 insert. ""→"si" = 2 inserts. Row 0 is just the column index.</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--violet-dim);color:var(--violet)">★</div>
+      <div class="trace-content">
+        <div class="trace-op">The rule for every other cell — two cases:</div>
+        <div class="trace-before">CASE 1: A[i] == B[j] (characters match) → copy the diagonal cell above-left. No edit needed.</div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-after">CASE 2: A[i] != B[j] (no match) → 1 + minimum of: (cell above = delete), (cell left = insert), (cell diagonal = substitute). Pick the cheapest.</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--amber-dim);color:var(--amber)">?</div>
+      <div class="trace-content">
+        <div class="trace-op">Why is the answer 3? What are the 3 edits?</div>
+        <div class="trace-before">kitten → sitten (substitute k→s) → sittin (substitute e→i) → sitting (insert g at end)</div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-after">3 edits. Bottom-right cell = 3. Similarity = 1 − 3/7 = 0.571. Not a great match — which is correct, "kitten" and "sitting" are genuinely different.</div>
+      </div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Now Step Through It — Watch the Rule Fire</h3>
+  <p>Each click fills one cell and explains exactly which rule applied and why that number came out. Green = characters matched (free diagonal). Amber = substitution cost. Teal = insert/delete path chosen.</p>
+
+  <div id="lev-matrix-wrap">
+    <div style="overflow-x:auto">
+      <table id="lev-table" style="width:auto;font-family:var(--mo);font-size:13px">
+        <tr id="lev-header"></tr>
+      </table>
+    </div>
+    <div style="margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px 16px">
+      <div style="font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">What just happened</div>
+      <div id="lev-status" style="font-family:var(--mo);font-size:13px;color:var(--muted);line-height:1.7">Press <strong style="color:var(--teal)">Step →</strong> to fill the matrix one cell at a time.</div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="pg-btn" onclick="levStep()">Step →</button>
+      <button class="pg-btn" onclick="levFill()" style="background:var(--amber-dim);color:var(--amber);border-color:var(--amber)">Fill all</button>
+      <button class="pg-btn" onclick="levReset()" style="background:transparent;color:var(--muted);border-color:var(--line)">Reset</button>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:6px;font-family:var(--mo);font-size:11px;color:var(--muted)"><span style="width:12px;height:12px;background:var(--green-dim);border:1px solid #1E5A35;border-radius:3px;display:inline-block"></span>match → free (copy diagonal)</div>
+      <div style="display:flex;align-items:center;gap:6px;font-family:var(--mo);font-size:11px;color:var(--muted)"><span style="width:12px;height:12px;background:var(--amber-dim);border:1px solid #5A4A15;border-radius:3px;display:inline-block"></span>substitution cost applied</div>
+      <div style="display:flex;align-items:center;gap:6px;font-family:var(--mo);font-size:11px;color:var(--muted)"><span style="width:12px;height:12px;background:var(--teal-dim);border:1px solid var(--teal);border-radius:3px;display:inline-block"></span>insert/delete path chosen</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Normalized Levenshtein → Similarity Score</h3>
+  <p>Raw Levenshtein distance is an integer — not directly comparable across different-length strings. "kitten"→"sitting" is distance 3 out of a max of 7, which is very different from distance 3 between two 4-letter words. Always normalize:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">Normalized Levenshtein — Python + PySpark</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
+<span class="co"># Normalized Levenshtein: 0.0 = totally different, 1.0 = identical</span>
+<span class="k">def</span> <span class="f">lev_similarity</span>(a, b):
+    dist = <span class="f">levenshtein_distance</span>(a, b)
+    max_len = <span class="f">max</span>(<span class="f">len</span>(a), <span class="f">len</span>(b))
+    <span class="k">if</span> max_len == <span class="n">0</span>: <span class="k">return</span> <span class="n">1.0</span>
+    <span class="k">return</span> <span class="n">1.0</span> - (dist / max_len)
+
+<span class="co"># PySpark built-in</span>
+<span class="k">from</span> pyspark.sql.functions <span class="k">import</span> levenshtein
+pairs = pairs.withColumn(<span class="s">"name_lev_dist"</span>,
+    <span class="f">levenshtein</span>(F.col(<span class="s">"a.name_std"</span>), F.col(<span class="s">"b.name_std"</span>)))
+
+<span class="co"># Normalize to similarity score</span>
+pairs = pairs.withColumn(<span class="s">"name_lev_sim"</span>,
+    <span class="n">1.0</span> - (F.col(<span class="s">"name_lev_dist"</span>) / F.<span class="f">greatest</span>(
+        F.<span class="f">length</span>(F.col(<span class="s">"a.name_std"</span>)),
+        F.<span class="f">length</span>(F.col(<span class="s">"b.name_std"</span>))
+    )))
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Where Levenshtein Falls Short for Names</h3>
+  <p>Levenshtein treats every character position equally. For names, this causes two specific failures:</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Pair</th><th>Lev Distance</th><th>Lev Similarity</th><th>Human Judgment</th><th>Problem</th></tr>
+      <tr>
+        <td><code>Jon</code> vs <code>John</code></td>
+        <td>1</td>
+        <td>0.75</td>
+        <td style="color:var(--green)">Very likely same</td>
+        <td><span class="badge b-amber">Underscore</span> — names that differ by 1 char are often the same person</td>
+      </tr>
+      <tr>
+        <td><code>Johnson</code> vs <code>Johnston</code></td>
+        <td>2</td>
+        <td>0.75</td>
+        <td style="color:var(--amber)">Maybe same</td>
+        <td>OK — similar score, similar confidence</td>
+      </tr>
+      <tr>
+        <td><code>Mary</code> vs <code>Gary</code></td>
+        <td>1</td>
+        <td>0.75</td>
+        <td style="color:var(--red)">Very unlikely same</td>
+        <td><span class="badge b-red">Overscore</span> — a 1-char prefix difference changes identity entirely</td>
+      </tr>
+      <tr>
+        <td><code>Jonathan</code> vs <code>Johnathan</code></td>
+        <td>1</td>
+        <td>0.88</td>
+        <td style="color:var(--green)">Almost certainly same</td>
+        <td>Works well here — common variant spelling</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="note"><strong>The key insight:</strong> Levenshtein doesn't know that prefixes matter more than suffixes for names, or that transpositions ("Jon"/"Jno") are more likely data-entry errors than arbitrary substitutions. That's exactly what Jaro-Winkler was designed to fix.</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 4 — JARO-WINKLER
+══════════════════════════════════════════════════ -->
+<div class="stage" id="s4">
+<div class="wrap">
+  <p class="sec-eye">Stage 04</p>
+  <h2 class="sec-h">Jaro-Winkler Similarity</h2>
+  <p class="sec-sub">Designed specifically for short strings and personal names. Unlike Levenshtein which counts edits, Jaro measures how many characters match within a proximity window, then penalizes transpositions. Winkler adds a prefix bonus — because names that share a prefix are much more likely to be the same person than names that only match in the middle.</p>
+
+  <h3><span class="bar"></span>Building Up Jaro: Three Components</h3>
+
+  <div class="concept-grid">
+    <div class="concept-card" style="--acc:var(--teal)">
+      <div class="cc-num">Step 1</div>
+      <div class="cc-title">Find matching characters</div>
+      <div class="cc-body">A character in A "matches" a character in B if they're the same AND within a match window of <code>floor(max(|A|,|B|)/2) - 1</code> positions. This handles transpositions.</div>
+    </div>
+    <div class="concept-card" style="--acc:var(--violet)">
+      <div class="cc-num">Step 2</div>
+      <div class="cc-title">Count transpositions</div>
+      <div class="cc-body">A transposition is when a matching character appears in a different order between A and B. Transpositions count as half an error — less than a full mismatch.</div>
+    </div>
+    <div class="concept-card" style="--acc:var(--amber)">
+      <div class="cc-num">Step 3 (Winkler)</div>
+      <div class="cc-title">Add prefix bonus</div>
+      <div class="cc-body">If A and B share the same prefix (up to 4 chars), the Winkler boost increases the score. <code>p = 0.1</code> (standard). This is why "John"/"Johnathan" scores higher than "John"/"Bjohn".</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The Jaro Formula — Worked Example</h3>
+  <p>Let's compute Jaro similarity for <strong>"MARTHA"</strong> vs <strong>"MARHTA"</strong> (a transposition pair).</p>
+
+  <div class="trace-box">
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">1</div>
+      <div class="trace-content">
+        <div class="trace-op">Match window</div>
+        <div class="trace-before">max(6,6)/2 - 1 = 2. A character must be within 2 positions.</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">2</div>
+      <div class="trace-content">
+        <div class="trace-op">Find matches (m)</div>
+        <div class="trace-before">MARTHA → M A R T H A</div>
+        <div class="trace-after">MARHTA → M A R H T A   →  m = 6 (all match, just reordered)</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">3</div>
+      <div class="trace-content">
+        <div class="trace-op">Count transpositions (t)</div>
+        <div class="trace-before">Matching sequence in MARTHA: M A R T H A</div>
+        <div class="trace-after">Matching sequence in MARHTA: M A R H T A  → T and H swapped = 2 mismatches → t = 2/2 = 1</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">4</div>
+      <div class="trace-content">
+        <div class="trace-op">Jaro formula: ⅓ × (m/|s1| + m/|s2| + (m-t)/m)</div>
+        <div class="trace-after">⅓ × (6/6 + 6/6 + (6-1)/6) = ⅓ × (1 + 1 + 0.833) = 0.944</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--violet-dim);color:var(--violet)">5</div>
+      <div class="trace-content">
+        <div class="trace-op">Winkler boost — shared prefix "MAR" (l=3)</div>
+        <div class="trace-after">jaro_winkler = 0.944 + (3 × 0.1 × (1 - 0.944)) = 0.944 + 0.017 = 0.961</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Jaro-Winkler in Your ScoringPlugin</h3>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark UDF — Jaro-Winkler scoring</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+<span class="k">from</span> pyspark.sql.types <span class="k">import</span> FloatType
+<span class="k">import</span> jellyfish  <span class="co"># pip install jellyfish</span>
+
+<span class="co"># Register as UDF</span>
+jaro_winkler_udf = F.<span class="f">udf</span>(
+    <span class="k">lambda</span> a, b: <span class="f">float</span>(jellyfish.<span class="f">jaro_winkler_similarity</span>(a, b))
+        <span class="k">if</span> a <span class="k">and</span> b <span class="k">else</span> <span class="n">0.0</span>,
+    FloatType()
+)
+
+<span class="co"># Apply in your scoring plugin</span>
+pairs = pairs.withColumn(
+    <span class="s">"name_jw_sim"</span>,
+    <span class="f">jaro_winkler_udf</span>(F.col(<span class="s">"a.name_std"</span>), F.col(<span class="s">"b.name_std"</span>))
+)
+
+<span class="co"># Weight into composite score</span>
+pairs = pairs.withColumn(
+    <span class="s">"name_score"</span>,
+    F.col(<span class="s">"name_jw_sim"</span>) * <span class="n">0.7</span> +      <span class="co"># Jaro-Winkler carries most weight</span>
+    F.col(<span class="s">"name_lev_sim"</span>) * <span class="n">0.3</span>       <span class="co"># Levenshtein as secondary signal</span>
+)
+  </div>
+  </div>
+
+  <div class="warn"><strong>UDF performance note:</strong> Python UDFs break Spark's Catalyst optimizer — each row crosses the JVM→Python boundary. For production, use Spark's built-in <code>levenshtein()</code> for edit distance. For Jaro-Winkler, either use a Scala UDF or batch the computation with <code>pandas_udf</code> (vectorized). The naive UDF above will be 10–50× slower on large candidate pair sets.</div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Jaro-Winkler vs Levenshtein — When to Use Which</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Scenario</th><th>Best Algorithm</th><th>Why</th></tr>
+      <tr><td>Person names (first, last)</td><td><span class="badge b-green">Jaro-Winkler</span></td><td>Prefix-sensitive, handles transpositions, designed for names</td></tr>
+      <tr><td>Company names</td><td><span class="badge b-blue">Levenshtein (normalized)</span></td><td>Longer strings, prefixes less significant, edit count more meaningful</td></tr>
+      <tr><td>Email usernames</td><td><span class="badge b-blue">Levenshtein</span></td><td>Typos are arbitrary — no prefix semantics</td></tr>
+      <tr><td>Street addresses</td><td><span class="badge b-amber">Token-based</span></td><td>Split into tokens first, then compare token sets (Jaccard or cosine)</td></tr>
+      <tr><td>Short codes (IDs, zip codes)</td><td><span class="badge b-blue">Levenshtein</span></td><td>Every character equally significant, no prefix bonus needed</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 5 — PHONETIC ENCODING
+══════════════════════════════════════════════════ -->
+<div class="stage" id="s5">
+<div class="wrap">
+  <p class="sec-eye">Stage 05</p>
+  <h2 class="sec-h">Phonetic Encoding</h2>
+  <p class="sec-sub">Jaro-Winkler catches spelling variations of the same name. Phonetic encoding catches pronunciation variations — "Smith" and "Smyth" sound identical but have edit distance 1. These encodings are used for <strong>blocking</strong>, not scoring: they generate a key that groups sound-alike names into the same partition before the self-join.</p>
+
+  <h3><span class="bar"></span>Soundex — The Classic Algorithm</h3>
+  <p>Soundex was developed in the 1910s for the US Census. It converts a name to a 4-character code: first letter + 3 digits representing consonant groups. All vowels and H, W, Y are ignored after the first character.</p>
+
+  <div class="trace-box">
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--surf2)">→</div>
+      <div class="trace-content">
+        <div class="trace-op">Soundex encoding of "SMITH"</div>
+        <div class="trace-before">S - M - I - T - H</div>
+        <div class="trace-after">S → keep first letter = S<br>M → group 5 = 5<br>I → vowel, ignored<br>T → group 3 = 3<br>H → ignored<br>Pad to 4 chars → <strong>S530</strong></div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--surf2)">→</div>
+      <div class="trace-content">
+        <div class="trace-op">Soundex encoding of "SMYTH"</div>
+        <div class="trace-before">S - M - Y - T - H</div>
+        <div class="trace-after">S → S<br>M → 5<br>Y → ignored (like vowel in Soundex)<br>T → 3<br>H → ignored → <strong>S530</strong> ← same code!</div>
+      </div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Real MDM Examples — Names That Soundex Groups Together</h3>
+
+  <div class="phonetic-grid" id="soundex-grid"></div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Soundex vs Double Metaphone</h3>
+  <p>Soundex is simple and fast but has known weaknesses — particularly with non-English names and names starting with vowels. Double Metaphone handles a broader set of language patterns.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Algorithm</th><th>Output</th><th>Handles</th><th>Misses</th><th>Best For</th></tr>
+      <tr>
+        <td><strong>Soundex</strong></td>
+        <td>1 letter + 3 digits</td>
+        <td>English names, simple variants</td>
+        <td>Non-English origins, vowel-start names</td>
+        <td>Quick baseline, US data</td>
+      </tr>
+      <tr>
+        <td><strong>Double Metaphone</strong></td>
+        <td>2 codes (primary + alternate)</td>
+        <td>Multi-language, Slavic, Hebrew, Asian romanizations</td>
+        <td>Highly complex variants</td>
+        <td>Diverse international MDM datasets</td>
+      </tr>
+      <tr>
+        <td><strong>NYSIIS</strong></td>
+        <td>Variable length string</td>
+        <td>Better vowel handling than Soundex</td>
+        <td>Less commonly supported in libraries</td>
+        <td>New York state records, genealogy</td>
+      </tr>
+    </table>
+  </div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Adding Phonetic Blocking to Your Pipeline</h3>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">PySpark — generating Soundex block keys</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
+<span class="k">from</span> pyspark.sql.functions <span class="k">import</span> soundex, col
+
+<span class="co"># Add soundex block key on last name</span>
+df = df.withColumn(
+    <span class="s">"block_soundex_last"</span>,
+    <span class="f">soundex</span>(<span class="f">col</span>(<span class="s">"last_name_std"</span>))
+)
+
+<span class="co"># Multi-key blocking: soundex OR exact phone</span>
+<span class="co"># explode into one row per block key</span>
+<span class="k">from</span> pyspark.sql.functions <span class="k">import</span> array, explode, struct
+
+df_blocked = df.withColumn(
+    <span class="s">"block_keys"</span>,
+    <span class="f">array</span>(
+        <span class="f">struct</span>(<span class="f">col</span>(<span class="s">"block_soundex_last"</span>).alias(<span class="s">"key"</span>)),
+        <span class="f">struct</span>(<span class="f">col</span>(<span class="s">"phone_std"</span>).alias(<span class="s">"key"</span>))    <span class="co"># exact phone as block key too</span>
+    )
+).withColumn(<span class="s">"block_key"</span>, <span class="f">explode</span>(<span class="s">"block_keys"</span>).<span class="s">"key"</span>)
+
+<span class="co"># Deduplicate before self-join</span>
+pairs = df_blocked.alias(<span class="s">"a"</span>).join(
+    df_blocked.alias(<span class="s">"b"</span>),
+    (col(<span class="s">"a.block_key"</span>) == col(<span class="s">"b.block_key"</span>)) &amp;
+    (col(<span class="s">"a.id"</span>) &lt; col(<span class="s">"b.id"</span>))   <span class="co"># a.id &lt; b.id eliminates (A,B) + (B,A) duplicates</span>
+).dropDuplicates([<span class="s">"a.id"</span>, <span class="s">"b.id"</span>])
+  </div>
+  </div>
+
+  <div class="note"><strong>Why multi-key blocking?</strong> A single Soundex key misses pairs that share an exact phone number but have very different names (e.g., family members). Multi-key blocking casts a wider net — then scoring filters the false positives. More candidate pairs = higher recall; better scoring = higher precision.</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 6 — CHOOSING AN ALGORITHM
+══════════════════════════════════════════════════ -->
+<div class="stage" id="s6">
+<div class="wrap">
+  <p class="sec-eye">Stage 06</p>
+  <h2 class="sec-h">Choosing the Right Algorithm</h2>
+  <p class="sec-sub">No single algorithm wins everywhere. The right choice depends on field type, string length, data origin, and whether you're blocking or scoring. Here's the decision framework used in production MDM pipelines.</p>
+
+  <h3><span class="bar"></span>The Decision Framework</h3>
+
+  <div class="trace-box">
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">Q1</div>
+      <div class="trace-content">
+        <div class="trace-op">Are you blocking or scoring?</div>
+        <div class="trace-before">Blocking → use phonetic encoding (Soundex / Double Metaphone)</div>
+        <div class="trace-after">Scoring → continue to Q2</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">Q2</div>
+      <div class="trace-content">
+        <div class="trace-op">Is it a personal name (first or last)?</div>
+        <div class="trace-before">Yes → Jaro-Winkler (prefix-sensitive, transposition-aware)</div>
+        <div class="trace-after">No → continue to Q3</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">Q3</div>
+      <div class="trace-content">
+        <div class="trace-op">Is the string short (&lt;20 chars) or long?</div>
+        <div class="trace-before">Short (email username, code, ID) → Normalized Levenshtein</div>
+        <div class="trace-after">Long (address, company name, description) → Token-based (Jaccard or cosine on token sets)</div>
+      </div>
+    </div>
+    <div class="trace-step">
+      <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">Q4</div>
+      <div class="trace-content">
+        <div class="trace-op">Is the field a structured format (phone, email, date)?</div>
+        <div class="trace-before">Yes → exact match after normalization (similarity is binary after good normalization)</div>
+        <div class="trace-after">No → apply the algorithm from Q2/Q3</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3><span class="bar"></span>Your ScoringPlugin — Putting It Together</h3>
+  <p>In your MDM pipeline, the scoring plugin computes a weighted composite. Here's a realistic config-to-code mapping:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">Scoring config (YAML) → PySpark implementation</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block">
+<span class="co"># YAML plugin config</span>
+<span class="co"># scoring:</span>
+<span class="co">#   fields:</span>
+<span class="co">#     - name: full_name,    algorithm: jaro_winkler, weight: 0.40</span>
+<span class="co">#     - name: email,        algorithm: exact,        weight: 0.30</span>
+<span class="co">#     - name: phone,        algorithm: exact,        weight: 0.20</span>
+<span class="co">#     - name: date_of_birth,algorithm: exact,        weight: 0.10</span>
+<span class="co">#   thresholds:</span>
+<span class="co">#     match:  0.85</span>
+<span class="co">#     review: 0.70</span>
+
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="k">def</span> <span class="f">score_pairs</span>(pairs):
+    <span class="co"># Name: Jaro-Winkler (via UDF or pandas_udf for performance)</span>
+    pairs = pairs.withColumn(<span class="s">"s_name"</span>,
+        <span class="f">jaro_winkler_udf</span>(F.col(<span class="s">"a.full_name_std"</span>), F.col(<span class="s">"b.full_name_std"</span>)))
+
+    <span class="co"># Email: exact after normalization → binary 0.0 or 1.0</span>
+    pairs = pairs.withColumn(<span class="s">"s_email"</span>,
+        F.<span class="f">when</span>(F.col(<span class="s">"a.email_std"</span>) == F.col(<span class="s">"b.email_std"</span>), <span class="n">1.0</span>)
+         .when(F.col(<span class="s">"a.email_std"</span>).isNull() | F.col(<span class="s">"b.email_std"</span>).isNull(), <span class="n">None</span>)
+         .otherwise(<span class="n">0.0</span>))
+
+    <span class="co"># Phone: exact after normalization</span>
+    pairs = pairs.withColumn(<span class="s">"s_phone"</span>,
+        F.<span class="f">when</span>(F.col(<span class="s">"a.phone_std"</span>) == F.col(<span class="s">"b.phone_std"</span>), <span class="n">1.0</span>)
+         .when(F.col(<span class="s">"a.phone_std"</span>).isNull() | F.col(<span class="s">"b.phone_std"</span>).isNull(), <span class="n">None</span>)
+         .otherwise(<span class="n">0.0</span>))
+
+    <span class="co"># DOB: exact</span>
+    pairs = pairs.withColumn(<span class="s">"s_dob"</span>,
+        F.<span class="f">when</span>(F.col(<span class="s">"a.dob"</span>) == F.col(<span class="s">"b.dob"</span>), <span class="n">1.0</span>)
+         .when(F.col(<span class="s">"a.dob"</span>).isNull() | F.col(<span class="s">"b.dob"</span>).isNull(), <span class="n">None</span>)
+         .otherwise(<span class="n">0.0</span>))
+
+    <span class="co"># Weighted composite — skip null fields (don't penalize missing data)</span>
+    pairs = pairs.withColumn(<span class="s">"composite_score"</span>,
+        (F.<span class="f">coalesce</span>(F.col(<span class="s">"s_name"</span>),  <span class="n">0.0</span>) * <span class="n">0.40</span> +
+         F.<span class="f">coalesce</span>(F.col(<span class="s">"s_email"</span>), <span class="n">0.0</span>) * <span class="n">0.30</span> +
+         F.<span class="f">coalesce</span>(F.col(<span class="s">"s_phone"</span>), <span class="n">0.0</span>) * <span class="n">0.20</span> +
+         F.<span class="f">coalesce</span>(F.col(<span class="s">"s_dob"</span>),   <span class="n">0.0</span>) * <span class="n">0.10</span>))
+
+    <span class="co"># Classify</span>
+    <span class="k">return</span> pairs.withColumn(<span class="s">"verdict"</span>,
+        F.<span class="f">when</span>(F.col(<span class="s">"composite_score"</span>) >= <span class="n">0.85</span>, <span class="s">"MATCH"</span>)
+         .when(F.col(<span class="s">"composite_score"</span>) >= <span class="n">0.70</span>, <span class="s">"REVIEW"</span>)
+         .otherwise(<span class="s">"NO_MATCH"</span>))
+
+  </div>
+  </div>
+
+  <div class="trap"><strong>Null handling trap:</strong> If a field is null for one record, using <code>coalesce(score, 0.0)</code> penalizes the pair for missing data — a record with no phone number scores 0 on phone, dragging down the composite. Instead, re-weight on the fly: compute the composite only over available fields and renormalize weights to sum to 1.0 among non-null pairs. This is what enterprise MDM platforms do under the hood.</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 7 — LIVE PLAYGROUND
+══════════════════════════════════════════════════ -->
+<div class="stage" id="s7">
+<div class="wrap">
+  <p class="sec-eye">Stage 07</p>
+  <h2 class="sec-h">Live Playground</h2>
+  <p class="sec-sub">Enter any two strings and see how normalization, Levenshtein, and Jaro-Winkler each score them — with a character-level diff showing exactly where they diverge.</p>
+
+  <div class="playground">
+    <div class="pg-title">String Comparison Engine <span class="badge b-blue">Interactive</span></div>
+    <div class="pg-sub">Try name variants from your pipeline: "PRIYA PATEL" vs "P. PATEL", "john smith" vs "jon smyth", "555-123-4567" vs "5551234567"</div>
+    <div class="pg-row">
+      <div class="pg-field">
+        <label>String A</label>
+        <input class="pg-input" id="pg-a" value="PRIYA PATEL" placeholder="Enter string A">
+      </div>
+      <div class="pg-field">
+        <label>String B</label>
+        <input class="pg-input" id="pg-b" value="P. PATEL" placeholder="Enter string B">
+      </div>
+    </div>
+    <button class="pg-btn" onclick="runPlayground()">Compare →</button>
+
+    <div class="pg-output" id="pg-out" style="display:none">
+      <div class="pg-result-label">Results</div>
+      <div id="pg-results"></div>
+      <div style="margin-top:16px">
+        <div style="font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Normalized forms</div>
+        <div id="pg-norm" style="font-family:var(--mo);font-size:13px;color:var(--muted)"></div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Character diff (normalized)</div>
+        <div id="pg-diff"></div>
+        <div class="ch-legend">
+          <div class="ch-leg-item"><span class="ch ch-match">a</span> match</div>
+          <div class="ch-leg-item"><span class="ch ch-sub">a</span> substitution</div>
+          <div class="ch-leg-item"><span class="ch ch-ins">a</span> insertion</div>
+          <div class="ch-leg-item"><span class="ch ch-del">a</span> deletion</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="playground">
+    <div class="pg-title">Normalization Tracer <span class="badge b-green">Interactive</span></div>
+    <div class="pg-sub">See every transformation step applied to a raw string — just like your StandardizationPlugin does.</div>
+    <div class="pg-row">
+      <div class="pg-field" style="grid-column:1/-1">
+        <label>Raw input string</label>
+        <input class="pg-input" id="norm-in" value="Dr. PRIYA  PATEL-SHARMA, PhD" placeholder="Enter a raw name or address">
+      </div>
+    </div>
+    <button class="pg-btn" onclick="runNormTrace()">Trace normalization →</button>
+    <div id="norm-out" style="margin-top:14px;display:none"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+  STAGE 8 — SELF TEST
+══════════════════════════════════════════════════ -->
+<div class="stage" id="s8">
+<div class="wrap">
+  <p class="sec-eye">Stage 08</p>
+  <h2 class="sec-h">Self-Test</h2>
+  <p class="sec-sub">Ten scenarios from real MDM pipelines. Apply what you've learned — pick the right algorithm, predict the score direction, or identify the normalization trap.</p>
+
+  <div class="quiz-grid" id="quiz-grid"></div>
+</div>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">Module 02 · String Processing & Normalization</span>
+    <span class="foot-r"><a href="index.html">← Back to Learning Lab</a></span>
+  </div>
+</footer>
+
+<script>
+/* ── NAVIGATION ── */
+function go(id, btn) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.sn').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (btn) btn.classList.add('on');
+}
+
+/* ── SOUNDEX DATA ── */
+const soundexGroups = [
+  { code:'S530', names:['Smith','Smyth','Smithe','Smythe'], label:'The classic MDM test case' },
+  { code:'J525', names:['Johnson','Johnston','Jonson','Johnsen'], label:'Very common surname variants' },
+  { code:'P340', names:['Patel','Patil','Padel'], label:'South Asian name variants' },
+  { code:'R163', names:['Rogers','Rodgers','Rogerz'], label:'Spelling variations' },
+  { code:'G620', names:['Garcia','Garsia','Garcea'], label:'Spanish surname variants' },
+  { code:'M240', names:['Mueller','Miller','Muller','Moeller'], label:'German/anglicized variants' },
+];
+
+const grid = document.getElementById('soundex-grid');
+soundexGroups.forEach(g => {
+  grid.innerHTML += `<div class="ph-card">
+    <div class="ph-algo">Soundex</div>
+    <div class="ph-group">
+      <div class="ph-label">${g.label}</div>
+      <div class="ph-names">${g.names.map(n=>`<span class="ph-name">${n}</span>`).join('')}</div>
+    </div>
+    <div class="ph-code">${g.code}</div>
+  </div>`;
+});
+
+/* ── LEVENSHTEIN MATRIX ── */
+const levA = 'kitten', levB = 'sitting';
+let levStep_i = 0, levStep_j = -1;
+const levMatrix = [];
+
+function levInit() {
+  for (let i = 0; i <= levA.length; i++) {
+    levMatrix[i] = [];
+    for (let j = 0; j <= levB.length; j++) levMatrix[i][j] = null;
+  }
+  for (let i = 0; i <= levA.length; i++) levMatrix[i][0] = i;
+  for (let j = 0; j <= levB.length; j++) levMatrix[0][j] = j;
+
+  const tbl = document.getElementById('lev-table');
+  const hdr = document.getElementById('lev-header');
+  hdr.innerHTML = `<th style="background:var(--surf2);padding:8px 10px;border:1px solid var(--line)"></th>
+    <th style="background:var(--surf2);padding:8px 10px;border:1px solid var(--line);font-family:var(--mo);color:var(--muted)">""</th>` +
+    levB.split('').map(c => `<th style="background:var(--surf2);padding:8px 10px;border:1px solid var(--line);font-family:var(--mo);color:var(--violet)">${c}</th>`).join('');
+
+  for (let i = 0; i <= levA.length; i++) {
+    const row = document.createElement('tr');
+    row.id = 'lev-row-'+i;
+    const lbl = i===0?'""':levA[i-1];
+    row.innerHTML = `<td style="background:var(--surf2);padding:8px 10px;border:1px solid var(--line);font-family:var(--mo);color:${i===0?'var(--muted)':'var(--violet)'}">${lbl}</td>`;
+    for (let j = 0; j <= levB.length; j++) {
+      const td = document.createElement('td');
+      td.id = `lev-${i}-${j}`;
+      td.style.cssText = 'padding:8px 10px;border:1px solid var(--line);text-align:center;font-family:var(--mo);min-width:36px;transition:background .3s';
+      if (levMatrix[i][j] !== null) {
+        td.textContent = levMatrix[i][j];
+        td.style.color = 'var(--muted)';
+      }
+      row.appendChild(td);
+    }
+    tbl.appendChild(row);
+  }
+}
+levInit();
+
+function levExplain(i, j, charA, charB, cost, del_, ins_, sub_, result) {
+  const match = cost === 0;
+  const statusEl = document.getElementById('lev-status');
+  if (match) {
+    statusEl.innerHTML = `<span style="color:var(--teal)">Cell [${i}][${j}]</span> — comparing <span style="color:var(--violet)">"${charA}"</span> (row ${i} of A) with <span style="color:var(--violet)">"${charB}"</span> (col ${j} of B).<br>
+    ✓ Characters MATCH — no edit needed. Copy the diagonal cell [${i-1}][${j-1}] = <strong style="color:var(--green)">${result}</strong>.<br>
+    <span style="color:var(--faint)">Rule: when chars match, take the diagonal value unchanged.</span>`;
+  } else {
+    const minOp = result-1===del_-1?'delete (cell above)':result-1===ins_-1?'insert (cell left)':'substitute (diagonal)';
+    statusEl.innerHTML = `<span style="color:var(--teal)">Cell [${i}][${j}]</span> — comparing <span style="color:var(--violet)">"${charA}"</span> vs <span style="color:var(--violet)">"${charB}"</span> — no match.<br>
+    Three options: delete=${del_} (cell above [${i-1}][${j}]), insert=${ins_} (cell left [${i}][${j-1}]), substitute=${sub_} (diagonal [${i-1}][${j-1}]).<br>
+    Pick cheapest: <strong style="color:var(--amber)">${minOp}</strong> → 1 + ${result-1} = <strong style="color:var(--amber)">${result}</strong>.`;
+  }
+}
+
+function levStepInner() {
+  levStep_j++;
+  if (levStep_j > levB.length) { levStep_j = 1; levStep_i++; }
+  if (levStep_i > levA.length) {
+    const dist = levMatrix[levA.length][levB.length];
+    const maxL = Math.max(levA.length, levB.length);
+    document.getElementById('lev-status').innerHTML =
+      `<span style="color:var(--green)">✓ Done!</span> Bottom-right cell [${levA.length}][${levB.length}] = <strong style="color:var(--green)">${dist}</strong>.<br>
+      That means it takes <strong>${dist} edits</strong> to turn "${levA}" into "${levB}": k→s (substitute), e→i (substitute), insert g at end.<br>
+      Similarity = 1 − ${dist}/${maxL} = <strong style="color:var(--green)">${(1-dist/maxL).toFixed(3)}</strong>`;
+    return false;
+  }
+  const i = levStep_i, j = levStep_j;
+  if (i===0||j===0) { return levStepInner(); }
+  const cost = levA[i-1]===levB[j-1]?0:1;
+  const del_ = levMatrix[i-1][j]+1;
+  const ins_ = levMatrix[i][j-1]+1;
+  const sub_ = levMatrix[i-1][j-1]+cost;
+  levMatrix[i][j] = Math.min(del_, ins_, sub_);
+  const td = document.getElementById(`lev-${i}-${j}`);
+  td.textContent = levMatrix[i][j];
+  if (cost===0) {
+    td.style.background = 'var(--green-dim)'; td.style.color = 'var(--green)';
+  } else if (levMatrix[i][j] === sub_) {
+    td.style.background = 'var(--amber-dim)'; td.style.color = 'var(--amber)';
+  } else {
+    td.style.background = 'var(--teal-dim)'; td.style.color = 'var(--teal)';
+  }
+  levExplain(i, j, levA[i-1], levB[j-1], cost, del_, ins_, sub_, levMatrix[i][j]);
+  return true;
+}
+
+function levStep() { levStepInner(); }
+
+function levFill() {
+  let cont = true;
+  while(cont) cont = levStepInner();
+}
+
+function levReset() {
+  levStep_i=0; levStep_j=-1;
+  document.getElementById('lev-table').innerHTML='';
+  const hdr = document.createElement('tr');
+  hdr.id='lev-header';
+  document.getElementById('lev-table').appendChild(hdr);
+  levMatrix.length=0;
+  levInit();
+  document.getElementById('lev-status').innerHTML='Press <strong style="color:var(--teal)">Step →</strong> to fill the matrix one cell at a time.';
+}
+
+/* ── PLAYGROUND ALGORITHMS ── */
+function normalize(s) {
+  return s.toLowerCase()
+    .replace(/\b(dr|mr|mrs|ms|phd|jr|sr|md)\.?\b/gi,'')
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+
+function levenshtein(a, b) {
+  const m=a.length, n=b.length;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i?j?0:i:j));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+function jaroWinkler(s1, s2) {
+  if(s1===s2) return 1.0;
+  const l1=s1.length, l2=s2.length;
+  const matchDist=Math.floor(Math.max(l1,l2)/2)-1;
+  const s1Matches=new Array(l1).fill(false);
+  const s2Matches=new Array(l2).fill(false);
+  let matches=0, transpositions=0;
+  for(let i=0;i<l1;i++){
+    const start=Math.max(0,i-matchDist);
+    const end=Math.min(i+matchDist+1,l2);
+    for(let j=start;j<end;j++){
+      if(s2Matches[j]||s1[i]!==s2[j]) continue;
+      s1Matches[i]=true; s2Matches[j]=true; matches++; break;
+    }
+  }
+  if(!matches) return 0;
+  let k=0;
+  for(let i=0;i<l1;i++){
+    if(!s1Matches[i]) continue;
+    while(!s2Matches[k]) k++;
+    if(s1[i]!==s2[k]) transpositions++;
+    k++;
+  }
+  const jaro=(matches/l1+matches/l2+(matches-transpositions/2)/matches)/3;
+  let prefix=0;
+  for(let i=0;i<Math.min(4,Math.min(l1,l2));i++){
+    if(s1[i]===s2[i]) prefix++; else break;
+  }
+  return jaro+prefix*0.1*(1-jaro);
+}
+
+function scoreColor(v) {
+  if(v>=0.85) return 'var(--green)';
+  if(v>=0.65) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function runPlayground() {
+  const a=document.getElementById('pg-a').value;
+  const b=document.getElementById('pg-b').value;
+  const na=normalize(a), nb=normalize(b);
+  const levDist=levenshtein(na,nb);
+  const maxLen=Math.max(na.length,nb.length);
+  const levSim=maxLen===0?1:1-levDist/maxLen;
+  const jw=jaroWinkler(na,nb);
+  const exact=na===nb?1:0;
+
+  const out=document.getElementById('pg-out');
+  out.style.display='block';
+
+  document.getElementById('pg-norm').innerHTML=
+    `<div>A (normalized): <span style="color:var(--teal)">"${na}"</span></div>
+     <div>B (normalized): <span style="color:var(--violet)">"${nb}"</span></div>`;
+
+  const metrics=[
+    {label:'Jaro-Winkler', val:jw, note:'Best for names'},
+    {label:'Levenshtein similarity', val:levSim, note:`Distance: ${levDist} edits`},
+    {label:'Exact match', val:exact, note:'After normalization'},
+  ];
+  document.getElementById('pg-results').innerHTML=metrics.map(m=>`
+    <div class="result-row">
+      <div>
+        <div class="result-key">${m.label}</div>
+        <div style="font-family:var(--mo);font-size:10px;color:var(--faint);margin-top:2px">${m.note}</div>
+        <div class="score-bar-wrap">
+          <div class="score-bar-bg" style="width:200px">
+            <div class="score-bar-fill" style="width:${Math.round(m.val*100)}%;background:${scoreColor(m.val)}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="result-val" style="color:${scoreColor(m.val)}">${m.val.toFixed(3)}</div>
+    </div>`).join('');
+
+  // character diff via LCS alignment
+  document.getElementById('pg-diff').innerHTML = buildDiff(na, nb);
+}
+
+function buildDiff(a, b) {
+  const m=a.length, n=b.length;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},()=>0));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]+1:Math.max(dp[i-1][j],dp[i][j-1]);
+  let i=m,j=n; const ops=[];
+  while(i>0||j>0){
+    if(i>0&&j>0&&a[i-1]===b[j-1]){ops.unshift({t:'match',c:a[i-1]});i--;j--;}
+    else if(j>0&&(i===0||dp[i][j-1]>=dp[i-1][j])){ops.unshift({t:'ins',c:b[j-1]});j--;}
+    else{ops.unshift({t:'del',c:a[i-1]});i--;}
+  }
+  return '<div style="margin-bottom:6px;font-family:var(--mo);font-size:11px;color:var(--faint)">String A:</div>' +
+    '<div class="char-diff">' + ops.map(o=>{
+      if(o.t==='match') return `<span class="ch ch-match">${o.c===' '?'·':o.c}</span>`;
+      if(o.t==='del')   return `<span class="ch ch-del">${o.c===' '?'·':o.c}</span>`;
+      return '';
+    }).join('') + '</div>' +
+    '<div style="margin:8px 0 6px;font-family:var(--mo);font-size:11px;color:var(--faint)">String B:</div>' +
+    '<div class="char-diff">' + ops.map(o=>{
+      if(o.t==='match') return `<span class="ch ch-match">${o.c===' '?'·':o.c}</span>`;
+      if(o.t==='ins')   return `<span class="ch ch-ins">${o.c===' '?'·':o.c}</span>`;
+      return '';
+    }).join('') + '</div>';
+}
+
+function runNormTrace() {
+  const raw = document.getElementById('norm-in').value;
+  const steps = [
+    { op:'Lowercase', fn: s => s.toLowerCase() },
+    { op:'Strip titles & suffixes', fn: s => s.replace(/\b(dr|mr|mrs|ms|phd|jr|sr|md)\.?\b/gi,'').trim() },
+    { op:'Replace punctuation with space', fn: s => s.replace(/[^a-z0-9\s]/g,' ') },
+    { op:'Collapse whitespace', fn: s => s.replace(/\s+/g,' ').trim() },
+  ];
+  let cur = raw;
+  let html = '<div class="trace-box">';
+  steps.forEach((step,i) => {
+    const prev = cur;
+    cur = step.fn(cur);
+    const changed = prev !== cur;
+    html += `<div class="trace-step">
+      <div class="trace-icon" style="background:var(--violet-dim);color:var(--violet)">${i+1}</div>
+      <div class="trace-content">
+        <div class="trace-op">${step.op}</div>
+        <div class="trace-before" style="color:${changed?'var(--muted)':'var(--faint)'}">"${prev}"</div>
+        ${changed?`<div class="trace-arrow">↓</div><div class="trace-after">"${cur}"</div>`:'<div style="font-family:var(--mo);font-size:11px;color:var(--faint);margin-top:3px">← no change</div>'}
+      </div>
+    </div>`;
+  });
+  html += `<div class="trace-step" style="background:var(--teal-dim)">
+    <div class="trace-icon" style="background:var(--teal-dim);color:var(--teal)">✓</div>
+    <div class="trace-content">
+      <div class="trace-op" style="color:var(--teal)">Final normalized output</div>
+      <div class="trace-after" style="font-size:14px;font-weight:600">"${cur}"</div>
+    </div>
+  </div></div>`;
+  const el = document.getElementById('norm-out');
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+/* ── SELF TEST ── */
+const questions = [
+  {
+    prompt: 'Two name records: "JOHN A. SMITH-JONES" and "john smithjones". What is the Levenshtein distance BEFORE normalization? And AFTER?',
+    answer: ['before:8','after:0','8','0'],
+    explain: 'Before normalization: 8 edits (case, punctuation, middle initial all cost edits). After normalization (lowercase + strip punctuation + strip middle initial): "john smithjones" vs "john smithjones" — distance 0. This is exactly why normalization runs first.'
+  },
+  {
+    prompt: 'You need to block on last names so that "Garcia" and "Garsia" end up in the same partition. Which algorithm do you use?',
+    answer: ['soundex','double metaphone','phonetic'],
+    explain: 'Soundex (or Double Metaphone). Both encode to the same phonetic key, putting them in the same partition before the self-join. Jaro-Winkler is for scoring after they\'re already paired — not for blocking.'
+  },
+  {
+    prompt: 'Jaro-Winkler scores "Martha" vs "Marhta" as ~0.96. Why so high despite the transposition?',
+    answer: ['transposition','prefix','mar','within window'],
+    explain: 'Jaro was designed to handle transpositions — it counts them as half an error rather than a full substitution. Winkler then boosts the score further because both share the prefix "MAR". Together they correctly identify this as almost certainly the same name entered with two characters swapped.'
+  },
+  {
+    prompt: 'Your ScoringPlugin uses coalesce(s_phone, 0.0) for the phone score. A record has no phone number. What\'s the problem with this?',
+    answer: ['penalize','missing','null','weight','0'],
+    explain: 'coalesce(null, 0.0) treats a missing phone as a phone that doesn\'t match — it scores 0.0 and pulls down the composite. The correct approach: skip null fields entirely and renormalize the weights across available fields. Missing data ≠ no match.'
+  },
+  {
+    prompt: 'You\'re scoring company names like "International Business Machines" vs "IBM Corp". Which algorithm family works best?',
+    answer: ['token','jaccard','cosine','ngram','tfidf'],
+    explain: 'Token-based similarity (Jaccard on word tokens, or TF-IDF cosine). Character-level algorithms like Levenshtein and Jaro-Winkler fail on abbreviations and reordered long strings. You need to split into tokens first, then compare token sets.'
+  },
+  {
+    prompt: 'What is the Soundex code for "Johnson"? And "Johnston"?',
+    answer: ['j525','same'],
+    explain: 'Both encode to J525. J=J (keep first letter), o=ignored (vowel), h=ignored, n=5, s=2, o=ignored, n=5 (duplicate adjacent, drop) → J525. That\'s exactly why Soundex works for blocking — it collapses common surname variants into the same key.'
+  },
+  {
+    prompt: 'A record has email "john+work@gmail.com". After normalization, what should the email become for comparison?',
+    answer: ['john@gmail.com','strip','plus','tag'],
+    explain: 'john@gmail.com. Gmail (and many providers) treat the +tag as a sub-address alias — john+work@ and john@ deliver to the same inbox. Strip everything between + and @ before comparing. "john+work@gmail.com" and "john@gmail.com" are the same identity.'
+  },
+  {
+    prompt: 'Why should you NOT run token-sort (alphabetically sorting name tokens) globally across all records?',
+    answer: ['different','person','john williams','williams','false positive','both'],
+    explain: '"John Williams" and "Williams John" are almost certainly the same person — token sort fixes that. But "John Williams" (the composer) and "Williams John" read as the same after token sort. More critically, sorting makes "John Thomas" match "Thomas John" — which could be two different people. Only apply token sort when you have confirmed evidence of first/last name ordering inconsistencies in a specific source system.'
+  },
+  {
+    prompt: 'Levenshtein gives "Mary" vs "Gary" a similarity of 0.75 — same as "Jon" vs "John". Why is this a problem for names?',
+    answer: ['prefix','different','mary gary','context','position'],
+    explain: 'Levenshtein treats all character positions equally. A 1-character difference at the start of a short name (M→G) completely changes identity — Mary and Gary are almost never the same person. But Jon and John (prefix match, 1 insertion) almost always are. Jaro-Winkler handles this correctly by being prefix-sensitive: Jon/John scores ~0.97, Mary/Gary scores ~0.88.'
+  },
+  {
+    prompt: 'You want to use Jaro-Winkler in PySpark but are worried about UDF performance. What is the production-grade alternative?',
+    answer: ['pandas_udf','vectorized','scala','udf','arrow'],
+    explain: 'pandas_udf (vectorized UDF using Apache Arrow). Instead of crossing the JVM→Python boundary per row, pandas_udf batches rows into pandas Series and processes them in bulk. Typically 10–50× faster than a Python UDF on large candidate pair DataFrames. The other option is a Scala UDF, which avoids Python entirely and runs natively in the JVM.'
+  }
+];
+
+const qgrid = document.getElementById('quiz-grid');
+questions.forEach((q,i) => {
+  qgrid.innerHTML += `<div class="qcard">
+    <div class="q-prompt"><strong>Q${i+1}.</strong> ${q.prompt}</div>
+    <input class="q-input" id="qi-${i}" placeholder="Your answer...">
+    <div class="q-btns">
+      <button class="q-btn q-btn-check" onclick="checkQ(${i})">Check</button>
+    </div>
+    <div class="q-fb" id="qf-${i}"></div>
+  </div>`;
+});
+
+function checkQ(i) {
+  const val = document.getElementById(`qi-${i}`).value.toLowerCase();
+  const q = questions[i];
+  const correct = q.answer.some(a => val.includes(a));
+  const fb = document.getElementById(`qf-${i}`);
+  fb.className = 'q-fb ' + (correct?'fb-ok':'fb-no');
+  fb.textContent = (correct?'✓ ' : '✗ ') + q.explain;
+  fb.style.display='block';
+}
+
+
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ── INIT ── */
+runPlayground();
+</script>
+</body>
+</html>

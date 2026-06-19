@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Scoring &amp; Classification — Module 04</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--teal)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--teal)}
+
+.stage-nav{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:99;overflow-x:auto}
+.stage-nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;gap:6px;height:48px;align-items:center}
+.sn{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sn:hover{color:var(--ink);border-color:var(--faint)}
+.sn.on{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.stage{display:none;padding:48px 0 72px}.stage.on{display:block}
+
+/* typography */
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--teal);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--teal)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+/* concept cards */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:20px 0}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:20px;position:relative}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0;background:var(--acc,var(--teal))}
+.cc-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:8px}
+.cc-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:6px}
+.cc-body{font-size:13px;color:var(--muted);line-height:1.6}
+.cc-body code{font-size:11px}
+
+/* analogy box */
+.analogy{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:20px 22px;margin:20px 0}
+.analogy-eye{font-family:var(--mo);font-size:10px;color:var(--violet);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.analogy-body{font-size:14px;color:var(--ink);line-height:1.75}
+.analogy-body em{color:var(--violet);font-style:normal;font-weight:600}
+
+/* callouts */
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+.trap{border-left:3px solid var(--red);background:var(--red-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.trap strong{color:var(--red)}
+
+/* code windows */
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:2;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .k{color:var(--violet)}
+.code-block .f{color:var(--teal)}
+.code-block .s{color:var(--amber)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+.code-block .hl{background:rgba(94,200,194,.08);display:inline-block;width:100%;border-left:2px solid var(--teal);padding-left:6px;margin-left:-8px}
+.code-block .why{color:var(--teal);font-style:italic}
+
+/* debug trace */
+.debug-trace{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.dt-header{background:var(--surf2);padding:10px 16px;font-family:var(--mo);font-size:11px;color:var(--violet);letter-spacing:.08em;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.dt-header::before{content:'▶';font-size:9px}
+.dt-step{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dt-step:last-child{border-bottom:0}
+.dt-line{font-family:var(--mo);font-size:12px;color:var(--ink);margin-bottom:6px}
+.dt-state{font-family:var(--mo);font-size:12px;color:var(--teal);padding:8px 12px;background:var(--teal-dim);border-radius:6px;margin:6px 0}
+.dt-why{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.dt-why em{color:var(--amber);font-style:normal}
+
+/* data table */
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+.data-table .hl-row td{background:var(--teal-dim) !important}
+.data-table .hl-row td:first-child{border-left:3px solid var(--teal)}
+.data-table .tot-row td{background:var(--surf2);font-weight:600;color:var(--ink);border-top:2px solid var(--line)}
+.data-table .new-col{color:var(--teal);font-weight:600}
+.data-table .faint{color:var(--faint)}
+.badge{display:inline-block;font-family:var(--mo);font-size:10px;padding:2px 7px;border-radius:4px}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #1A3D5C}
+.b-violet{background:var(--violet-dim);color:var(--violet);border:1px solid #3A3060}
+
+/* wrong vs right */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.compare-panel{border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.compare-header{padding:10px 14px;font-family:var(--mo);font-size:11px;letter-spacing:.06em;border-bottom:1px solid var(--line)}
+.wrong-header{background:var(--red-dim);color:var(--red)}
+.right-header{background:var(--green-dim);color:var(--green)}
+.compare-body{background:var(--surf2);padding:14px 16px;font-family:var(--mo);font-size:12px;line-height:1.9;white-space:pre;overflow-x:auto;color:var(--muted)}
+.compare-output{background:var(--panel);padding:10px 14px;border-top:1px solid var(--line);font-family:var(--mo);font-size:12px;color:var(--muted);line-height:1.7}
+.output-label{font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+
+/* red herring contrast — Rajesh's signature fix */
+.herring{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:18px 0;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.herring-col{padding:18px 20px}
+.herring-col.left{background:var(--red-dim);border-right:1px solid var(--line)}
+.herring-col.right{background:var(--green-dim)}
+.herring-eye{font-family:var(--mo);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.herring-col.left .herring-eye{color:var(--red)}
+.herring-col.right .herring-eye{color:var(--green)}
+.herring-col h5{font-family:var(--dp);font-weight:600;font-size:14px;color:var(--ink);margin-bottom:8px}
+.herring-col p{font-size:13px;line-height:1.6;margin-bottom:8px}
+.herring-col p:last-child{margin-bottom:0}
+.herring-col code{font-size:11px}
+@media(max-width:600px){.herring{grid-template-columns:1fr}.herring-col.left{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* score builder */
+.builder{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:22px 0}
+.bld-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.bld-field{display:grid;grid-template-columns:78px 1fr 56px 88px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.bld-field:last-of-type{border-bottom:0}
+.bld-fname{font-family:var(--mo);font-size:12px;color:var(--ink)}
+.bld-fweight{font-family:var(--mo);font-size:10px;color:var(--faint)}
+.bld-slider{width:100%;accent-color:var(--teal);cursor:pointer}
+.bld-field.is-null .bld-slider{opacity:.3;pointer-events:none}
+.bld-field.is-null .bld-sval{color:var(--faint);text-decoration:line-through}
+.bld-sval{font-family:var(--mo);font-size:12px;color:var(--teal);text-align:center}
+.bld-nulltog{font-family:var(--mo);font-size:10px;padding:4px 8px;border-radius:5px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;transition:all .15s}
+.bld-nulltog:hover{border-color:var(--faint);color:var(--ink)}
+.bld-nulltog.on{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+.bld-readout{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+.bld-num{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;text-align:center}
+.bld-num-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.bld-num-val{font-family:var(--dp);font-weight:700;font-size:30px;line-height:1}
+.bld-verdict{border-radius:10px;padding:16px 18px;text-align:center;display:flex;flex-direction:column;justify-content:center;transition:all .2s}
+.bld-verdict-label{font-family:var(--mo);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;opacity:.8}
+.bld-verdict-val{font-family:var(--dp);font-weight:700;font-size:22px;line-height:1}
+.v-match{background:var(--green-dim);border:1px solid var(--green);color:var(--green)}
+.v-review{background:var(--amber-dim);border:1px solid var(--amber);color:var(--amber)}
+.v-nomatch{background:var(--red-dim);border:1px solid var(--red);color:var(--red)}
+.bld-math{font-family:var(--mo);font-size:11px;color:var(--muted);background:var(--surf2);border-radius:8px;padding:12px 14px;margin-top:14px;line-height:1.8}
+.bld-math .hl-n{color:var(--teal)}
+.bld-presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.bld-preset{font-family:var(--mo);font-size:11px;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.bld-preset:hover{border-color:var(--teal);color:var(--teal)}
+
+/* threshold band viz */
+.band-viz{margin:20px 0}
+.band-bar{position:relative;height:46px;border-radius:9px;overflow:hidden;display:flex;border:1px solid var(--line)}
+.band-seg{display:flex;align-items:center;justify-content:center;font-family:var(--mo);font-size:11px;font-weight:600}
+.band-no{background:var(--red-dim);color:var(--red)}
+.band-rev{background:var(--amber-dim);color:var(--amber)}
+.band-yes{background:var(--green-dim);color:var(--green)}
+.band-scale{display:flex;justify-content:space-between;font-family:var(--mo);font-size:10px;color:var(--faint);margin-top:6px}
+.band-marks{position:relative;height:18px;font-family:var(--mo);font-size:10px;color:var(--muted)}
+.band-mark{position:absolute;transform:translateX(-50%);white-space:nowrap}
+
+/* quiz */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:20px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.q-prompt{font-size:13px;line-height:1.65;margin-bottom:14px;color:var(--muted)}
+.q-prompt strong{color:var(--ink)}
+.q-opts{display:flex;flex-direction:column;gap:7px}
+.q-opt{font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);padding:8px 12px;border-radius:6px;cursor:pointer;text-align:left;color:var(--muted);transition:all .15s}
+.q-opt:hover{border-color:var(--teal);color:var(--ink)}
+.q-opt.correct{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.q-opt.wrong{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.q-fb{font-size:12px;margin-top:10px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+.pipeline-viz{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:24px 0}
+.pv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.pv-flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pv-box{background:var(--surf);border:1px solid var(--line);border-radius:7px;padding:7px 13px;font-family:var(--mo);font-size:12px;color:var(--muted)}
+.pv-box.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.pv-box.hl{background:var(--violet-dim);border-color:var(--violet);color:var(--violet)}
+.pv-arr{color:var(--faint);font-size:13px;padding:0 2px}
+
+.unlock{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:18px 20px;margin:26px 0;display:flex;gap:14px;align-items:flex-start}
+.unlock-icon{font-size:20px;flex-shrink:0}
+.unlock-body{font-size:13px;color:var(--ink);line-height:1.7}
+.unlock-body strong{color:var(--violet)}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--teal)}
+
+@media(max-width:600px){.compare-grid{grid-template-columns:1fr}.bld-readout{grid-template-columns:1fr}.bld-field{grid-template-columns:64px 1fr 44px 72px;gap:8px}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 04</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Match Scoring &amp; Classification</span>
+  </div>
+</nav>
+
+<div class="stage-nav">
+  <div class="stage-nav-inner">
+    <button class="sn on" onclick="go('s0',this)">00 · Overview</button>
+    <button class="sn" onclick="go('s1',this)">01 · Why Averaging Breaks</button>
+    <button class="sn" onclick="go('s2',this)">02 · Field Weighting</button>
+    <button class="sn" onclick="go('s3',this)">03 · Composite Score</button>
+    <button class="sn" onclick="go('s4',this)">04 · Null Handling</button>
+    <button class="sn" onclick="go('s5',this)">05 · Thresholds</button>
+    <button class="sn" onclick="go('s6',this)">06 · The ScoringPlugin</button>
+    <button class="sn" onclick="go('s7',this)">07 · Score Builder</button>
+    <button class="sn" onclick="go('s8',this)">08 · Self-Test</button>
+  </div>
+</div>
+
+
+<!-- ══════ STAGE 0 — OVERVIEW ══════ -->
+<div class="stage on" id="s0">
+<div class="wrap">
+  <p class="sec-eye">Module 04 · MDM / Spark Track · Phase 2 — The ER Algorithms</p>
+  <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">Match Scoring &amp; Classification</h1>
+  <p class="sec-sub">Every candidate pair arrives at this stage carrying a bag of per-field similarity scores — name 0.92, email 1.0, phone 0.0, address 0.71. Your job is to collapse that bag into <strong>one verdict</strong>: match, send-to-review, or no-match. This is the heart of your ScoringPlugin, and getting the combination logic right is the difference between a clean golden record and a corrupted merge.</p>
+
+  <div class="pipeline-viz">
+    <div class="pv-label">Where scoring sits in your pipeline</div>
+    <div class="pv-flow">
+      <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Block</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Self-Join</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Field Scoring</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Combine &amp; Classify</span><span class="pv-arr">→</span>
+      <span class="pv-box">Cluster</span>
+    </div>
+  </div>
+
+  <p>By now you've built every piece that <em>feeds</em> this stage. Module 02 (string processing) produces the per-field similarity scores. Module 00's self-join produces the candidate pairs those scores attach to. What's been missing is the step that turns "here are six numbers about one pair" into "here is the one decision about this pair." That step is this module.</p>
+
+  <h3><span class="bar"></span>The exact problem, stated once</h3>
+  <p>You have a candidate pair — two records the blocking stage thinks <em>might</em> be the same entity. The field scorer has already compared them column by column:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Field</th><th>Record A</th><th>Record B</th><th>Similarity</th></tr>
+    <tr><td>name</td><td>Jonathan Smith</td><td>Jon Smith</td><td class="new-col">0.92</td></tr>
+    <tr><td>email</td><td>jsmith@acme.io</td><td>jsmith@acme.io</td><td class="new-col">1.00</td></tr>
+    <tr><td>phone</td><td>555-0142</td><td>555-9981</td><td class="new-col">0.00</td></tr>
+    <tr><td>address</td><td>12 Oak Ave</td><td>12 Oak Avenue</td><td class="new-col">0.74</td></tr>
+    <tr><td>city</td><td>Austin</td><td>Austin</td><td class="new-col">1.00</td></tr>
+  </table>
+  </div>
+
+  <p>Five numbers. One question: <strong>is this the same person?</strong> The email is identical — that's strong. The phone is completely different — is that disqualifying, or just a second number? The name is close but not exact. How do you weigh all of that into a single answer a machine can act on? That is what the next eight stages build, piece by piece.</p>
+
+  <div class="note"><strong>How to use this module:</strong> Each stage adds one mechanism — weighting, then combining, then null handling, then thresholds — and the Score Builder in Stage 07 lets you turn all the knobs at once and watch the verdict move. The Self-Test at the end is scenario-recognition, not recall: you'll be handed a pair and asked which mechanism applies.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 1 — WHY AVERAGING BREAKS ══════ -->
+<div class="stage" id="s1">
+<div class="wrap">
+  <p class="sec-eye">Stage 01</p>
+  <h2 class="sec-h">The Naive Approach — and Why It Breaks</h2>
+  <p class="sec-sub">The first instinct is always the same: average the field scores. It feels reasonable, it's one line of code, and it is wrong in a way that quietly corrupts your matches. Seeing exactly how it fails is the fastest route to understanding why every real scorer is weighted.</p>
+
+  <h3><span class="bar"></span>The one-liner everyone writes first</h3>
+  <p>You have five similarity scores. The obvious move is to take their mean and call that the match score:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">The naive scorer</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># scores for one candidate pair</span>
+field_scores = {
+  <span class="s">"name"</span>:    <span class="n">0.92</span>,
+  <span class="s">"email"</span>:   <span class="n">1.00</span>,
+  <span class="s">"phone"</span>:   <span class="n">0.00</span>,
+  <span class="s">"address"</span>: <span class="n">0.74</span>,
+  <span class="s">"city"</span>:    <span class="n">1.00</span>,
+}
+
+composite = <span class="f">sum</span>(field_scores.values()) / <span class="f">len</span>(field_scores)
+<span class="co"># → (0.92 + 1.00 + 0.00 + 0.74 + 1.00) / 5</span>
+<span class="co"># → 3.66 / 5</span>
+<span class="co"># → 0.732</span></div>
+  </div>
+
+  <p>0.732. Whether that's a "match" depends on your threshold, but hold that number — the problem isn't the number itself, it's that <strong>the average had no idea which fields actually matter.</strong> It treated a matching <code>email</code> and a matching <code>city</code> as worth exactly the same.</p>
+
+  <h3><span class="bar"></span>Two pairs the average can't tell apart</h3>
+  <p>Here's the failure made concrete. Two completely different candidate pairs — and the naive average gives them the <em>same</em> score:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Field</th><th>Pair X — sim</th><th>Pair Y — sim</th></tr>
+    <tr><td>name</td><td>1.00</td><td>0.20</td></tr>
+    <tr><td>email</td><td>0.00</td><td>1.00</td></tr>
+    <tr><td>phone</td><td>0.00</td><td>1.00</td></tr>
+    <tr><td>address</td><td>1.00</td><td>0.40</td></tr>
+    <tr><td>city</td><td>1.00</td><td>0.40</td></tr>
+    <tr class="tot-row"><td>naive average</td><td>0.60</td><td>0.60</td></tr>
+  </table>
+  </div>
+
+  <p>Both average to <strong>0.60</strong>. But look at what's actually happening:</p>
+  <p><strong>Pair X</strong> shares a name, an address, and a city — but the emails and phones are nothing alike. That's the classic <em>different people, same household</em>: two roommates, a parent and child, people who once lived at the same address. Same name is coincidence-prone; same address is shared. This is probably <strong>not a match.</strong></p>
+  <p><strong>Pair Y</strong> has an identical email <em>and</em> an identical phone, with only a fuzzy name and a vaguely similar address. That's almost certainly the <em>same person</em> — someone who moved, married and changed their surname, or whose name was entered differently in two systems. Email + phone agreeing is hard to fake. This is very likely <strong>a match.</strong></p>
+
+  <div class="trap"><strong>The corruption:</strong> the naive average scores a probable non-match and a probable match <em>identically</em>. If your threshold sits at 0.60, you either merge both (corrupting Pair X's household into one person) or reject both (splitting Pair Y's real entity). There is no threshold that separates them — because the information that separates them was thrown away the moment you averaged.</div>
+
+  <div class="note"><strong>The fix, in one sentence:</strong> the email and phone fields should <em>count more</em> than name, address, and city — because agreeing on email is far stronger evidence of "same person" than agreeing on a name. That's weighting, and it's all of Stage 02.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 2 — FIELD WEIGHTING ══════ -->
+<div class="stage" id="s2">
+<div class="wrap">
+  <p class="sec-eye">Stage 02</p>
+  <h2 class="sec-h">Field Weighting — Not All Evidence Is Equal</h2>
+  <p class="sec-sub">A weight is a number that says how much a field's agreement should move the final verdict. Choosing weights well is the single most important judgment in entity resolution — and it rests on one idea: how good is this field at telling two different people apart?</p>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — the courtroom</div>
+    <div class="analogy-body">
+      Picture two pieces of evidence in a trial. <em>Exhibit A: the suspect's DNA was at the scene.</em> <em>Exhibit B: the suspect was wearing blue, and so was the perpetrator.</em><br><br>
+      Both are "matches." But the DNA is nearly conclusive — almost nobody else has it. Wearing blue? Thousands of people wear blue. A good judge doesn't average the two exhibits — she <em>weights</em> them by how much each one narrows the field of suspects.<br><br>
+      In your pipeline, a matching <em>email or SSN is DNA</em> — almost nobody shares it by accident. A matching <em>first name or city is "they both wore blue"</em> — common, weak, easy to share. The weight <em>is</em> the discriminating power of the field.
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The red herring that trips everyone</h3>
+  <p>This is the exact spot where it's easy to fool yourself. When you see a field with a <strong>raw similarity of 1.00</strong>, every instinct says "that's a strong match!" But the raw score and the field's importance are <em>two different things</em>, and confusing them is the most common scoring bug there is.</p>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Red herring — what grabs your attention</div>
+      <h5>"The name matches perfectly — 1.00!"</h5>
+      <p>A raw similarity of <code>1.00</code> feels decisive. The two records say <code>"Smith"</code> and <code>"Smith"</code> — exact match, top score. Surely that's strong evidence they're the same person.</p>
+      <p>The trap: you're reading the <em>height of the score</em> as if it were the <em>strength of the evidence</em>. They are not the same number.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ What actually decides</div>
+      <h5>How many people share this value?</h5>
+      <p>"Smith" is one of the most common surnames alive. Millions of unrelated people match perfectly on it. A 1.00 on <code>name</code> rules out almost nobody — so it deserves a <em>small</em> weight.</p>
+      <p>A 1.00 on <code>email</code> rules out almost everybody else on earth. Same raw score, vastly more discriminating — so it deserves a <em>large</em> weight.</p>
+    </div>
+  </div>
+
+  <div class="note"><strong>Say it back to yourself:</strong> the raw similarity score is a red herring for importance. <em>Discriminating power</em> — how rare it is for two different people to share this value — is what sets the weight. A perfect match on a weak field is still weak.</div>
+
+  <h3><span class="bar"></span>A weight table you could ship</h3>
+  <p>Here's a realistic set of weights for a person-matching pipeline, ordered by discriminating power. Weights sum to <strong>1.0</strong> — that's a convention that makes the composite land neatly between 0 and 1, which you'll lean on in Stage 03.</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Field</th><th>Discriminating power</th><th>Weight</th><th>Why</th></tr>
+    <tr><td>ssn / national id</td><td><span class="badge b-green">very high</span></td><td class="new-col">0.30</td><td>Near-unique by design. A match is almost conclusive on its own.</td></tr>
+    <tr><td>email</td><td><span class="badge b-green">high</span></td><td class="new-col">0.25</td><td>Rarely shared between two real people. Strong identity signal.</td></tr>
+    <tr><td>phone</td><td><span class="badge b-blue">high</span></td><td class="new-col">0.20</td><td>Fairly unique — but landlines and family plans get shared.</td></tr>
+    <tr><td>name</td><td><span class="badge b-amber">medium</span></td><td class="new-col">0.15</td><td>Common names collide constantly; typos and nicknames are normal.</td></tr>
+    <tr><td>address</td><td><span class="badge b-amber">medium</span></td><td class="new-col">0.07</td><td>Households share it; people move. Useful, not decisive.</td></tr>
+    <tr><td>city</td><td><span class="badge b-red">low</span></td><td class="new-col">0.03</td><td>Thousands share a city. Almost no power to distinguish alone.</td></tr>
+    <tr class="tot-row"><td>total</td><td></td><td>1.00</td><td></td></tr>
+  </table>
+  </div>
+
+  <div class="warn"><strong>These numbers are a starting point, not law.</strong> Real weights get tuned against labeled data — you measure which fields actually separate true matches from false ones in <em>your</em> data and adjust. That tuning loop is Module 05. For now, the relative ordering (id &gt; email &gt; phone &gt; name &gt; address &gt; city) is the durable part; the exact decimals are negotiable.</div>
+
+  <h3><span class="bar"></span>Where weights live in your pipeline</h3>
+  <p>In a YAML-driven plugin like yours, weights are <strong>config, not code.</strong> They sit in the plugin's parameters so an analyst can retune them without touching Python or redeploying:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">scoring_plugin.yaml — weights as config</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">-</span> plugin: ScoringPlugin
+  params:
+    field_weights:
+      ssn:     <span class="n">0.30</span>
+      email:   <span class="n">0.25</span>
+      phone:   <span class="n">0.20</span>
+      name:    <span class="n">0.15</span>
+      address: <span class="n">0.07</span>
+      city:    <span class="n">0.03</span>
+    match_threshold:  <span class="n">0.80</span>
+    review_threshold: <span class="n">0.55</span></div>
+  </div>
+
+  <p>The plugin reads <code>self.params["field_weights"]</code> at run time and applies them. Change a weight in the YAML, rerun, and your whole matching behavior shifts — no code change. That separation is exactly why the weights are config: tuning is an analyst's job, and it happens far more often than the scoring logic itself changes.</p>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 3 — COMPOSITE SCORE ══════ -->
+<div class="stage" id="s3">
+<div class="wrap">
+  <p class="sec-eye">Stage 03</p>
+  <h2 class="sec-h">The Composite Score — Combining the Evidence</h2>
+  <p class="sec-sub">Now you have raw similarities and weights. The composite score multiplies each field's similarity by its weight, sums the results, and — because the weights sum to 1.0 — lands a single number cleanly between 0 and 1. This is the weighted average, and it's the engine of the whole stage.</p>
+
+  <h3><span class="bar"></span>The formula, in plain arithmetic</h3>
+  <p>For each field: multiply <em>how similar</em> by <em>how much it matters</em>. That product is the field's <strong>contribution</strong>. Add up every contribution and you have the composite:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">composite = Σ (similarity × weight)</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="co"># the abstract pattern</span>
+composite = <span class="f">sum</span>(similarity[f] * weight[f] <span class="k">for</span> f <span class="k">in</span> fields)
+
+<span class="co"># because every weight is a fraction of 1.0, and every</span>
+<span class="co"># similarity is in [0, 1], the result is automatically in [0, 1].</span>
+<span class="co"># no extra normalization needed — that's why weights sum to 1.</span></div>
+  </div>
+
+  <h3><span class="bar"></span>Worked example — the same pair, scored properly</h3>
+  <p>Take the overview pair again. This table is the whole computation: every field's similarity, its weight, and the contribution they produce together.</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Field</th><th>Similarity</th><th>Weight</th><th>Contribution (sim × weight)</th></tr>
+    <tr><td>email</td><td>1.00</td><td>0.25</td><td class="new-col">0.250</td></tr>
+    <tr><td>phone</td><td>0.00</td><td>0.20</td><td class="new-col">0.000</td></tr>
+    <tr><td>name</td><td>0.92</td><td>0.15</td><td class="new-col">0.138</td></tr>
+    <tr><td>address</td><td>0.74</td><td>0.07</td><td class="new-col">0.052</td></tr>
+    <tr><td>city</td><td>1.00</td><td>0.03</td><td class="new-col">0.030</td></tr>
+    <tr><td class="faint">ssn</td><td class="faint">(absent)</td><td class="faint">0.30</td><td class="faint">— see Stage 04</td></tr>
+    <tr class="tot-row"><td>composite</td><td></td><td></td><td>0.470*</td></tr>
+  </table>
+  </div>
+
+  <p style="font-size:13px;color:var(--faint)">*assuming ssn's weight is simply skipped for now — Stage 04 shows why that's not quite right yet.</p>
+
+  <p>Notice what the weighting bought you. The <strong>phone mismatch (0.00 × 0.20)</strong> contributes nothing and drags the score down — correctly, because a disagreeing phone is real counter-evidence. The <strong>matching city (1.00 × 0.03)</strong> barely registers — correctly, because city agreement is nearly free. The composite reflects the <em>importance-weighted</em> picture, not a flat democracy of fields.</p>
+
+  <h3><span class="bar"></span>Debug trace — watch the composite accumulate</h3>
+  <p>Here's the same computation as a running tally, the way you'd see it in a debugger stepping field by field:</p>
+
+  <div class="debug-trace">
+    <div class="dt-header">composite — accumulating contribution by contribution</div>
+    <div class="dt-step">
+      <div class="dt-line">composite = 0.0   <span class="co"># start</span></div>
+      <div class="dt-state">composite → 0.000</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">+= email:  1.00 × 0.25</div>
+      <div class="dt-state">composite → 0.250</div>
+      <div class="dt-why">The strongest single field. A quarter of the maximum possible score, earned in one line, because email is high-weight <em>and</em> a perfect match.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">+= phone:  0.00 × 0.20</div>
+      <div class="dt-state">composite → 0.250</div>
+      <div class="dt-why">Adds nothing. The disagreeing phone <em>withholds</em> 0.20 of possible score — its absence from the tally is the penalty.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">+= name:   0.92 × 0.15</div>
+      <div class="dt-state">composite → 0.388</div>
+      <div class="dt-why">A near-perfect name match, but worth only 0.15 at most, so it nudges rather than dominates.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">+= address: 0.74 × 0.07  &nbsp;then&nbsp; += city: 1.00 × 0.03</div>
+      <div class="dt-state">composite → 0.470</div>
+      <div class="dt-why">The low-weight fields close out the tally with small contributions — exactly as intended.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>Weighted sum vs weighted average — same thing here.</strong> Because the weights sum to 1.0, the weighted sum <em>is</em> the weighted average. If your weights didn't sum to 1 (say they were raw importance points like 30, 25, 20...), you'd divide by the total weight at the end to normalize. Keeping weights summing to 1 just bakes that division in up front. Hold that idea — it becomes the key to null handling in the next stage.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 4 — NULL HANDLING ══════ -->
+<div class="stage" id="s4">
+<div class="wrap">
+  <p class="sec-eye">Stage 04</p>
+  <h2 class="sec-h">Null Handling — The Field That Isn't There</h2>
+  <p class="sec-sub">This is the stage that separates a toy scorer from a production one. Real records have missing fields — one side has no SSN, the other has no phone on file. How you treat that gap silently decides thousands of verdicts. Treat it wrong and you'll reject real matches all day without ever seeing why.</p>
+
+  <h3><span class="bar"></span>The fork: what does a missing field <em>mean</em>?</h3>
+  <p>A field can fail to contribute for two completely different reasons, and conflating them is the entire bug:</p>
+
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--red)">
+      <div class="cc-num">Reason 1</div>
+      <div class="cc-title">Disagreement → 0.0</div>
+      <div class="cc-body">Both records <em>have</em> a phone, and the phones are different. Similarity is genuinely <code>0.0</code>. This is real counter-evidence — the field <strong>should</strong> drag the score down.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Reason 2</div>
+      <div class="cc-title">Absence → null</div>
+      <div class="cc-body">One or both records have <em>no</em> phone on file. There's nothing to compare. This isn't evidence of anything — it's the <strong>absence</strong> of evidence. It should not penalize the pair at all.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The red herring — and what actually decides</h3>
+  <p>This is your classic trap: a missing value and a zero score <em>look</em> identical in the contribution column — both produce <code>0.0</code>. So the lazy move is to map null to 0.0 and move on. Don't.</p>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Red herring — they look the same</div>
+      <h5>"null and 0.0 both contribute nothing, so treat them the same."</h5>
+      <p>Both put <code>0.0</code> in the tally, so why bother distinguishing? Just write <code>sim = sim or 0.0</code> and the math runs.</p>
+      <p>The trap: you're looking at the <em>numerator</em> (the contribution), where they really do look alike. But the numerator isn't where the damage is.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ What actually decides</div>
+      <h5>The denominator — what you divide by.</h5>
+      <p>A real <code>0.0</code> keeps its weight <em>in the denominator</em>: the field was checked, it failed, so the maximum possible score still includes it. The pair is being measured against the full bar.</p>
+      <p>A null must be <em>removed from the denominator</em> too: the field was never on the table, so it shouldn't count toward the maximum possible score. You measure the pair against a <em>shorter</em> bar.</p>
+    </div>
+  </div>
+
+  <div class="note"><strong>The rule:</strong> a disagreement stays in the denominator (it's a fair test the pair failed). An absence is dropped from <em>both</em> numerator and denominator (it was never a test at all). Concretely: <strong>renormalize the weights over only the fields that are actually present.</strong></div>
+
+  <h3><span class="bar"></span>The same pair, two ways — and the verdict flips</h3>
+  <p>Back to our worked pair. The <code>ssn</code> field is <strong>absent</strong> — neither record has one on file — but it carries the heaviest weight (0.30). Watch what happens depending on how you handle it.</p>
+
+  <div class="compare-grid">
+    <div class="compare-panel">
+      <div class="compare-header wrong-header">✗ null treated as 0.0 — full denominator</div>
+      <div class="compare-body">numerator = 0.470
+  (email .25 + name .138
+   + addr .052 + city .03,
+   phone & ssn → 0.0)
+
+denominator = 1.00
+  (all six weights kept)
+
+composite = 0.470 / 1.00
+          = <span style="color:var(--red)">0.470</span></div>
+      <div class="compare-output">
+        <div class="output-label">verdict</div>
+        <span class="badge b-red">NO MATCH</span> — falls below the 0.55 review line. The pair is rejected.
+      </div>
+    </div>
+    <div class="compare-panel">
+      <div class="compare-header right-header">✓ ssn dropped — renormalized denominator</div>
+      <div class="compare-body">numerator = 0.470
+  (ssn contributes nothing
+   AND is removed entirely)
+
+denominator = 0.70
+  (1.00 − 0.30, ssn weight
+   pulled out)
+
+composite = 0.470 / 0.70
+          = <span style="color:var(--green)">0.671</span></div>
+      <div class="compare-output">
+        <div class="output-label">verdict</div>
+        <span class="badge b-amber">REVIEW</span> — clears 0.55. A human gets to look instead of an auto-reject.
+      </div>
+    </div>
+  </div>
+
+  <div class="trap"><strong>This is the silent killer.</strong> The naive version doesn't crash. It doesn't log a warning. It just quietly rejects a genuine candidate because a field <em>nobody had</em> was scored as if both sides failed it. On a dataset where SSN is sparsely populated, the null-as-zero bug can suppress a huge fraction of real matches — and you'd never know unless you went looking.</div>
+
+  <h3><span class="bar"></span>The renormalizing scorer — wrong vs right, with output</h3>
+
+  <div class="compare-grid">
+    <div class="compare-panel">
+      <div class="compare-header wrong-header">✗ null → 0.0</div>
+      <div class="compare-body">def score(sims, weights):
+    num = 0.0
+    for f, w in weights.items():
+        s = sims.get(f) or 0.0
+        num += s * w
+    # denominator is always 1.0
+    return num</div>
+      <div class="compare-output">
+        <div class="output-label">score(pair_with_absent_ssn)</div>
+        → 0.470   <span style="color:var(--red)">← absent ssn punished the pair</span>
+      </div>
+    </div>
+    <div class="compare-panel">
+      <div class="compare-header right-header">✓ renormalize over present fields</div>
+      <div class="compare-body">def score(sims, weights):
+    num = 0.0
+    den = 0.0
+    for f, w in weights.items():
+        s = sims.get(f)
+        if s is None:        # absent
+            continue         # drop from BOTH
+        num += s * w
+        den += w
+    return num / den if den else 0.0</div>
+      <div class="compare-output">
+        <div class="output-label">score(pair_with_absent_ssn)</div>
+        → 0.671   <span style="color:var(--green)">← measured against present fields only</span>
+      </div>
+    </div>
+  </div>
+
+  <p>The only structural difference is the <code>den</code> accumulator and the <code>continue</code>. The wrong version has a fixed denominator of 1.0; the right version builds the denominator from <em>only the weights of fields that were actually present</em>. One <code>if s is None: continue</code> is the whole fix — and it's the line most homegrown scorers are missing.</p>
+
+  <div class="warn"><strong>Guardrail:</strong> if every comparable field is absent, <code>den</code> is 0 and you'd divide by zero. The <code>if den else 0.0</code> tail handles it — a pair with nothing to compare scores 0.0 and falls out as a non-match, which is the right call.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 5 — THRESHOLDS ══════ -->
+<div class="stage" id="s5">
+<div class="wrap">
+  <p class="sec-eye">Stage 05</p>
+  <h2 class="sec-h">Thresholds — Turning a Number Into a Verdict</h2>
+  <p class="sec-sub">The composite is a number in [0, 1]. A pipeline can't act on a number — it needs a decision. Two thresholds cut the number line into three zones: confident match, confident non-match, and the uncertain middle that goes to a human. This three-way split is what makes the system safe to automate.</p>
+
+  <h3><span class="bar"></span>Why three bands, not two</h3>
+  <p>The tempting design is one threshold: above it, merge; below it, reject. But that forces a hard call on pairs sitting right at the boundary — exactly the pairs you're <em>least</em> sure about. A single line means your most uncertain decisions are made most confidently. That's backwards.</p>
+  <p>Three bands give the uncertain middle somewhere to go: a <strong>review queue</strong> where a person decides. The machine handles the easy 90%; humans handle the genuinely ambiguous 10%.</p>
+
+  <div class="band-viz">
+    <div class="band-marks">
+      <span class="band-mark" style="left:55%">review_threshold = 0.55</span>
+      <span class="band-mark" style="left:80%">match_threshold = 0.80</span>
+    </div>
+    <div class="band-bar">
+      <div class="band-seg band-no" style="width:55%">NO MATCH · reject</div>
+      <div class="band-seg band-rev" style="width:25%">REVIEW · human queue</div>
+      <div class="band-seg band-yes" style="width:20%">MATCH · auto-merge</div>
+    </div>
+    <div class="band-scale"><span>0.0</span><span>0.55</span><span>0.80</span><span>1.0</span></div>
+  </div>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Composite</th><th>Band</th><th>Action</th></tr>
+    <tr><td>≥ 0.80</td><td><span class="badge b-green">MATCH</span></td><td>Auto-merge — confident enough to act without review.</td></tr>
+    <tr><td>0.55 – 0.80</td><td><span class="badge b-amber">REVIEW</span></td><td>Route to a human queue — too uncertain to auto-merge or auto-reject.</td></tr>
+    <tr><td>&lt; 0.55</td><td><span class="badge b-red">NO MATCH</span></td><td>Reject — confident these are different entities.</td></tr>
+  </table>
+  </div>
+
+  <h3><span class="bar"></span>The classify function</h3>
+  <p>The logic is a two-line ladder. Order matters: check the highest band first, fall through to the middle, default to the lowest.</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">classify — number to verdict</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">def</span> <span class="f">classify</span>(composite, match_t=<span class="n">0.80</span>, review_t=<span class="n">0.55</span>):
+    <span class="k">if</span> composite &gt;= match_t:
+        <span class="k">return</span> <span class="s">"match"</span>
+    <span class="k">elif</span> composite &gt;= review_t:
+        <span class="k">return</span> <span class="s">"review"</span>
+    <span class="k">else</span>:
+        <span class="k">return</span> <span class="s">"no_match"</span>
+
+<span class="f">classify</span>(<span class="n">0.91</span>)   <span class="co"># → "match"</span>
+<span class="f">classify</span>(<span class="n">0.67</span>)   <span class="co"># → "review"</span>
+<span class="f">classify</span>(<span class="n">0.40</span>)   <span class="co"># → "no_match"</span>
+<span class="f">classify</span>(<span class="n">0.55</span>)   <span class="co"># → "review"  (boundary is inclusive on the low side)</span></div>
+  </div>
+
+  <h3><span class="bar"></span>The lever you're really pulling: precision vs recall</h3>
+  <p>Where you set these two thresholds is a trade-off, and it has a name:</p>
+
+  <div class="herring">
+    <div class="herring-col left" style="background:var(--blue-dim);border-right:1px solid var(--line)">
+      <div class="herring-eye" style="color:var(--blue)">Raise match_threshold (e.g. 0.90)</div>
+      <h5>Higher precision, lower recall</h5>
+      <p>Fewer auto-merges, but the ones you make are almost always correct. You catch fewer true matches (some real ones drop into review), but you make fewer false merges.</p>
+      <p>Choose this when a <em>wrong merge is expensive</em> — merging two different customers corrupts records, billing, history.</p>
+    </div>
+    <div class="herring-col right" style="background:var(--violet-dim)">
+      <div class="herring-eye" style="color:var(--violet)">Lower match_threshold (e.g. 0.70)</div>
+      <h5>Higher recall, lower precision</h5>
+      <p>More auto-merges, catching more true matches — but some false ones slip through. You merge aggressively and accept occasional mistakes.</p>
+      <p>Choose this when a <em>missed match is expensive</em> — duplicate accounts, fractured customer view, the same person counted twice.</p>
+    </div>
+  </div>
+
+  <div class="unlock">
+    <span class="unlock-icon">🔓</span>
+    <div class="unlock-body">This trade-off — and how to tune the two thresholds against labeled data using precision/recall curves and the size of your review queue — is the whole of <strong>Module 05 · Score Aggregation &amp; Confidence</strong>. You've just met the lever; next module you learn to set it with evidence instead of a guess.</div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 6 — THE SCORINGPLUGIN ══════ -->
+<div class="stage" id="s6">
+<div class="wrap">
+  <p class="sec-eye">Stage 06</p>
+  <h2 class="sec-h">The Full ScoringPlugin Pattern</h2>
+  <p class="sec-sub">Every mechanism so far — weights, weighted sum, null renormalization, three-way classification — assembles into one plugin that runs across millions of candidate pairs in Spark. This is the shape of the ScoringPlugin in your pipeline: config in, a <code>match_decision</code> column out.</p>
+
+  <h3><span class="bar"></span>The plugin, end to end</h3>
+  <p>Read it top to bottom — every piece is something you built in an earlier stage. The comments mark which stage each block came from.</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">ScoringPlugin — the assembled pattern (PySpark)</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="k">class</span> <span class="f">ScoringPlugin</span>(BasePlugin):
+    <span class="k">def</span> <span class="f">run</span>(self, df):
+        <span class="co"># df has one row per candidate pair, with a similarity</span>
+        <span class="co"># column per field already computed upstream (Module 02):</span>
+        <span class="co"># sim_ssn, sim_email, sim_phone, sim_name, sim_address, sim_city</span>
+
+        weights  = self.params[<span class="s">"field_weights"</span>]        <span class="co"># Stage 02 — config</span>
+        match_t  = self.params[<span class="s">"match_threshold"</span>]      <span class="co"># Stage 05 — config</span>
+        review_t = self.params[<span class="s">"review_threshold"</span>]     <span class="co"># Stage 05 — config</span>
+
+        <span class="co"># ── Stage 03 + 04: weighted sum with null renormalization ──</span>
+        num = F.lit(<span class="n">0.0</span>)
+        den = F.lit(<span class="n">0.0</span>)
+        <span class="k">for</span> field, w <span class="k">in</span> weights.items():
+            sim = F.col(<span class="s">f"sim_</span>{field}<span class="s">"</span>)
+            present = sim.isNotNull()               <span class="co"># Stage 04: absent ≠ 0.0</span>
+            num = num + F.when(present, sim * w).otherwise(<span class="n">0.0</span>)
+            den = den + F.when(present, F.lit(w)).otherwise(<span class="n">0.0</span>)
+
+        composite = F.when(den &gt; <span class="n">0</span>, num / den).otherwise(F.lit(<span class="n">0.0</span>))
+        df = df.withColumn(<span class="s">"composite"</span>, composite)
+
+        <span class="co"># ── Stage 05: classify into three bands ──</span>
+        decision = (
+            F.when(F.col(<span class="s">"composite"</span>) &gt;= match_t,  F.lit(<span class="s">"match"</span>))
+             .when(F.col(<span class="s">"composite"</span>) &gt;= review_t, F.lit(<span class="s">"review"</span>))
+             .otherwise(F.lit(<span class="s">"no_match"</span>))
+        )
+        <span class="k">return</span> df.withColumn(<span class="s">"match_decision"</span>, decision)</div>
+  </div>
+
+  <h3><span class="bar"></span>Why it's built this way — the three design choices</h3>
+  <p><strong>Why <code>F.when(...).otherwise(...)</code> instead of a Python <code>if</code>?</strong> Because this runs over a whole distributed column at once. You can't write <code>if sim is None</code> on a Spark column — there's no single value to test. <code>F.when(present, ...)</code> is the column-wise version of that <code>if</code>: it evaluates the condition independently for every row, in parallel, across the cluster. It's the exact same null-renormalization logic from Stage 04, lifted from one pair to a billion.</p>
+
+  <p><strong>Why build <code>num</code> and <code>den</code> as two separate accumulating columns?</strong> Same reason as Stage 04 — the denominator has to reflect only the present fields. By accumulating <code>den</code> with the <em>same</em> <code>present</code> guard as <code>num</code>, an absent field is dropped from both, automatically, per row. A row where SSN is null gets a denominator of 0.70; the row next to it where SSN is present gets 1.00 — and Spark computes both correctly without you branching.</p>
+
+  <p><strong>Why read everything from <code>self.params</code>?</strong> Because the weights and thresholds are the things analysts tune — frequently — and the scoring <em>logic</em> is the thing engineers change — rarely. Reading them from config keeps the two on separate clocks. An analyst retunes <code>field_weights</code> in YAML; the plugin code never moves.</p>
+
+  <div class="note"><strong>The shape to remember:</strong> config in (weights + thresholds) → one weighted-and-renormalized <code>composite</code> column → one <code>match_decision</code> column out. Everything downstream — clustering in Module 07, the golden record logic from Module 03 — keys off that single <code>match_decision</code>. This plugin is the hinge the whole back half of the pipeline turns on.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 7 — SCORE BUILDER ══════ -->
+<div class="stage" id="s7">
+<div class="wrap">
+  <p class="sec-eye">Stage 07</p>
+  <h2 class="sec-h">Interactive — Build a Score, Watch the Verdict Move</h2>
+  <p class="sec-sub">Every knob from the last six stages, live. Drag a field's similarity, toggle a field to absent, and watch the weighted composite recompute with proper null renormalization — then land in one of the three bands. Try to <em>feel</em> the difference between a low-weight field and a high-weight one.</p>
+
+  <div class="builder">
+    <div class="bld-label">Candidate pair — adjust each field</div>
+    <div id="bld-fields"></div>
+
+    <div class="bld-presets">
+      <button class="bld-preset" onclick="loadPreset('household')">Load: same household (the Pair X trap)</button>
+      <button class="bld-preset" onclick="loadPreset('moved')">Load: person who moved (Pair Y)</button>
+      <button class="bld-preset" onclick="loadPreset('absent_ssn')">Load: absent SSN (Stage 04)</button>
+      <button class="bld-preset" onclick="loadPreset('clear')">Reset</button>
+    </div>
+
+    <div class="bld-readout">
+      <div class="bld-num">
+        <div class="bld-num-label">Composite score</div>
+        <div class="bld-num-val" id="bld-composite">—</div>
+      </div>
+      <div class="bld-verdict v-nomatch" id="bld-verdict">
+        <div class="bld-verdict-label">Verdict</div>
+        <div class="bld-verdict-val" id="bld-verdict-val">—</div>
+      </div>
+    </div>
+    <div class="bld-math" id="bld-math"></div>
+  </div>
+
+  <div class="note"><strong>Things worth trying:</strong> (1) Set <code>email</code> and <code>phone</code> to 1.00 and everything else to 0.20 — watch it still clear review, because the heavy fields carry it. (2) Now set <code>name</code> and <code>city</code> to 1.00 and the rest to 0.0 — a perfect match on weak fields barely moves the needle. (3) Toggle a high-weight field to <em>absent</em> and watch the denominator shrink and the score <em>rise</em> — null renormalization in action.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 8 — SELF-TEST ══════ -->
+<div class="stage" id="s8">
+<div class="wrap">
+  <p class="sec-eye">Stage 08</p>
+  <h2 class="sec-h">Self-Test — Scenario Recognition</h2>
+  <p class="sec-sub">Not recall — recognition. Each question hands you a situation from a real scoring pipeline and asks which mechanism applies. If you can read the scenario and name the right move without scrolling back up, the module is in.</p>
+
+  <div class="quiz-grid" id="quiz-grid"></div>
+
+  <div class="unlock" style="margin-top:34px">
+    <span class="unlock-icon">✓</span>
+    <div class="unlock-body"><strong>Module 04 complete.</strong> You can now turn a bag of field scores into a single, null-safe, importance-weighted verdict — the core of your ScoringPlugin. Next up: <strong>Module 05 · Score Aggregation &amp; Confidence</strong>, where those two thresholds stop being guesses and start being tuned against labeled data with precision/recall in hand.</div>
+  </div>
+</div>
+</div>
+
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">the-learning-lab · Module 04 · Match Scoring &amp; Classification</span>
+    <span class="foot-r"><a href="index.html">← all modules</a> &nbsp;·&nbsp; <a href="roadmap.html">roadmap</a></span>
+  </div>
+</footer>
+
+<script>
+/* ── NAV ── */
+function go(id, btn) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.sn').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+/* ── COPY ── */
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ── SCORE BUILDER ── */
+const FIELDS = [
+  { key:'ssn',     label:'ssn',     weight:0.30 },
+  { key:'email',   label:'email',   weight:0.25 },
+  { key:'phone',   label:'phone',   weight:0.20 },
+  { key:'name',    label:'name',    weight:0.15 },
+  { key:'address', label:'address', weight:0.07 },
+  { key:'city',    label:'city',    weight:0.03 },
+];
+const MATCH_T = 0.80, REVIEW_T = 0.55;
+// state: { key: {sim: 0..1, absent: bool} }
+const state = {};
+FIELDS.forEach(f => state[f.key] = { sim: 0.5, absent: false });
+
+function buildFields() {
+  const host = document.getElementById('bld-fields');
+  host.innerHTML = '';
+  FIELDS.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'bld-field' + (state[f.key].absent ? ' is-null' : '');
+    row.id = 'bf-' + f.key;
+    row.innerHTML = `
+      <div>
+        <div class="bld-fname">${f.label}</div>
+        <div class="bld-fweight">w ${f.weight.toFixed(2)}</div>
+      </div>
+      <input type="range" class="bld-slider" min="0" max="1" step="0.01"
+             value="${state[f.key].sim}" oninput="setSim('${f.key}', this.value)">
+      <div class="bld-sval" id="sv-${f.key}">${state[f.key].absent ? 'null' : Number(state[f.key].sim).toFixed(2)}</div>
+      <button class="bld-nulltog${state[f.key].absent ? ' on' : ''}" onclick="toggleNull('${f.key}')">${state[f.key].absent ? 'absent' : 'present'}</button>
+    `;
+    host.appendChild(row);
+  });
+}
+
+function setSim(key, v) {
+  state[key].sim = parseFloat(v);
+  document.getElementById('sv-' + key).textContent = Number(v).toFixed(2);
+  recompute();
+}
+
+function toggleNull(key) {
+  state[key].absent = !state[key].absent;
+  buildFields();
+  recompute();
+}
+
+function recompute() {
+  let num = 0, den = 0, presentCount = 0;
+  FIELDS.forEach(f => {
+    if (state[f.key].absent) return;        // dropped from BOTH
+    num += state[f.key].sim * f.weight;
+    den += f.weight;
+    presentCount++;
+  });
+  const composite = den > 0 ? num / den : 0;
+
+  document.getElementById('bld-composite').textContent = composite.toFixed(3);
+
+  // verdict
+  const vWrap = document.getElementById('bld-verdict');
+  const vVal  = document.getElementById('bld-verdict-val');
+  let band, cls;
+  if (composite >= MATCH_T)      { band = 'MATCH';    cls = 'v-match'; }
+  else if (composite >= REVIEW_T){ band = 'REVIEW';   cls = 'v-review'; }
+  else                          { band = 'NO MATCH'; cls = 'v-nomatch'; }
+  vWrap.className = 'bld-verdict ' + cls;
+  vVal.textContent = band;
+
+  // math readout
+  const droppedW = (1 - den);
+  document.getElementById('bld-math').innerHTML =
+    `numerator&nbsp; Σ(sim × weight) = <span class="hl-n">${num.toFixed(3)}</span><br>` +
+    `denominator&nbsp; Σ(weight of present fields) = <span class="hl-n">${den.toFixed(2)}</span>` +
+    (droppedW > 0.001 ? ` &nbsp;<span style="color:var(--amber)">(${droppedW.toFixed(2)} of weight dropped — ${6 - presentCount} field${6-presentCount===1?'':'s'} absent)</span>` : '') +
+    `<br>composite = ${num.toFixed(3)} / ${den.toFixed(2)} = <span class="hl-n">${composite.toFixed(3)}</span> &nbsp;→&nbsp; <strong style="color:var(--ink)">${band}</strong>`;
+}
+
+const PRESETS = {
+  household: { ssn:[0,true], email:[0,false], phone:[0,false], name:[1,false], address:[1,false], city:[1,false] },
+  moved:     { ssn:[0,true], email:[1,false], phone:[1,false], name:[0.2,false], address:[0.4,false], city:[0.4,false] },
+  absent_ssn:{ ssn:[0,true], email:[1,false], phone:[0,false], name:[0.92,false], address:[0.74,false], city:[1,false] },
+  clear:     { ssn:[0.5,false], email:[0.5,false], phone:[0.5,false], name:[0.5,false], address:[0.5,false], city:[0.5,false] },
+};
+function loadPreset(name) {
+  const p = PRESETS[name];
+  FIELDS.forEach(f => {
+    const [sim, absent] = p[f.key];
+    state[f.key].sim = sim;
+    state[f.key].absent = absent;
+  });
+  buildFields();
+  recompute();
+}
+
+buildFields();
+loadPreset('absent_ssn');
+
+/* ── QUIZ ── */
+const questions = [
+  {
+    prompt: 'Two records share an identical <strong>email and phone</strong>, but the names are only 0.3 similar and one record has no address. A junior engineer says "the names barely match, reject it." What\'s the right read?',
+    opts: [
+      'Reject — name disagreement is disqualifying',
+      'Likely a match — email + phone are high-weight and both agree; a fuzzy name is weak counter-evidence',
+      'Cannot score it — the missing address makes the pair invalid',
+      'Send to review only because the name is low'
+    ],
+    correct: 1,
+    explain: 'Email and phone carry the most weight precisely because they\'re hard to share by accident. Both agreeing is strong evidence of "same person." A low name similarity is weak counter-evidence (people change/mistype names constantly), and the absent address simply drops out of the denominator. This is the Pair Y scenario — very likely a match.'
+  },
+  {
+    prompt: 'A pair matches perfectly on <strong>name (1.00)</strong> and <strong>city (1.00)</strong> and nothing else. Why doesn\'t that produce a high composite?',
+    opts: [
+      'Because two 1.00 scores cancel out',
+      'Because name and city are low-weight — a perfect match on weak fields contributes little',
+      'Because the composite only counts the single highest field',
+      'Because 1.00 is treated as null'
+    ],
+    correct: 1,
+    explain: 'The raw score (1.00) is a red herring for importance. Name (0.15) and city (0.03) together cap at 0.18 of contribution even at perfect similarity. Discriminating power sets the weight, and these are weak discriminators — many unrelated people share a name and a city. High raw score, low weight, small effect.'
+  },
+  {
+    prompt: 'In your pipeline, <strong>SSN is missing</strong> on both records of a pair. A teammate maps the missing value to 0.0 so "the math runs." What breaks?',
+    opts: [
+      'Nothing — null and 0.0 both contribute 0 to the numerator',
+      'The numerator is fine, but SSN\'s 0.30 weight stays in the denominator — so an absent field silently penalizes the pair',
+      'It throws a NullPointerException in Spark',
+      'The composite goes above 1.0'
+    ],
+    correct: 1,
+    explain: 'The numerator does look identical — both put 0 in. The damage is in the denominator: null-as-0.0 keeps SSN\'s 0.30 weight in the divisor, so the pair is measured against a field nobody had. Correct handling drops absent fields from BOTH numerator and denominator (renormalize), which can flip the verdict from no-match to review.'
+  },
+  {
+    prompt: 'A disagreeing phone (<strong>both records have a phone, they\'re different → 0.0</strong>) vs an absent phone (<strong>neither record has one → null</strong>). How should the scorer treat them?',
+    opts: [
+      'Identically — both contribute 0.0',
+      'Disagreement keeps its weight in the denominator (a fair test the pair failed); absence drops from numerator AND denominator (no test happened)',
+      'Absence keeps its weight; disagreement is dropped',
+      'Both should be dropped from the denominator'
+    ],
+    correct: 1,
+    explain: 'This is the core distinction of Stage 04. A real 0.0 is evidence — the pair was tested on phone and failed, so the field stays in the denominator and drags the score down legitimately. A null is the absence of a test — it must leave both numerator and denominator so it neither helps nor hurts.'
+  },
+  {
+    prompt: 'Your composite lands at <strong>0.67</strong> with thresholds match=0.80, review=0.55. What does <code>classify</code> return, and what happens to the pair?',
+    opts: [
+      'match — auto-merged',
+      'review — routed to a human queue',
+      'no_match — rejected',
+      'It errors because 0.67 is between thresholds'
+    ],
+    correct: 1,
+    explain: '0.67 is below match (0.80) but at/above review (0.55), so it lands in the middle band: "review." The pair isn\'t auto-merged and isn\'t rejected — it goes to a human queue. The whole point of three bands is to give the uncertain middle somewhere safe to go instead of forcing a confident call on a borderline pair.'
+  },
+  {
+    prompt: 'A business unit complains you\'re <strong>merging different customers together</strong> (corrupting records). Which threshold move directly reduces that?',
+    opts: [
+      'Lower match_threshold to merge more aggressively',
+      'Raise match_threshold so only very confident pairs auto-merge — trading recall for precision',
+      'Lower review_threshold',
+      'Remove the review band entirely'
+    ],
+    correct: 1,
+    explain: 'Wrong merges are a precision problem — false positives. Raising match_threshold (e.g. 0.80 → 0.90) means only the most confident pairs auto-merge; borderline ones drop into review instead. You catch fewer true matches automatically (lower recall) but make far fewer false merges (higher precision). That precision/recall tuning is Module 05.'
+  },
+  {
+    prompt: 'In the PySpark ScoringPlugin, why is null handling written as <code>F.when(sim.isNotNull(), ...).otherwise(0.0)</code> instead of a plain Python <code>if sim is None</code>?',
+    opts: [
+      'Style preference — both work identically',
+      'Because the operation runs over a whole distributed column; there\'s no single value to test with a Python if — F.when evaluates the condition per-row across the cluster',
+      'Because Python if is slower',
+      'Because Spark doesn\'t support None'
+    ],
+    correct: 1,
+    explain: 'A Spark column isn\'t one value — it\'s a billion values spread across the cluster. <code>if sim is None</code> has nothing concrete to evaluate. <code>F.when(present, ...).otherwise(...)</code> is the column-wise form of that branch: it applies the same null-renormalization logic from Stage 04 independently to every row, in parallel. Same logic, lifted from one pair to the whole dataset.'
+  },
+  {
+    prompt: 'You inherit a scorer that just averages all field similarities equally. Before changing any thresholds, what\'s the highest-impact fix?',
+    opts: [
+      'Add more fields to the average',
+      'Introduce field weights so high-discriminating fields (email, ssn) count more than weak ones (name, city)',
+      'Round the composite to two decimals',
+      'Lower every similarity by 10%'
+    ],
+    correct: 1,
+    explain: 'A flat average is the Stage 01 failure: it can\'t tell a same-household false match from a moved-person true match because it threw away which fields matter. Weighting is the fix that gives the scorer its discrimination back — it\'s the difference between a toy and a usable scorer, and it matters more than any threshold tweak on top of a broken composite.'
+  }
+];
+
+const qg = document.getElementById('quiz-grid');
+questions.forEach((q, i) => {
+  const card = document.createElement('div');
+  card.className = 'qcard';
+  card.innerHTML = `<div class="q-prompt"><strong>Q${i+1}.</strong> ${q.prompt}</div>
+    <div class="q-opts">${q.opts.map((o,j) => `<button class="q-opt" onclick="answerQ(${i},${j},this)">${o}</button>`).join('')}</div>
+    <div class="q-fb" id="qfb-${i}"></div>`;
+  qg.appendChild(card);
+});
+
+function answerQ(qi, oi, btn) {
+  const q = questions[qi];
+  const card = btn.closest('.qcard');
+  card.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  btn.classList.add(oi === q.correct ? 'correct' : 'wrong');
+  if (oi !== q.correct) card.querySelectorAll('.q-opt')[q.correct].classList.add('correct');
+  const fb = document.getElementById(`qfb-${qi}`);
+  fb.className = 'q-fb ' + (oi === q.correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = (oi === q.correct ? '✓ ' : '✗ ') + q.explain;
+  fb.style.display = 'block';
+}
+</script>
+</body>
+</html>
