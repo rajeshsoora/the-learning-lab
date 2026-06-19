@@ -43,6 +43,14 @@ nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-fil
 .stat{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:20px;background:var(--surf);border:1px solid var(--line);color:var(--muted)}
 .stat strong{color:var(--ink)}
 
+/* tabs (roadmap/track switcher) */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.tab{font-family:var(--mo);font-size:12px;padding:7px 16px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s}
+.tab-dot{width:7px;height:7px;border-radius:50%}
+.tab:hover{border-color:var(--ink);color:var(--ink)}
+.tab.on{border-color:transparent}
+.roadmap-soon{padding:40px 0;color:var(--muted);font-size:14px;line-height:1.7}
+
 /* progress bar */
 .progress-wrap{margin:28px 0 0}
 .progress-label{display:flex;justify-content:space-between;font-family:var(--mo);font-size:11px;color:var(--faint);margin-bottom:8px}
@@ -110,23 +118,19 @@ footer{padding:28px 0}
       <a href="index.html">the-learning-lab</a>
       <span class="sep">/</span><span class="nav-mod">Roadmap</span>
     </div>
-    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">MDM · Spark Track</span>
+    <span id="nav-track" style="font-family:var(--mo);font-size:11px;color:var(--faint)"></span>
   </div>
 </nav>
 
 <div class="hero">
   <div class="wrap">
-    <p class="eyebrow">MDM / Spark Learning Track</p>
-    <h1>The Full Roadmap</h1>
-    <p class="hero-sub">Nine modules across four phases — from Spark foundations through the entity resolution algorithms to a full pipeline-design capstone. Each module unlocks the next. This is the complete plan, ordered so every module builds on what came before.</p>
-    <div class="stats">
-      <span class="stat"><strong>9</strong> modules</span>
-      <span class="stat"><strong>4</strong> phases</span>
-      <span class="stat"><strong>~8–9</strong> sessions</span>
-      <span class="stat">use depth throughout</span>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-label"><span>Progress</span><span id="prog-text">5 of 10 complete</span></div>
+    <div class="tabs" id="tabs"></div>
+    <p class="eyebrow" id="rm-eyebrow"></p>
+    <h1 id="rm-title"></h1>
+    <p class="hero-sub" id="rm-sub"></p>
+    <div class="stats" id="rm-stats"></div>
+    <div class="progress-wrap" id="rm-progress-wrap">
+      <div class="progress-label"><span>Progress</span><span id="prog-text"></span></div>
       <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
     </div>
   </div>
@@ -134,88 +138,109 @@ footer{padding:28px 0}
 
 <div id="phases-container"></div>
 
-<div class="rationale">
+<div class="rationale" id="rationale-section">
   <div class="wrap">
     <h2 class="sec-h">Why this order</h2>
-    <div class="rat-grid">
-      <div class="rat-item">
-        <div class="rat-key">01 before 04</div>
-        <div class="rat-body">You can't score strings without first knowing how strings are <strong>processed and stored</strong>. Nested types and normalization come before the scoring algorithms that consume them.</div>
-      </div>
-      <div class="rat-item">
-        <div class="rat-key">03 in Phase 1, not Phase 2</div>
-        <div class="rat-body">Window functions are <strong>Spark mechanics</strong>, not entity-resolution concepts. They finish the foundations so the toolkit feels complete before you touch scoring.</div>
-      </div>
-      <div class="rat-item">
-        <div class="rat-key">06 (LSH) before 07 (graph)</div>
-        <div class="rat-body">LSH produces another stream of candidate pairs. Graph clustering consumes <strong>all</strong> pairs — from both blocking and LSH — and merges them into entities. So LSH must be understood first.</div>
-      </div>
-      <div class="rat-item">
-        <div class="rat-key">09 last (capstone)</div>
-        <div class="rat-body">The pipeline-design capstone needs vocabulary from <strong>every prior module</strong> to reason about each architectural decision — which joins to broadcast, where shuffles live, how LSH integrates with blocking.</div>
-      </div>
-    </div>
+    <div class="rat-grid" id="rat-grid"></div>
   </div>
 </div>
 
 <footer>
   <div class="foot-inner">
-    <span class="foot-l">the-learning-lab · MDM roadmap</span>
+    <span class="foot-l" id="foot-track">the-learning-lab</span>
     <span class="foot-r"><a href="index.html">← Back to Learning Lab</a></span>
   </div>
 </footer>
 
 <script>
-const PHASES = [
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DATA  ← one entry per roadmap/track. ids match index.html's TRACKS ids.
+   To add a new roadmap: break the topic into phases/modules (same shape as
+   below), add an entry here, and add the matching track to index.html.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const ROADMAPS = [
   {
-    n: 1, cls: 'p1', title: 'Spark Foundations', meta: 'The toolkit you need to write good ER code · ~2–2.5 sessions',
-    modules: [
-      { num:'00', title:'Entity Resolution Overview', status:'done', est:'done', href:'entity-resolution-walkthrough.html', acc:'var(--teal)',
-        topics:['blocking','shuffle','self-join','skew'],
-        unlocks:'The full pipeline traced end to end — standardize → block → shuffle → self-join → score → skew.' },
-      { num:'01', title:'Complex Types & Nested Data', status:'done', est:'done', href:'nested-types-decision-card.html', acc:'var(--teal)',
-        topics:['arrays','structs','maps','explode'],
-        unlocks:'Read and write the nested entity structures your MDM pipeline actually stores.' },
-      { num:'02', title:'String Processing & Normalization', status:'done', est:'done', href:'string-processing-normalization.html', acc:'var(--teal)',
-        topics:['jaro-winkler','levenshtein','soundex','normalization'],
-        unlocks:'Know what your StandardizationPlugin should normalize and exactly why each rule exists.' },
-      { num:'03', title:'Window Functions', status:'done', est:'done', href:'window-functions.html', acc:'var(--teal)',
-        topics:['row_number','rank','lag','dedup'],
-        unlocks:'Assign row numbers, pick latest record per entity, build golden record selection.' },
+    id: 'mdm-spark', label: 'MDM / Spark', color: 'teal',
+    eyebrow: 'MDM / Spark Learning Track',
+    title: 'The Full Roadmap',
+    sub: 'Nine modules across four phases — from Spark foundations through the entity resolution algorithms to a full pipeline-design capstone. Each module unlocks the next. This is the complete plan, ordered so every module builds on what came before.',
+    stats: ['<strong>9</strong> modules', '<strong>4</strong> phases', '<strong>~8–9</strong> sessions', 'use depth throughout'],
+    phases: [
+      {
+        n: 1, cls: 'p1', title: 'Spark Foundations', meta: 'The toolkit you need to write good ER code · ~2–2.5 sessions',
+        modules: [
+          { num:'00', title:'Entity Resolution Overview', status:'done', est:'done', href:'modules/entity-resolution-walkthrough.html', acc:'var(--teal)',
+            topics:['blocking','shuffle','self-join','skew'],
+            unlocks:'The full pipeline traced end to end — standardize → block → shuffle → self-join → score → skew.' },
+          { num:'01', title:'Complex Types & Nested Data', status:'done', est:'done', href:'modules/nested-types-decision-card.html', acc:'var(--teal)',
+            topics:['arrays','structs','maps','explode'],
+            unlocks:'Read and write the nested entity structures your MDM pipeline actually stores.' },
+          { num:'02', title:'String Processing & Normalization', status:'done', est:'done', href:'modules/string-processing-normalization.html', acc:'var(--teal)',
+            topics:['jaro-winkler','levenshtein','soundex','normalization'],
+            unlocks:'Know what your StandardizationPlugin should normalize and exactly why each rule exists.' },
+          { num:'03', title:'Window Functions', status:'done', est:'done', href:'modules/window-functions.html', acc:'var(--teal)',
+            topics:['row_number','rank','lag','dedup'],
+            unlocks:'Assign row numbers, pick latest record per entity, build golden record selection.' },
+        ]
+      },
+      {
+        n: 2, cls: 'p2', title: 'The ER Algorithms', meta: 'Scoring and combining matches into verdicts · ~2 sessions',
+        modules: [
+          { num:'04', title:'Match Scoring & Classification', status:'done', est:'done', href:'modules/match-scoring-classification.html', acc:'var(--violet)',
+            topics:['field weighting','composite scores','thresholds','null handling'],
+            unlocks:'Combine per-field similarity scores into a single match/review/no-match verdict — the heart of your ScoringPlugin.' },
+          { num:'05', title:'Score Aggregation & Confidence', status:'next', est:'~1 session', acc:'var(--violet)',
+            topics:['weighted aggregation','confidence bands','review queues','precision vs recall'],
+            unlocks:'Tune the thresholds that decide which pairs auto-merge, which go to human review, and which are rejected.' },
+        ]
+      },
+      {
+        n: 3, cls: 'p3', title: 'ER at Scale', meta: 'Approximate matching and clustering for millions of records · ~2 sessions',
+        modules: [
+          { num:'06', title:'LSH & MinHash', status:'locked', est:'~1 session', acc:'var(--amber)',
+            topics:['minhash','banding','jaccard','candidate generation'],
+            unlocks:'Find candidate pairs at scale without comparing every record to every other — approximate blocking that complements your self-join.' },
+          { num:'07', title:'Graph Theory & Clustering', status:'locked', est:'~1 session', acc:'var(--amber)',
+            topics:['connected components','union-find','BFS/DFS','transitive matches'],
+            unlocks:'See how matched pairs merge into one master entity — the final ER step that turns pairs into clusters.' },
+        ]
+      },
+      {
+        n: 4, cls: 'p4', title: 'Pipeline Mastery — Capstone', meta: 'Performance and full architecture design · ~2 sessions',
+        modules: [
+          { num:'08', title:'Spark Performance (Remaining Levers)', status:'locked', est:'~1 session', acc:'var(--coral)',
+            topics:['column pruning','predicate pushdown','memory tuning','partition sizing'],
+            unlocks:'Optimize the full pipeline beyond shuffle/join/skew — the remaining performance levers.' },
+          { num:'09', title:'Pipeline Design (Capstone)', status:'locked', est:'~1 session', acc:'var(--coral)',
+            topics:['join-back strategies','enrichment','intermediate datasets','YAML plugin arch'],
+            unlocks:'Design the full MDM entity resolution architecture end to end with confidence.' },
+        ]
+      }
+    ],
+    rationale: [
+      { key: '01 before 04', body: "You can't score strings without first knowing how strings are <strong>processed and stored</strong>. Nested types and normalization come before the scoring algorithms that consume them." },
+      { key: '03 in Phase 1, not Phase 2', body: 'Window functions are <strong>Spark mechanics</strong>, not entity-resolution concepts. They finish the foundations so the toolkit feels complete before you touch scoring.' },
+      { key: '06 (LSH) before 07 (graph)', body: 'LSH produces another stream of candidate pairs. Graph clustering consumes <strong>all</strong> pairs — from both blocking and LSH — and merges them into entities. So LSH must be understood first.' },
+      { key: '09 last (capstone)', body: 'The pipeline-design capstone needs vocabulary from <strong>every prior module</strong> to reason about each architectural decision — which joins to broadcast, where shuffles live, how LSH integrates with blocking.' },
     ]
   },
   {
-    n: 2, cls: 'p2', title: 'The ER Algorithms', meta: 'Scoring and combining matches into verdicts · ~2 sessions',
-    modules: [
-      { num:'04', title:'Match Scoring & Classification', status:'done', est:'done', href:'match-scoring-classification.html', acc:'var(--violet)',
-        topics:['field weighting','composite scores','thresholds','null handling'],
-        unlocks:'Combine per-field similarity scores into a single match/review/no-match verdict — the heart of your ScoringPlugin.' },
-      { num:'05', title:'Score Aggregation & Confidence', status:'next', est:'~1 session', acc:'var(--violet)',
-        topics:['weighted aggregation','confidence bands','review queues','precision vs recall'],
-        unlocks:'Tune the thresholds that decide which pairs auto-merge, which go to human review, and which are rejected.' },
-    ]
-  },
-  {
-    n: 3, cls: 'p3', title: 'ER at Scale', meta: 'Approximate matching and clustering for millions of records · ~2 sessions',
-    modules: [
-      { num:'06', title:'LSH & MinHash', status:'locked', est:'~1 session', acc:'var(--amber)',
-        topics:['minhash','banding','jaccard','candidate generation'],
-        unlocks:'Find candidate pairs at scale without comparing every record to every other — approximate blocking that complements your self-join.' },
-      { num:'07', title:'Graph Theory & Clustering', status:'locked', est:'~1 session', acc:'var(--amber)',
-        topics:['connected components','union-find','BFS/DFS','transitive matches'],
-        unlocks:'See how matched pairs merge into one master entity — the final ER step that turns pairs into clusters.' },
-    ]
-  },
-  {
-    n: 4, cls: 'p4', title: 'Pipeline Mastery — Capstone', meta: 'Performance and full architecture design · ~2 sessions',
-    modules: [
-      { num:'08', title:'Spark Performance (Remaining Levers)', status:'locked', est:'~1 session', acc:'var(--coral)',
-        topics:['column pruning','predicate pushdown','memory tuning','partition sizing'],
-        unlocks:'Optimize the full pipeline beyond shuffle/join/skew — the remaining performance levers.' },
-      { num:'09', title:'Pipeline Design (Capstone)', status:'locked', est:'~1 session', acc:'var(--coral)',
-        topics:['join-back strategies','enrichment','intermediate datasets','YAML plugin arch'],
-        unlocks:'Design the full MDM entity resolution architecture end to end with confidence.' },
-    ]
+    id: 'python-backend', label: 'Python / Backend', color: 'violet',
+    eyebrow: 'Python / Backend Track',
+    title: 'The Full Roadmap',
+    sub: 'Python fundamentals through real pipeline code, PipelineEngine internals, and backend patterns — for someone coming from a data background into engineering. Phases will fill in as sessions happen.',
+    stats: ['<strong>1</strong> module planned', 'phases TBD as the roadmap is built out'],
+    phases: [
+      {
+        n: 1, cls: 'p1', title: 'Engine Internals', meta: 'Reading and extending a production pipeline engine · ~1 session',
+        modules: [
+          { num:'01', title:'PipelineEngine Internals', status:'locked', est:'~1 session', acc:'var(--violet)',
+            topics:['pipeline','python','architecture'],
+            unlocks:'Blueprint vs instance, step lifecycle, registry, context object — the mental model for reading and extending a production pipeline engine.' },
+        ]
+      }
+    ],
+    rationale: []
   }
 ];
 
@@ -223,60 +248,131 @@ const statusIcon = { done:'✓', next:'▶', locked:'🔒' };
 const statusClass = { done:'st-done', next:'st-next', locked:'st-locked' };
 const badgeClass = { done:'bd-done', next:'bd-next', locked:'bd-locked' };
 const badgeText = { done:'completed', next:'up next', locked:'planned' };
+const TC = { teal:['var(--teal-dim)','var(--teal)'], violet:['var(--violet-dim)','var(--violet)'], amber:['var(--amber-dim)','var(--amber)'] };
 
-const container = document.getElementById('phases-container');
+function buildTabs(){
+  const el = document.getElementById('tabs');
+  el.innerHTML = '';
+  ROADMAPS.forEach((r,i) => {
+    const [bg,fg] = TC[r.color];
+    const b = document.createElement('button');
+    b.className = 'tab' + (i===0?' on':'');
+    b.dataset.id = r.id;
+    b.style.cssText = i===0 ? `background:${bg};color:${fg};border-color:transparent` : '';
+    b.innerHTML = `<span class="tab-dot" style="background:${fg}"></span>${r.label}`;
+    b.addEventListener('click', () => activate(r.id));
+    el.appendChild(b);
+  });
+}
 
-PHASES.forEach(ph => {
-  const phaseEl = document.createElement('div');
-  phaseEl.className = `phase ${ph.cls}`;
+function renderRoadmap(id){
+  const r = ROADMAPS.find(x => x.id === id) || ROADMAPS[0];
 
-  let modsHtml = '';
-  ph.modules.forEach(m => {
-    const clickable = m.href ? 'clickable' : '';
-    const tag = m.href ? 'a' : 'div';
-    const hrefAttr = m.href ? `href="${m.href}"` : '';
-    const cta = m.status === 'done' ? '<div class="mod-cta">Open module →</div>'
-              : m.status === 'next' ? '<div class="mod-cta">Say "start Module ' + m.num + '" to begin →</div>'
-              : '';
-    modsHtml += `
-      <${tag} ${hrefAttr} class="mod ${clickable}" style="--acc:${m.acc}">
-        <div class="mod-top">
-          <div class="mod-left">
-            <div class="mod-status ${statusClass[m.status]}">${statusIcon[m.status]}</div>
-            <div>
-              <div class="mod-num">Module ${m.num}</div>
-              <div class="mod-title">${m.title}</div>
-              <div class="mod-est">${m.est}</div>
+  document.getElementById('rm-eyebrow').textContent = r.eyebrow;
+  document.getElementById('rm-title').textContent = r.title;
+  document.getElementById('rm-sub').textContent = r.sub;
+  document.getElementById('rm-stats').innerHTML = r.stats.map(s => `<span class="stat">${s}</span>`).join('');
+  document.getElementById('nav-track').textContent = r.label + ' Track';
+  document.getElementById('foot-track').textContent = `the-learning-lab · ${r.label} roadmap`;
+
+  const container = document.getElementById('phases-container');
+  container.innerHTML = '';
+
+  if (!r.phases.length) {
+    container.innerHTML = `<div class="wrap"><div class="roadmap-soon">This roadmap hasn't been broken into modules yet — give the topic to a learning session and ask to plan it out.</div></div>`;
+  }
+
+  r.phases.forEach(ph => {
+    const phaseEl = document.createElement('div');
+    phaseEl.className = `phase ${ph.cls}`;
+
+    let modsHtml = '';
+    ph.modules.forEach(m => {
+      const clickable = m.href ? 'clickable' : '';
+      const tag = m.href ? 'a' : 'div';
+      const hrefAttr = m.href ? `href="${m.href}"` : '';
+      const cta = m.status === 'done' ? '<div class="mod-cta">Open module →</div>'
+                : m.status === 'next' ? '<div class="mod-cta">Say "start Module ' + m.num + '" to begin →</div>'
+                : '';
+      modsHtml += `
+        <${tag} ${hrefAttr} class="mod ${clickable}" style="--acc:${m.acc}">
+          <div class="mod-top">
+            <div class="mod-left">
+              <div class="mod-status ${statusClass[m.status]}">${statusIcon[m.status]}</div>
+              <div>
+                <div class="mod-num">Module ${m.num}</div>
+                <div class="mod-title">${m.title}</div>
+                <div class="mod-est">${m.est}</div>
+              </div>
             </div>
+            <span class="mod-badge ${badgeClass[m.status]}">${badgeText[m.status]}</span>
           </div>
-          <span class="mod-badge ${badgeClass[m.status]}">${badgeText[m.status]}</span>
+          <div class="mod-topics">${m.topics.map(t=>`<span class="topic">${t}</span>`).join('')}</div>
+          <div class="mod-unlocks"><span class="unlock-label">Unlocks</span>${m.unlocks}</div>
+          ${cta}
+        </${tag}>`;
+    });
+
+    phaseEl.innerHTML = `
+      <div class="wrap">
+        <div class="phase-head">
+          <span class="phase-num">PHASE ${ph.n}</span>
+          <span class="phase-title">${ph.title}</span>
         </div>
-        <div class="mod-topics">${m.topics.map(t=>`<span class="topic">${t}</span>`).join('')}</div>
-        <div class="mod-unlocks"><span class="unlock-label">Unlocks</span>${m.unlocks}</div>
-        ${cta}
-      </${tag}>`;
+        <div class="phase-meta">${ph.meta}</div>
+        <div class="mod-list">${modsHtml}</div>
+      </div>`;
+    container.appendChild(phaseEl);
   });
 
-  phaseEl.innerHTML = `
-    <div class="wrap">
-      <div class="phase-head">
-        <span class="phase-num">PHASE ${ph.n}</span>
-        <span class="phase-title">${ph.title}</span>
-      </div>
-      <div class="phase-meta">${ph.meta}</div>
-      <div class="mod-list">${modsHtml}</div>
-    </div>`;
-  container.appendChild(phaseEl);
-});
+  // progress
+  const allMods = r.phases.flatMap(p => p.modules);
+  const doneCount = allMods.filter(m => m.status === 'done').length;
+  const total = allMods.length;
+  const progressWrap = document.getElementById('rm-progress-wrap');
+  if (!total) {
+    progressWrap.style.display = 'none';
+  } else {
+    progressWrap.style.display = '';
+    document.getElementById('prog-text').textContent = `${doneCount} of ${total} complete`;
+    document.getElementById('prog-fill').style.width = '0%';
+    setTimeout(() => {
+      document.getElementById('prog-fill').style.width = `${(doneCount/total)*100}%`;
+    }, 200);
+  }
 
-// progress
-const allMods = PHASES.flatMap(p => p.modules);
-const doneCount = allMods.filter(m => m.status === 'done').length;
-const total = allMods.length;
-document.getElementById('prog-text').textContent = `${doneCount} of ${total} complete`;
-setTimeout(() => {
-  document.getElementById('prog-fill').style.width = `${(doneCount/total)*100}%`;
-}, 200);
+  // rationale
+  const ratSection = document.getElementById('rationale-section');
+  const ratGrid = document.getElementById('rat-grid');
+  if (!r.rationale.length) {
+    ratSection.style.display = 'none';
+  } else {
+    ratSection.style.display = '';
+    ratGrid.innerHTML = r.rationale.map(item => `
+      <div class="rat-item">
+        <div class="rat-key">${item.key}</div>
+        <div class="rat-body">${item.body}</div>
+      </div>`).join('');
+  }
+}
+
+function activate(id){
+  document.querySelectorAll('.tab').forEach(b => {
+    const r = ROADMAPS.find(x => x.id === b.dataset.id);
+    const [bg,fg] = TC[r.color];
+    if (b.dataset.id === id) {
+      b.classList.add('on');
+      b.style.cssText = `background:${bg};color:${fg};border-color:transparent`;
+    } else {
+      b.classList.remove('on');
+      b.style.cssText = '';
+    }
+  });
+  renderRoadmap(id);
+}
+
+buildTabs();
+activate(ROADMAPS[0].id);
 </script>
 </body>
 </html>

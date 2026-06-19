@@ -21,7 +21,7 @@ in chat. It is never stored in the repo or in skill files.
 ## Standard module-publish flow
 
 ```bash
-git add <new-module>.html index.html roadmap.html
+git add modules/<new-module>.html index.html roadmap.html
 git commit -m "feat: Module NN — <title>"
 git push origin main
 ```
@@ -31,7 +31,7 @@ https://the-learning-lab-vgq2.vercel.app
 
 ## When publishing a new module, always update THREE files
 
-1. `<module-slug>.html`  — the new module artifact
+1. `modules/<module-slug>.html`  — the new module artifact
 2. `index.html`          — flip the module card from `soon:true` to live (add href, date,
                            move the `latest:true` flag to the new module)
 3. `roadmap.html`        — change the module's `status` from `locked`/`next` to `done`,

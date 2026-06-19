@@ -27,9 +27,15 @@ Stage 4: RUNNING CALIBRATION       (every K loops; can renegotiate frame)
 Stage 5: ARTIFACT ASSEMBLY         (produce the declared output)
    ↓
 Stage 6: PROFILE UPDATE            (write per-domain calibration data)
+   ↓
+Stage 7: PUBLISH                   (the-learning-lab only — see below)
 ```
 
 Every stage has an exit criterion. Do not advance silently.
+
+Stage 7 only applies when the declared Stage 1 artifact is a website module for
+the-learning-lab (this repo). For any other artifact (compression, diagram,
+predictions, code, script, questions), the pipeline ends at Stage 6.
 
 ---
 
@@ -206,7 +212,22 @@ Write the following for the domain just studied:
 
 Read by Stage 1 and Stage 2 next time the same domain comes up.
 
-**Exit criterion:** Profile updated; session ends.
+**Exit criterion:** Profile updated. Session ends here — unless the Stage 1 artifact was a the-learning-lab website module, in which case continue to Stage 7.
+
+---
+
+## Stage 7: Publish (the-learning-lab website only)
+
+Only runs when Stage 1's declared artifact is a published HTML module for this site. Closes the loop between "Rajesh learned something" and "a module is live on the website" — see root `CLAUDE.md` for the full two-system orchestration this stage completes.
+
+1. **Build the module file** under `modules/`, following the internal pattern established by Modules 00–04: motivating example → analogy/anchor → worked mechanism (tables) → climax/gotcha → decision criteria → runnable code pattern → interactive widget → scenario self-test → mandatory Honest Gaps section.
+2. **Update `references/roadmaps/<track-id>.md`** for the topic this module belongs to (done in Stage 6, but verify here): flip the module's status to done, set the next module to `🔜`, carry forward any gaps. If this is the first module for a brand-new topic, this file won't exist yet — create it (same shape as `references/roadmaps/mdm-spark.md`: phases → modules → topics/tags → "unlocks").
+3. **Update the two website registries for this track's `id`** — they are parallel and must stay in sync:
+   - `index.html` `TRACKS` array — flip the module from `soon:true` to live (add `href`, `date`; move `latest:true` to the new module). If the track doesn't exist yet, add a new entry.
+   - `roadmap.html` `ROADMAPS` array — change `status` from `locked`/`next` to `done`; set the next module's `status` to `next`. If the track doesn't exist yet, add a new entry (phases can start empty).
+4. **Commit and push** following `docs/DEPLOY.md`'s standard module-publish flow, then verify the push landed (`git rev-parse HEAD` vs `git ls-remote origin main`).
+
+**Exit criterion:** Module live on Vercel, both registries updated and in sync, push verified per `docs/DEPLOY.md`.
 
 ---
 
@@ -226,6 +247,7 @@ If he gives the source up front but no calibration fields, start with Stage 1 qu
 - `references/source-segmentation.md` — How to segment books / blogs / videos / papers / codebases
 - `references/profile-schema.md` — Schema for `profile.md`
 - `references/profile.md` — Per-domain calibration data (created on first real session)
+- `references/roadmaps/<track-id>.md` — Per-topic module curriculum for the-learning-lab website (e.g. `roadmaps/mdm-spark.md`); one file per roadmap/track, created when a new topic is broken into modules
 
 ## Templates
 

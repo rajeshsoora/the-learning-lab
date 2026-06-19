@@ -28,6 +28,11 @@ without the sandbox-reset / token re-embedding workaround.
    recent claude.ai session, or re-export it there first) and drop it at:
    `.claude/skills/learning-framework/references/mdm-learning-path.md`
 
+   (Since this migration, the skill became multi-roadmap: this file now lives at
+   `.claude/skills/learning-framework/references/roadmaps/mdm-spark.md`, and any
+   future topic gets its own `references/roadmaps/<track-id>.md` — see root
+   `CLAUDE.md`. This section is left as historical record of the original migration.)
+
 2. **Your GitHub repo** — this bundle is standalone. To use it with the-learning-lab:
    ```bash
    git clone https://github.com/rajeshsoora/the-learning-lab.git
