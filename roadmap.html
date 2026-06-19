@@ -126,7 +126,7 @@ footer{padding:28px 0}
       <span class="stat">use depth throughout</span>
     </div>
     <div class="progress-wrap">
-      <div class="progress-label"><span>Progress</span><span id="prog-text">4 of 10 complete</span></div>
+      <div class="progress-label"><span>Progress</span><span id="prog-text">5 of 10 complete</span></div>
       <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
     </div>
   </div>
@@ -187,10 +187,10 @@ const PHASES = [
   {
     n: 2, cls: 'p2', title: 'The ER Algorithms', meta: 'Scoring and combining matches into verdicts · ~2 sessions',
     modules: [
-      { num:'04', title:'Match Scoring & Classification', status:'next', est:'~1 session', acc:'var(--violet)',
+      { num:'04', title:'Match Scoring & Classification', status:'done', est:'done', href:'match-scoring-classification.html', acc:'var(--violet)',
         topics:['field weighting','composite scores','thresholds','null handling'],
         unlocks:'Combine per-field similarity scores into a single match/review/no-match verdict — the heart of your ScoringPlugin.' },
-      { num:'05', title:'Score Aggregation & Confidence', status:'locked', est:'~1 session', acc:'var(--violet)',
+      { num:'05', title:'Score Aggregation & Confidence', status:'next', est:'~1 session', acc:'var(--violet)',
         topics:['weighted aggregation','confidence bands','review queues','precision vs recall'],
         unlocks:'Tune the thresholds that decide which pairs auto-merge, which go to human review, and which are rejected.' },
     ]
