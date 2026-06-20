@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 09 — Pipeline Design (Capstone)</title>
+<meta name="description" content="The MDM entity-resolution capstone: assemble every module into one end-to-end architecture — DAG, intermediate datasets, the YAML plugin engine, join-back, enrichment, incremental runs, orchestration, observability — and feel how a knob at any stage ripples to the final master entities, with a full end-to-end pipeline simulator.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116;--panel:#161B22;--surf:#1C2430;--surf2:#222C3A;
+  --ink:#E6EDF3;--muted:#8B98A8;--faint:#5C6B7E;--line:#2A3442;
+  --teal:#5EC8C2;--teal-dim:#1A3A38;
+  --violet:#A78BFA;--violet-dim:#1E1A2E;
+  --amber:#E6B450;--amber-dim:#2B230A;
+  --green:#5BD68B;--green-dim:#0D2B1A;
+  --red:#F2789F;--red-dim:#2B0D18;
+  --blue:#7FB5F0;--blue-dim:#0D1E2E;
+  --coral:#F78C6C;--coral-dim:#3E241E;
+  --dp:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --mo:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--bd);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(14,17,22,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-logo{font-family:var(--mo);font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.nav-logo a{color:var(--faint);transition:color .15s}.nav-logo a:hover{color:var(--coral)}
+.nav-logo .sep{color:var(--line)}
+.nav-mod{font-family:var(--mo);font-size:12px;color:var(--coral)}
+
+.stage-nav{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:99;overflow-x:auto}
+.stage-nav-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;gap:6px;height:48px;align-items:center}
+.sn{font-family:var(--mo);font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sn:hover{color:var(--ink);border-color:var(--faint)}
+.sn.on{background:var(--coral-dim);border-color:var(--coral);color:var(--coral)}
+
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.stage{display:none;padding:48px 0 72px}.stage.on{display:block}
+
+/* typography */
+.sec-eye{font-family:var(--mo);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.sec-h{font-family:var(--dp);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.015em;margin-bottom:10px}
+.sec-sub{color:var(--muted);font-size:14px;line-height:1.75;max-width:64ch;margin-bottom:32px}
+h3{font-family:var(--dp);font-weight:600;font-size:18px;margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .bar{width:3px;height:17px;border-radius:2px;background:var(--coral);flex-shrink:0}
+h4{font-family:var(--dp);font-weight:600;font-size:13px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+p{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+strong{color:var(--ink)}
+code{font-family:var(--mo);background:var(--surf);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--coral)}
+.divider{border:0;border-top:1px solid var(--line);margin:40px 0}
+ul{margin:0 0 14px 20px;color:var(--muted);font-size:14px;line-height:1.75}
+ul li{margin-bottom:6px}
+
+/* concept cards */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:20px 0}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:20px;position:relative}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0;background:var(--acc,var(--coral))}
+.cc-num{font-family:var(--mo);font-size:10px;color:var(--faint);margin-bottom:8px}
+.cc-title{font-family:var(--dp);font-weight:600;font-size:15px;margin-bottom:6px}
+.cc-body{font-size:13px;color:var(--muted);line-height:1.6}
+.cc-body code{font-size:11px}
+
+/* analogy box */
+.analogy{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:20px 22px;margin:20px 0}
+.analogy-eye{font-family:var(--mo);font-size:10px;color:var(--violet);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.analogy-body{font-size:14px;color:var(--ink);line-height:1.75}
+.analogy-body em{color:var(--violet);font-style:normal;font-weight:600}
+
+/* callouts */
+.note{border-left:3px solid var(--teal);background:var(--teal-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.warn strong{color:var(--amber)}
+.trap{border-left:3px solid var(--red);background:var(--red-dim);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin:16px 0;line-height:1.65}
+.trap strong{color:var(--red)}
+
+/* code windows */
+.code-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+.code-header{background:var(--panel);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.code-label{font-family:var(--mo);font-size:11px;color:var(--faint);letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin:0}
+.code-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--coral);display:inline-block;flex-shrink:0}
+.code-copy{font-family:var(--mo);font-size:10px;color:var(--faint);background:transparent;border:1px solid var(--line);padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.code-copy:hover{color:var(--ink);border-color:var(--faint)}
+.code-copy.copied{color:var(--green);border-color:var(--green)}
+.code-block{background:var(--surf2);padding:18px 20px;font-family:var(--mo);font-size:12px;line-height:2;overflow-x:auto;white-space:pre;display:block;margin:0;color:var(--muted)}
+.code-block .k{color:var(--violet)}
+.code-block .f{color:var(--teal)}
+.code-block .s{color:var(--amber)}
+.code-block .n{color:var(--green)}
+.code-block .co{color:var(--faint);font-style:italic}
+.code-block .hl{background:rgba(247,140,108,.09);display:inline-block;width:100%;border-left:2px solid var(--coral);padding-left:6px;margin-left:-8px}
+.code-block .why{color:var(--coral);font-style:italic}
+
+/* data table */
+.data-table-wrap{overflow-x:auto;margin:16px 0}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mo)}
+.data-table th{background:var(--surf2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.data-table tr:last-child td{border-bottom:0}
+.data-table tr:hover td{background:var(--surf)}
+.data-table .hl-row td{background:var(--coral-dim) !important}
+.data-table .hl-row td:first-child{border-left:3px solid var(--coral)}
+.data-table .tot-row td{background:var(--surf2);font-weight:600;color:var(--ink);border-top:2px solid var(--line)}
+.data-table .new-col{color:var(--coral);font-weight:600}
+.data-table .faint{color:var(--faint)}
+.badge{display:inline-block;font-family:var(--mo);font-size:10px;padding:2px 7px;border-radius:4px}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #1A3D5C}
+.b-violet{background:var(--violet-dim);color:var(--violet);border:1px solid #3A3060}
+.b-teal{background:var(--teal-dim);color:var(--teal);border:1px solid #1E4A48}
+.b-coral{background:var(--coral-dim);color:var(--coral);border:1px solid #5A3326}
+
+/* red herring contrast */
+.herring{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:18px 0;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.herring-col{padding:18px 20px}
+.herring-col.left{background:var(--red-dim);border-right:1px solid var(--line)}
+.herring-col.right{background:var(--green-dim)}
+.herring-eye{font-family:var(--mo);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.herring-col.left .herring-eye{color:var(--red)}
+.herring-col.right .herring-eye{color:var(--green)}
+.herring-col h5{font-family:var(--dp);font-weight:600;font-size:14px;color:var(--ink);margin-bottom:8px}
+.herring-col p{font-size:13px;line-height:1.6;margin-bottom:8px}
+.herring-col p:last-child{margin-bottom:0}
+.herring-col code{font-size:11px}
+@media(max-width:600px){.herring{grid-template-columns:1fr}.herring-col.left{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* pipeline viz */
+.pipeline-viz{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:24px 0}
+.pv-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.pv-flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pv-box{background:var(--surf);border:1px solid var(--line);border-radius:7px;padding:7px 13px;font-family:var(--mo);font-size:12px;color:var(--muted)}
+.pv-box.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.pv-box.hl{background:var(--coral-dim);border-color:var(--coral);color:var(--coral)}
+.pv-arr{color:var(--faint);font-size:13px;padding:0 2px}
+
+.unlock{background:var(--violet-dim);border:1px solid var(--violet);border-radius:10px;padding:18px 20px;margin:26px 0;display:flex;gap:14px;align-items:flex-start}
+.unlock-icon{font-size:20px;flex-shrink:0}
+.unlock-body{font-size:13px;color:var(--ink);line-height:1.7}
+.unlock-body strong{color:var(--violet)}
+
+/* decision tree */
+.decision-tree{display:flex;flex-direction:column;gap:10px;margin:18px 0}
+.dq{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.dq-num{font-family:var(--mo);font-size:10px;color:var(--coral);letter-spacing:.08em;margin-bottom:6px}
+.dq-q{font-family:var(--dp);font-weight:600;font-size:14px;margin-bottom:8px}
+.dq-a{font-size:13px;color:var(--muted);line-height:1.6;padding-left:14px;border-left:2px solid var(--line)}
+.dq-a strong{color:var(--ink)}
+
+/* quiz */
+.quiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:20px 0}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.q-prompt{font-size:13px;line-height:1.65;margin-bottom:14px;color:var(--muted)}
+.q-prompt strong{color:var(--ink)}
+.q-opts{display:flex;flex-direction:column;gap:7px}
+.q-opt{font-family:var(--mo);font-size:12px;background:var(--surf);border:1px solid var(--line);padding:8px 12px;border-radius:6px;cursor:pointer;text-align:left;color:var(--muted);transition:all .15s}
+.q-opt:hover{border-color:var(--coral);color:var(--ink)}
+.q-opt.correct{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.q-opt.wrong{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.q-fb{font-size:12px;margin-top:10px;padding:8px 12px;border-radius:6px;display:none;line-height:1.55}
+.fb-ok{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.fb-no{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+/* ════════ END-TO-END SIMULATOR ════════ */
+.pl-sim{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:22px 0}
+.pl-simhead{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.pl-label{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase}
+.pl-presets{display:flex;gap:7px;flex-wrap:wrap}
+.pl-preset{font-family:var(--mo);font-size:11px;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--faint);cursor:pointer;transition:all .15s}
+.pl-preset:hover{color:var(--ink);border-color:var(--faint)}
+.pl-preset.on{background:var(--coral-dim);border-color:var(--coral);color:var(--coral)}
+
+/* live flow of stage nodes */
+.pl-flow{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px;margin-bottom:8px}
+.pl-node{flex:1 0 118px;min-width:118px;background:var(--surf);border:1px solid var(--line);border-radius:9px;padding:11px 12px;position:relative}
+.pl-node::after{content:'→';position:absolute;right:-7px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:13px;z-index:2}
+.pl-node:last-child::after{content:''}
+.pl-node-name{font-family:var(--mo);font-size:10px;color:var(--ink);letter-spacing:.04em;margin-bottom:7px;text-transform:uppercase}
+.pl-node-metric{font-family:var(--dp);font-weight:700;font-size:15px;color:var(--coral);line-height:1.15}
+.pl-node-sub{font-family:var(--mo);font-size:9.5px;color:var(--faint);margin-top:4px;line-height:1.4}
+.pl-node-lost{font-family:var(--mo);font-size:9.5px;margin-top:5px;color:var(--red)}
+.pl-node-lost.zero{color:var(--faint)}
+
+.pl-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:22px;margin-top:8px}
+@media(max-width:820px){.pl-grid{grid-template-columns:1fr}}
+
+/* control groups */
+.pl-ctlgroup{border:1px solid var(--line);border-radius:9px;padding:13px 15px;margin-bottom:11px;background:var(--surf2)}
+.pl-ctlgroup h6{font-family:var(--mo);font-size:10px;color:var(--coral);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.pl-ctlgroup h6 .pl-yaml{color:var(--faint);font-size:9px;text-transform:none;letter-spacing:0}
+.pl-ctl{margin-bottom:12px}
+.pl-ctl:last-child{margin-bottom:0}
+.pl-ctl-label{font-family:var(--mo);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:7px}
+.pl-ctl-label b{color:var(--coral);font-weight:600}
+.pl-slider{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:var(--surf);outline:none}
+.pl-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;background:var(--coral);cursor:pointer;border:2px solid var(--bg)}
+.pl-slider::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--coral);cursor:pointer;border:2px solid var(--bg)}
+.pl-seg{display:flex;gap:5px;flex-wrap:wrap}
+.pl-segbtn{font-family:var(--mo);font-size:11px;padding:5px 11px;border-radius:6px;border:1px solid var(--line);background:var(--surf);color:var(--faint);cursor:pointer;transition:all .14s}
+.pl-segbtn:hover{color:var(--ink)}
+.pl-segbtn.on{background:var(--coral-dim);border-color:var(--coral);color:var(--coral)}
+.pl-toggle{display:flex;align-items:center;gap:9px;font-family:var(--mo);font-size:11px;color:var(--muted);cursor:pointer}
+.pl-switch{width:34px;height:19px;border-radius:99px;background:var(--surf);border:1px solid var(--line);position:relative;transition:background .15s;flex-shrink:0}
+.pl-switch::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--faint);transition:all .15s}
+.pl-toggle.on .pl-switch{background:var(--coral-dim);border-color:var(--coral)}
+.pl-toggle.on .pl-switch::after{left:17px;background:var(--coral)}
+
+/* scorecard */
+.pl-scorecard{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:16px}
+.pl-sc-head{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.pl-sc-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.pl-stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 11px;text-align:center}
+.pl-stat.span2{grid-column:span 2}
+.pl-stat-label{font-family:var(--mo);font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.pl-stat-val{font-family:var(--dp);font-weight:700;font-size:19px;color:var(--ink)}
+.pl-stat-val small{font-size:11px;color:var(--faint);font-weight:500}
+.pl-verdict{font-family:var(--mo);font-size:12px;padding:11px 13px;border-radius:8px;line-height:1.55;margin-top:12px}
+.v-good{background:var(--green-dim);color:var(--green);border:1px solid #1E5A35}
+.v-warn{background:var(--amber-dim);color:var(--amber);border:1px solid #5A4A15}
+.v-bad{background:var(--red-dim);color:var(--red);border:1px solid #5A1A30}
+
+/* A/B compare */
+.pl-ab{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:14px 15px;background:var(--surf2)}
+.pl-ab-head{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:11px;display:flex;justify-content:space-between;align-items:center}
+.pl-ab-btns{display:flex;gap:6px}
+.pl-ab-btn{font-family:var(--mo);font-size:10px;padding:4px 9px;border-radius:5px;border:1px solid var(--line);background:var(--surf);color:var(--muted);cursor:pointer;transition:all .14s}
+.pl-ab-btn:hover{color:var(--ink);border-color:var(--faint)}
+.pl-ab-table{width:100%;border-collapse:collapse;font-family:var(--mo);font-size:11px}
+.pl-ab-table th{color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;padding:5px 7px;text-align:right;border-bottom:1px solid var(--line)}
+.pl-ab-table th:first-child{text-align:left}
+.pl-ab-table td{padding:5px 7px;text-align:right;border-bottom:1px solid var(--line);color:var(--muted)}
+.pl-ab-table td:first-child{text-align:left;color:var(--ink)}
+.pl-ab-table tr:last-child td{border-bottom:0}
+.pl-delta-up{color:var(--green)}.pl-delta-dn{color:var(--red)}.pl-delta-0{color:var(--faint)}
+
+/* trace */
+.pl-trace{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:14px 15px;background:var(--surf2)}
+.pl-trace-head{font-family:var(--mo);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:11px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.pl-trace-sel{font-family:var(--mo);font-size:11px;background:var(--surf);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:4px 8px}
+.pl-trace-row{font-family:var(--mo);font-size:11px;padding:7px 9px;border-radius:6px;background:var(--panel);border:1px solid var(--line);margin-bottom:6px;line-height:1.5}
+.pl-trace-row .ok{color:var(--green)}.pl-trace-row .no{color:var(--red)}.pl-trace-row .mid{color:var(--amber)}
+.pl-trace-verdict{font-family:var(--mo);font-size:11px;padding:9px 11px;border-radius:7px;margin-top:8px;line-height:1.5}
+
+footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
+.foot-inner{max-width:1020px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-l,.foot-r{font-family:var(--mo);font-size:11px;color:var(--faint)}
+.foot-r a{color:var(--coral)}
+
+@media(max-width:768px){
+  .pl-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <a href="../index.html">the-learning-lab</a>
+      <span class="sep">/</span><span>MDM · Spark</span>
+      <span class="sep">/</span><span class="nav-mod">Module 09</span>
+    </div>
+    <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Pipeline Design · Capstone</span>
+  </div>
+</nav>
+
+<div class="stage-nav">
+  <div class="stage-nav-inner">
+    <button class="sn on" onclick="go('s0',this)">00 · Architecture Map</button>
+    <button class="sn" onclick="go('s1',this)">01 · The DAG</button>
+    <button class="sn" onclick="go('s2',this)">02 · Intermediate Data</button>
+    <button class="sn" onclick="go('s3',this)">03 · YAML Plugin Engine</button>
+    <button class="sn" onclick="go('s4',this)">04 · Join-Back</button>
+    <button class="sn" onclick="go('s5',this)">05 · Enrichment</button>
+    <button class="sn" onclick="go('s6',this)">06 · Incremental</button>
+    <button class="sn" onclick="go('s7',this)">07 · Orchestration</button>
+    <button class="sn" onclick="go('s8',this)">08 · Observability</button>
+    <button class="sn" onclick="go('s9',this)">09 · System Tradeoff</button>
+    <button class="sn" onclick="go('s10',this)">10 · Simulator ★</button>
+    <button class="sn" onclick="go('s11',this)">11 · PipelineEngine</button>
+    <button class="sn" onclick="go('s12',this)">12 · Decisions &amp; Smells</button>
+    <button class="sn" onclick="go('s13',this)">13 · Self-Test</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ══════ STAGE 0 — ARCHITECTURE MAP ══════ -->
+<div class="stage on" id="s0">
+  <p class="sec-eye">Stage 00 · Overview</p>
+  <h2 class="sec-h">You Built Every Part. Now Design the Machine.</h2>
+  <p class="sec-sub">Eight modules, each a single mechanism in isolation: standardize strings, block to dodge N², score fields, tune thresholds, find candidates with LSH, cluster pairs into entities, make it cheap. This capstone does the one thing none of them did — it assembles them into a single end-to-end architecture and asks the questions only the <em>whole</em> pipeline raises: where does data get written down between stages, how does the engine read its config, how do you turn cluster IDs back into master records, where does external data join in, what happens on tomorrow's run, and — the thread that runs through all of it — how does a decision at <em>one</em> stage ripple to the <em>final</em> output.</p>
+
+  <div class="pipeline-viz">
+    <div class="pv-label">Every prior module, now one machine — the MDM entity-resolution architecture</div>
+    <div class="pv-flow">
+      <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Block</span><span class="pv-arr">→</span>
+      <span class="pv-box done">LSH</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Score</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Classify</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Cluster</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Join-Back</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Golden Record</span>
+    </div>
+    <p style="margin:14px 0 0;font-size:13px;color:var(--faint)">The first six boxes you already built (Modules 02–08). The capstone adds the last two — <strong>join-back</strong> and the <strong>golden record</strong> — and, more importantly, the <em>connective tissue</em> between every box: the intermediate datasets, the config engine, the orchestration, and the failure recovery that turn a pile of transforms into a pipeline you can run every night.</p>
+  </div>
+
+  <h3><span class="bar"></span>What "design" adds on top of "mechanism"</h3>
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Structure</div>
+      <div class="cc-title">The DAG &amp; intermediate data</div>
+      <div class="cc-body">Stages aren't a single lazy expression — they're materialized datasets with contracts between them. Where you write down results decides re-runnability, debuggability, and cost.</div>
+    </div>
+    <div class="cc" style="--acc:var(--coral)">
+      <div class="cc-num">Configuration</div>
+      <div class="cc-title">The YAML plugin engine</div>
+      <div class="cc-body">Your real <code>PipelineEngine</code> runs plugins driven by YAML. Weights, thresholds, and blocking keys are <em>config</em>, not code — change behavior without a deploy.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Assembly</div>
+      <div class="cc-title">Join-back &amp; enrichment</div>
+      <div class="cc-body">Clustering gives you a <code>cluster_id</code> per record. Joining it back to source and to external reference data is where the master entity is actually built.</div>
+    </div>
+    <div class="cc" style="--acc:var(--blue)">
+      <div class="cc-num">Operation</div>
+      <div class="cc-title">Incremental, orchestration, observability</div>
+      <div class="cc-body">Tomorrow you won't re-resolve the world. You'll match new records against existing masters, recover from partial failures, and watch a metric per stage.</div>
+    </div>
+    <div class="cc" style="--acc:var(--red)">
+      <div class="cc-num">The capstone insight</div>
+      <div class="cc-title">Stages are coupled</div>
+      <div class="cc-body">A knob at blocking changes the final master count. Recall, precision, cost, and review burden are <strong>system</strong> properties — you can't tune one stage in isolation. Stage 10 lets you feel it.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>How to read this module.</strong> Stages 01–08 build the architecture one design concern at a time. Stage 09 names the climax — <em>coupling</em>. Stage 10 is the flagship: a full end-to-end simulator where you turn a knob at any stage and watch the ripple reach the final master entities. Stages 11–13 give you the production <code>PipelineEngine</code> skeleton, an architecture decision tree with the design anti-patterns, and a scenario self-test.</div>
+</div>
+
+<!-- ══════ STAGE 1 — THE DAG ══════ -->
+<div class="stage" id="s1">
+  <p class="sec-eye">Stage 01 · The shape of the pipeline</p>
+  <h2 class="sec-h">The Pipeline Is a DAG, Not a Script</h2>
+  <p class="sec-sub">A script is a list of statements that run top to bottom. A pipeline is a <em>directed acyclic graph</em>: each stage is a node that consumes specific inputs and produces a specific output, and the edges are the datasets that flow between them. Thinking in the DAG — not the line-by-line script — is what lets you reason about what can run in parallel, what must run first, and what has to be rebuilt when one stage changes.</p>
+
+  <h3><span class="bar"></span>Every stage is a contract: inputs → output</h3>
+  <p>The discipline that makes a pipeline maintainable is treating each stage as a black box with a typed contract. As long as a stage produces the columns the next stage expects, you can rewrite its internals freely. Here is the full MDM contract chain:</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Stage</th><th>Consumes</th><th>Produces</th><th>Module</th></tr></thead>
+      <tbody>
+        <tr><td>Standardize</td><td>raw <code>customers</code></td><td><code>std</code>: normalized fields</td><td><span class="badge b-teal">02</span></td></tr>
+        <tr><td>Block</td><td><code>std</code></td><td><code>candidates</code>: pairs in same block</td><td><span class="badge b-teal">00</span></td></tr>
+        <tr><td>LSH</td><td><code>std</code></td><td><code>candidates+</code>: cross-block pairs</td><td><span class="badge b-teal">06</span></td></tr>
+        <tr><td>Score</td><td><code>candidates</code> + <code>std</code></td><td><code>scored</code>: pair + similarity</td><td><span class="badge b-teal">04</span></td></tr>
+        <tr><td>Classify</td><td><code>scored</code></td><td><code>verdicts</code>: match / review / no</td><td><span class="badge b-teal">05</span></td></tr>
+        <tr><td>Cluster</td><td><code>verdicts</code> (match edges)</td><td><code>clusters</code>: record → <code>cluster_id</code></td><td><span class="badge b-teal">07</span></td></tr>
+        <tr class="hl-row"><td>Join-back</td><td><code>clusters</code> + <code>std</code></td><td><code>masters</code>: one golden record / cluster</td><td><span class="badge b-coral">09</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-eye">Anchor — a build graph, not a Makefile recipe</div>
+    <div class="analogy-body">You already think this way about <em>builds</em>. <code>main.o</code> depends on <code>main.c</code>; the linker depends on every <code>.o</code>. Change one <code>.c</code> and only its <code>.o</code> and the final link rebuild — not the whole tree. An ER pipeline is the same DAG: change the <em>scoring</em> stage and you must rebuild <code>scored</code> → <code>verdicts</code> → <code>clusters</code> → <code>masters</code>, but <em>not</em> <code>std</code> or the blocks. Knowing the DAG tells you exactly the blast radius of any change.</div>
+  </div>
+
+  <h3><span class="bar"></span>Why "acyclic" matters</h3>
+  <p>The graph has no cycles: data flows forward, a stage never feeds back into one before it. That's what makes the pipeline <em>re-runnable</em> and <em>reasoned about</em> — you can topologically order the stages, know which are independent (blocking and LSH both read <code>std</code> and can run in parallel), and know that rebuilding from any node forward gives a correct result. A pipeline with a hidden cycle (a stage that reads its own future output) can't be safely re-run, and that's almost always a bug.</p>
+
+  <div class="note"><strong>Two stages read the same input → they can run in parallel.</strong> Blocking and LSH both consume <code>std</code> and neither depends on the other; their outputs are <em>unioned</em> before scoring (Module 06's hybrid candidate set). Seeing that in the DAG is how you find free parallelism — and how Spark's scheduler finds it too.</p></div>
+</div>
+
+<!-- ══════ STAGE 2 — INTERMEDIATE DATASETS ══════ -->
+<div class="stage" id="s2">
+  <p class="sec-eye">Stage 02 · Materialization</p>
+  <h2 class="sec-h">Intermediate Datasets — Where You Write Things Down</h2>
+  <p class="sec-sub">Spark is lazy: chain ten transforms and nothing runs until an action forces the whole lineage at once. That's elegant for one query and a liability for a production pipeline, because a failure at stage 9 recomputes stages 1–8 from raw source, and you can't inspect what stage 4 produced because stage 4 never independently existed. The fix is deliberate <em>materialization</em>: write each stage's output to durable storage and let the next stage read it back.</p>
+
+  <h3><span class="bar"></span>One lazy DAG vs. materialized stages</h3>
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ One lazy chain to the final write</div>
+      <h5>Recompute-the-world on every failure</h5>
+      <p>Standardize → block → LSH → score → classify → cluster → write, all as one lazy lineage. The cluster step fails at 2&nbsp;a.m. on a bad config. The retry re-reads 2&nbsp;TB and re-runs every stage from scratch — and you have no artifact to inspect to see <em>which</em> stage went wrong.</p>
+      <p>One bug = full recompute. Nothing is debuggable in isolation.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ Materialize between stages</div>
+      <h5>Restart from the last good dataset</h5>
+      <p>Each stage writes Parquet: <code>std/</code>, <code>candidates/</code>, <code>scored/</code>, <code>verdicts/</code>, <code>clusters/</code>, <code>masters/</code>. The cluster step fails — you fix the config and restart from <code>verdicts/</code>, skipping the expensive standardize-block-score chain entirely. And you can <code>SELECT</code> from <code>scored/</code> to see exactly what the scorer produced.</p>
+      <p>One bug = rerun one stage. Every stage is an inspectable artifact.</p>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The three things materialization buys you</h3>
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Benefit 1</div>
+      <div class="cc-title">Re-runnability</div>
+      <div class="cc-body">Restart from the last completed stage instead of from raw source. Turns a 3-hour recovery into a 10-minute one.</div>
+    </div>
+    <div class="cc" style="--acc:var(--blue)">
+      <div class="cc-num">Benefit 2</div>
+      <div class="cc-title">Debuggability</div>
+      <div class="cc-body">Every stage's output is a queryable table. "Why did these two merge?" → read <code>scored/</code> and <code>verdicts/</code> for that pair. No artifact, no answer.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Benefit 3</div>
+      <div class="cc-title">Idempotency</div>
+      <div class="cc-body">Write with <code>mode("overwrite")</code> keyed by run date. Re-running the same stage on the same input produces the same output — safe to retry without duplicating data.</div>
+    </div>
+  </div>
+
+  <div class="warn"><strong>The cost is real — don't materialize <em>everything</em>.</strong> Each write is a full pass to disk and each read pays it back. Materialize at <em>meaningful boundaries</em> (expensive stages, natural restart points, things you'll inspect), not after every <code>withColumn</code>. The art is choosing checkpoints: after standardize (expensive, reused), after scoring (the natural debug surface), after clustering (the hand-off to masters). Between those, let Spark's lazy chain do its job. This is the same lazy/recompute tension from Module 08's caching — materialization is caching that survives the job.</div>
+
+  <div class="note"><strong>Checkpoint vs. cache vs. write.</strong> <code>.cache()</code> (Module 08) keeps a DataFrame in memory <em>within</em> one job. <code>.checkpoint()</code> writes it to reliable storage and <em>truncates the lineage</em> so a failure can't recompute past it. A plain <code>.write.parquet()</code> persists it as a named dataset the next <em>job</em> reads. A production pipeline uses the third between stages and the first two inside them.</div>
+</div>
+
+<!-- ══════ STAGE 3 — YAML PLUGIN ENGINE ══════ -->
+<div class="stage" id="s3">
+  <p class="sec-eye">Stage 03 · Configuration architecture</p>
+  <h2 class="sec-h">The YAML Plugin Engine — Behavior as Config, Not Code</h2>
+  <p class="sec-sub">Your real system isn't seven hard-coded functions; it's a <code>PipelineEngine</code> that runs a list of <em>plugins</em>, each driven by YAML. The blocking key, the field weights, the match thresholds — none of those are in the code. They're configuration the engine reads at runtime. This is the single most important architectural decision in the whole pipeline, because it decides whether tuning the system needs a code review and a deploy, or an edit to a config file.</p>
+
+  <h3><span class="bar"></span>Config vs. logic — the line that runs through every module</h3>
+  <p>You've met this split in every scoring and threshold module. Here it becomes the architecture itself. The <em>logic</em> — how to compute a Jaro-Winkler similarity, how to run union-find — lives in plugin code and changes rarely. The <em>config</em> — which fields to compare, what weight each gets, where the thresholds sit — lives in YAML and changes constantly as you tune.</p>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Tuning lives in the code</div>
+      <h5>Every threshold change is a deploy</h5>
+      <p>The match threshold <code>0.72</code> is a literal in <code>scoring.py</code>. The data-quality team wants to try <code>0.75</code>. That's a pull request, a review, a merge, a build, and a deploy — for one number. Nobody experiments, so the thresholds never get tuned.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ Tuning lives in YAML</div>
+      <h5>Threshold change is a config edit</h5>
+      <p>The threshold is <code>scoring.thresholds.match: 0.72</code> in <code>pipeline.yaml</code>. The engine reads it at runtime. Trying <code>0.75</code> is a one-line edit and a re-run — no deploy. The people who understand the data can tune it directly.</p>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>What the engine reads</h3>
+  <div class="code-wrap">
+    <div class="code-header"><p class="code-label">pipeline.yaml — the whole pipeline as configuration</p><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+<pre class="code-block"><span class="co"># Each plugin's behavior is data the engine reads — not code it runs.</span>
+standardize:
+  <span class="f">nickname_expansion</span>: <span class="n">true</span>          <span class="co"># Bob → Robert</span>
+  <span class="f">street_abbreviations</span>: <span class="n">true</span>        <span class="co"># St → Street</span>
+blocking:
+  <span class="f">key</span>: <span class="s">"zip + last_name[0]"</span>        <span class="co"># the blocking strategy</span>
+  <span class="f">max_block_size</span>: <span class="n">5000</span>             <span class="co"># skew guard (Module 00)</span>
+lsh:
+  <span class="f">enabled</span>: <span class="n">true</span>
+  <span class="f">bands</span>: <span class="n">6</span>
+  <span class="f">rows</span>: <span class="n">4</span>                          <span class="co"># S-curve threshold (Module 06)</span>
+scoring:
+  <span class="f">weights</span>: {name: <span class="n">0.40</span>, address: <span class="n">0.25</span>, dob: <span class="n">0.20</span>, email: <span class="n">0.15</span>}
+  <span class="f">null_handling</span>: <span class="s">"renormalize"</span>      <span class="co"># drop absent fields (Module 04)</span>
+  <span class="f">thresholds</span>: {match: <span class="n">0.72</span>, review: <span class="n">0.55</span>}
+clustering:
+  <span class="f">algorithm</span>: <span class="s">"connected_components"</span>
+  <span class="f">max_cluster_size</span>: <span class="n">50</span>            <span class="co"># bridge-edge guard (Module 07)</span></pre>
+  </div>
+
+  <p>Read that YAML again with the module numbers in mind: <em>every</em> tunable you learned across the track is a key here. The engine's job is to read this file, instantiate each plugin with its slice of config, and run them in DAG order. The plugins are the logic; this file is the behavior.</p>
+
+  <div class="note"><strong>This is exactly what the Stage 10 simulator exposes.</strong> Every control in the flagship simulator maps to one of these YAML keys — and the simulator labels each control with the key it drives. When you drag the match-threshold slider, you're editing <code>scoring.thresholds.match</code>; when you switch the blocking key, you're editing <code>blocking.key</code>. The simulator <em>is</em> this config file, made live.</div>
+</div>
+
+<!-- ══════ STAGE 4 — JOIN-BACK ══════ -->
+<div class="stage" id="s4">
+  <p class="sec-eye">Stage 04 · Assembly</p>
+  <h2 class="sec-h">Join-Back — Turning <code>cluster_id</code> Into a Master Record</h2>
+  <p class="sec-sub">Clustering (Module 07) doesn't produce master entities. It produces a thin mapping: <code>record_id → cluster_id</code>. Every record now knows which entity it belongs to, but the actual <em>golden record</em> — the single best name, the current address, the canonical email — hasn't been built yet. That's the join-back: take the cluster assignment, join it back to the full standardized records, and collapse each cluster into one survivorship-resolved master.</p>
+
+  <h3><span class="bar"></span>The two-step assembly</h3>
+  <p>First, join the skinny <code>clusters</code> table (<code>record_id, cluster_id</code>) back to the wide <code>std</code> table to attach every field to its cluster. Then, within each <code>cluster_id</code>, pick the surviving value per field — most-recent address, most-complete name, any non-null email. That second step is Module 03's window functions doing exactly what they were built for: <code>row_number()</code> over a partition by <code>cluster_id</code>, ordered by recency or completeness.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><p class="code-label">join-back + survivorship → masters</p><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+<pre class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F, Window
+
+<span class="co"># 1. attach every field to its cluster — join skinny clusters → wide std</span>
+enriched = clusters.<span class="f">join</span>(std, <span class="s">"record_id"</span>)
+
+<span class="co"># 2. survivorship: latest record wins per cluster (Module 03 window)</span>
+w = Window.<span class="f">partitionBy</span>(<span class="s">"cluster_id"</span>).<span class="f">orderBy</span>(F.<span class="f">col</span>(<span class="s">"updated_at"</span>).<span class="f">desc</span>())
+masters = (enriched
+    .<span class="f">withColumn</span>(<span class="s">"rn"</span>, F.<span class="f">row_number</span>().<span class="f">over</span>(w))
+    .<span class="f">filter</span>(F.<span class="f">col</span>(<span class="s">"rn"</span>) == <span class="n">1</span>)          <span class="co"># one golden record per cluster</span>
+    .<span class="f">drop</span>(<span class="s">"rn"</span>))</pre>
+  </div>
+
+  <h3><span class="bar"></span>Broadcast vs. shuffle join-back — the cost decision</h3>
+  <p>The join-back is a real join, and which join strategy it uses decides its cost (Modules 00 &amp; 08). The deciding question is the size of the <code>clusters</code> side:</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Situation</th><th>Join strategy</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>clusters</code> mapping fits in memory (millions of rows, 2 cols)</td><td><span class="badge b-green">broadcast</span></td><td>ship the skinny map to every executor; no shuffle of the wide <code>std</code></td></tr>
+        <tr><td><code>clusters</code> too large to broadcast</td><td><span class="badge b-amber">sort-merge</span></td><td>both sides shuffle on <code>record_id</code>; unavoidable at that scale</td></tr>
+        <tr class="hl-row"><td>The usual MDM case</td><td><span class="badge b-green">broadcast the map</span></td><td><code>record_id → cluster_id</code> is two narrow columns — almost always broadcastable even for big inputs</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note"><strong>The skinny side is the broadcast side.</strong> The <code>clusters</code> mapping is just two columns, so even a hundred million records is a few GB — often broadcastable, and AQE may switch to broadcast on its own (Module 08). The win is large: broadcasting the map means the wide <code>std</code> table never shuffles. Wrap it explicitly — <code>F.broadcast(clusters)</code> — when you want certainty rather than hoping the optimizer notices.</div>
+
+  <div class="trap"><strong>Survivorship is a policy, not a default.</strong> "Latest record wins" is one rule; "most-complete record wins," "trust source A over source B," and "most-frequent value wins" are others — and they produce <em>different</em> golden records from the same cluster. The simulator's golden-record control lets you flip between most-recent and most-complete and watch master quality move. Picking the wrong survivorship rule silently corrupts every master, with no error to warn you.</div>
+</div>
+
+<!-- ══════ STAGE 5 — ENRICHMENT ══════ -->
+<div class="stage" id="s5">
+  <p class="sec-eye">Stage 05 · External data</p>
+  <h2 class="sec-h">Enrichment — Joining in the Outside World</h2>
+  <p class="sec-sub">Real MDM doesn't resolve in a vacuum. You join in external reference data: a postal service that validates and canonicalizes addresses, a third-party file that adds firmographics, a phone-validation service, a watchlist. Enrichment is just more joins — but <em>where</em> in the DAG you place them changes both the result and the cost, and getting the placement wrong is a classic design smell.</p>
+
+  <h3><span class="bar"></span>Where enrichment belongs in the DAG</h3>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Enrichment</th><th>Place it…</th><th>Why there</th></tr></thead>
+      <tbody>
+        <tr class="hl-row"><td>Address validation / canonicalization</td><td><span class="badge b-green">before blocking</span></td><td>it <em>improves the match signal</em> — a canonical address blocks and scores better. Enrich early so every downstream stage benefits.</td></tr>
+        <tr><td>Firmographic / demographic append</td><td><span class="badge b-amber">after clustering</span></td><td>it doesn't help matching; append it to the finished master so you enrich one row per entity, not every duplicate.</td></tr>
+        <tr><td>Watchlist / compliance flag</td><td><span class="badge b-blue">on the master</span></td><td>a property of the resolved entity, not the raw record — compute it once on the golden record.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Enrich after clustering — when it was a match signal</div>
+      <h5>You threw away recall</h5>
+      <p>You append validated addresses <em>after</em> clustering. But a canonical address would have made two records of the same person block together and score higher. By enriching late, the matcher never saw the better signal — so those records never merged, and now you're enriching two separate masters that should have been one.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ Enrich before blocking — when it's a match signal</div>
+      <h5>The signal helps every downstream stage</h5>
+      <p>Validate addresses first. Now "12 Oak St" and "12 Oak Street, Apt 0" both canonicalize to the same string — they block together, score high, and merge. Enrichment that improves matching must happen <em>upstream</em> of matching, or its value is lost.</p>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The mechanism: broadcast the reference table</h3>
+  <p>Reference data is usually small relative to your records — a postal lookup, a country-code table, a few million firmographic rows. That makes it the textbook broadcast-join case from Module 08: ship the small reference table to every executor and join without shuffling your big record set.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><p class="code-label">broadcast enrichment — small reference, big records, no shuffle</p><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+<pre class="code-block">ref = spark.<span class="f">read</span>.<span class="f">parquet</span>(<span class="s">"s3://ref/postal_canonical"</span>)   <span class="co"># ~small</span>
+std_enriched = std.<span class="f">join</span>(F.<span class="f">broadcast</span>(ref), <span class="s">"raw_address"</span>, <span class="s">"left"</span>)
+<span class="co"># every executor gets the postal table; std never shuffles. Enrich, THEN block.</span></pre>
+  </div>
+
+  <div class="warn"><strong>External joins can explode rows.</strong> A reference table with multiple matches per key (a non-unique join key) silently multiplies your record count — and downstream that means duplicate candidate pairs and skewed scores. Always confirm the enrichment join is one-to-one (or deliberately one-to-many) before trusting it; a fan-out enrichment is a correctness bug that looks like a performance bug.</div>
+</div>
+
+<!-- ══════ STAGE 6 — INCREMENTAL ══════ -->
+<div class="stage" id="s6">
+  <p class="sec-eye">Stage 06 · Running it tomorrow</p>
+  <h2 class="sec-h">Incremental vs. Full Reprocessing</h2>
+  <p class="sec-sub">Everything so far described resolving the whole dataset once. But you run this pipeline every night, and 99% of the data didn't change. Re-resolving 2&nbsp;TB from scratch to absorb 50&nbsp;000 new records is the most common waste in production MDM — and yet "just match the new records against the existing masters" hides a genuinely hard problem. This stage is the design choice between the two.</p>
+
+  <h3><span class="bar"></span>The two strategies</h3>
+  <div class="herring">
+    <div class="herring-col right">
+      <div class="herring-eye">Full reprocessing</div>
+      <h5>Re-resolve everything, every run</h5>
+      <p>Read all records, run the whole DAG, rebuild all masters. <strong>Correct and simple</strong> — every run sees the global picture, so clustering is always optimal. <strong>Expensive</strong> — you pay the full N² blocking and scoring cost nightly even though almost nothing changed.</p>
+      <p>Use when: data is small enough, or correctness matters more than cost, or the match logic just changed (you <em>want</em> a full re-resolve).</p>
+    </div>
+    <div class="herring-col left" style="background:var(--blue-dim);border-color:var(--blue)">
+      <div class="herring-eye" style="color:var(--blue)">Incremental resolution</div>
+      <h5>Match only new/changed records against existing masters</h5>
+      <p>Block and score the day's new records against the <em>existing</em> master set, attach them to a master or spin up a new one. <strong>Cheap</strong> — cost scales with the delta, not the corpus. <strong>Subtle</strong> — a new record can be the <em>bridge</em> that should merge two previously-separate masters, and a naive incremental run misses it.</p>
+      <p>Use when: the corpus is large and the daily delta is small — the usual production case.</p>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Why incremental is genuinely hard — the bridge problem</h3>
+  <p>This is the same transitive-closure fact from Module 07, now across <em>time</em>. Masters A and B exist separately because nothing ever linked them. Tonight's new record C matches <em>both</em> A and B. Correctly, C should <em>merge A and B into one master</em>. A naive incremental run that only asks "which existing master does C join?" picks one and silently leaves a duplicate. Handling bridges means incremental resolution must be able to <em>merge existing masters</em>, not just attach new records — which is most of its complexity.</p>
+
+  <div class="note"><strong>The drift trap.</strong> Incremental runs accumulate small errors — a slightly-wrong early merge stays wrong forever because you never re-examine it. The standard mitigation is a <strong>periodic full re-resolve</strong> (e.g. nightly incremental, weekly full) to wash out drift, plus an unconditional full re-resolve whenever the match <em>logic</em> or thresholds change — because new logic invalidates every past incremental decision. Incremental for speed, full for correctness, on a schedule.</div>
+
+  <div class="trap"><strong>Changing the YAML invalidates incremental state.</strong> If you bump <code>scoring.thresholds.match</code> from 0.72 to 0.78, every master built under the old threshold is now suspect — some pairs that merged wouldn't merge under the new rule. You cannot incrementally patch that; it demands a full re-resolve. Tie your config version to your master version, and force a full run on any config change that touches matching.</div>
+</div>
+
+<!-- ══════ STAGE 7 — ORCHESTRATION ══════ -->
+<div class="stage" id="s7">
+  <p class="sec-eye">Stage 07 · Running it reliably</p>
+  <h2 class="sec-h">Orchestration &amp; Failure Recovery</h2>
+  <p class="sec-sub">A pipeline that only works when every stage succeeds on the first try isn't a production pipeline. Orchestration is the layer that runs the stages in dependency order, retries the ones that fail, and — critically — knows which stages are <em>safe</em> to retry. The materialized intermediate datasets from Stage 02 are what make all of this possible; orchestration is the payoff for having written things down.</p>
+
+  <h3><span class="bar"></span>The orchestration job: order, retry, recover</h3>
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Order</div>
+      <div class="cc-title">Topological execution</div>
+      <div class="cc-body">Run stages in DAG order; run independent stages (blocking, LSH) in parallel. The orchestrator (Airflow, Dagster, a DAG runner) reads the dependency graph and schedules it.</div>
+    </div>
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Retry</div>
+      <div class="cc-title">Restart from last good dataset</div>
+      <div class="cc-body">A stage fails → don't restart the pipeline. Restart from the last materialized output. The <code>scored/</code> dataset survived; rerun <code>classify</code> onward only.</div>
+    </div>
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Recover</div>
+      <div class="cc-title">Idempotent, safe-to-retry stages</div>
+      <div class="cc-body">A retried stage must produce the same result and not double-write. <code>overwrite</code> keyed by run-id makes a stage safe to run twice — the second run replaces, never appends.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Which stages are safe to re-run?</h3>
+  <p>A stage is safe to retry when it's <em>idempotent</em>: same input → same output, no side effect that accumulates. Pure transforms that <code>overwrite</code> their output are always safe. The dangerous ones are stages with external side effects — appending to a queue, calling an API with a usage cost, sending notifications — because a retry repeats the side effect.</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Stage</th><th>Safe to retry?</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Standardize / score / cluster (overwrite output)</td><td><span class="badge b-green">yes</span></td><td>pure transform; rerun replaces the dataset</td></tr>
+        <tr><td>Join-back / masters (overwrite)</td><td><span class="badge b-green">yes</span></td><td>deterministic from clusters + std</td></tr>
+        <tr><td>Push to review queue (append)</td><td><span class="badge b-red">not naively</span></td><td>a retry double-appends; needs dedupe-on-key or overwrite-by-run</td></tr>
+        <tr><td>Notify / call paid enrichment API</td><td><span class="badge b-red">no</span></td><td>external side effect repeats; needs an idempotency key</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note"><strong>Checkpoint placement is an orchestration decision.</strong> You checkpoint (Stage 02) at the boundaries the orchestrator will restart from. Put a materialization boundary after every stage you'd hate to recompute — standardize (expensive), scored (the debug surface), clusters (the hand-off). The orchestrator's retry granularity can be no finer than your materialization granularity: you can only restart from a dataset that exists.</div>
+</div>
+
+<!-- ══════ STAGE 8 — OBSERVABILITY ══════ -->
+<div class="stage" id="s8">
+  <p class="sec-eye">Stage 08 · Watching the pipeline</p>
+  <h2 class="sec-h">Observability — Every Stage Emits Its Own Metric</h2>
+  <p class="sec-sub">A pipeline you can't see is a pipeline you can't trust. But the mistake is watching one global number — "recall" — and assuming it tells you where a problem is. It doesn't. Each stage has a <em>different</em> governing metric, and a drop in the final number could originate at any stage. Good observability means each stage emits the metric that actually governs <em>it</em>, so when the system degrades you can read <em>which</em> stage moved.</p>
+
+  <h3><span class="bar"></span>The metric that governs each stage</h3>
+  <p>This is the single most important idea for the simulator that follows. Precision and recall are <em>system outcomes</em> — they fall out at the end. But each stage is governed by its own local metric, and that local metric is what you tune the stage against:</p>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Stage</th><th>Its governing metric</th><th>What it tells you</th></tr></thead>
+      <tbody>
+        <tr><td>Standardize</td><td><span class="badge b-coral">coverage</span></td><td>% of true duplicates the normalization made <em>comparable</em> at all</td></tr>
+        <tr><td>Block</td><td><span class="badge b-coral">reduction ratio</span> &amp; <span class="badge b-coral">pair completeness</span></td><td>how many comparisons you saved vs. how many true pairs you kept</td></tr>
+        <tr><td>LSH</td><td><span class="badge b-coral">pairs recovered</span></td><td>true cross-block pairs caught vs. false candidates added</td></tr>
+        <tr><td>Score</td><td><span class="badge b-coral">separation</span></td><td>the gap between match scores and non-match scores — can you even draw a line?</td></tr>
+        <tr><td>Classify</td><td><span class="badge b-coral">precision / recall / queue</span></td><td>where the thresholds land the three-way split</td></tr>
+        <tr><td>Cluster</td><td><span class="badge b-coral">cluster count &amp; over-merges</span></td><td>how many masters, and how many fuse different people</td></tr>
+        <tr><td>Golden record</td><td><span class="badge b-coral">completeness</span></td><td>how filled-in the surviving master is</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-eye">Anchor — a factory line, gauge per station</div>
+    <div class="analogy-body">A factory doesn't watch only the count of finished cars. Each station has its own gauge — paint thickness here, torque there, alignment at the next. When the <em>finished</em> count drops, you don't guess; you walk the line reading gauges until one is out of band. The pipeline is the same: <em>separation</em> is the scoring station's gauge, <em>reduction ratio</em> is blocking's. Watch all of them, and a degraded final number points at <em>itself</em>.</div>
+  </div>
+
+  <div class="note"><strong>This is what the simulator badges.</strong> In Stage 10, every stage node shows its own governing metric live. When you turn a knob and the final master count moves, you can walk the flow and see <em>which</em> stage's gauge moved first — exactly the observability discipline, made visible.</div>
+</div>
+
+<!-- ══════ STAGE 9 — SYSTEM TRADEOFF (CLIMAX) ══════ -->
+<div class="stage" id="s9">
+  <p class="sec-eye">Stage 09 · The climax</p>
+  <h2 class="sec-h">Recall, Precision, Cost: System Properties, Not Stage Properties</h2>
+  <p class="sec-sub">Here is the one idea the whole capstone is built to deliver. Every prior module taught you to tune a stage. This stage tells you that you <em>can't</em> — not in isolation. A knob at blocking changes the final master count. A weight at scoring changes the review-queue size. The pipeline's recall, precision, cost, and review burden don't belong to any stage; they emerge from the <em>composition</em> of every stage's setting. Tuning one stage while staring at one stage's metric is the central beginner mistake — and the most expensive one.</p>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">✗ Red herring — tune the stage in isolation</div>
+      <h5>"Recall is low, so loosen the scorer"</h5>
+      <p>You lower the match threshold to catch more pairs. Recall barely moves — because the missing pairs were never <em>candidates</em>; blocking dropped them two stages upstream. Meanwhile precision craters and the review queue overflows, because the looser threshold fused records that <em>were</em> candidates but shouldn't match. You tuned the wrong stage and damaged two others.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">✓ What actually decides it — the system response</div>
+      <h5>Trace the ripple to find the real lever</h5>
+      <p>Low recall with the missing pairs never reaching the scorer means the lever is <em>blocking</em> (or LSH), not the threshold. Change the blocking key, watch recall climb <em>and</em> cost climb — and accept that tradeoff knowingly. The right move is the one you choose after seeing the whole-system response, not the local one.</p>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The couplings you'll feel in the simulator</h3>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Turn this knob…</th><th>…and this moves downstream</th></tr></thead>
+      <tbody>
+        <tr><td>Normalization none → aggressive</td><td>nickname duplicates become comparable → recall up, no cost change</td></tr>
+        <tr><td>Blocking key broader (soundex)</td><td>moved-person pairs co-block → recall up, <em>comparisons up</em> (cost up)</td></tr>
+        <tr><td>Enable LSH</td><td>cross-block true pairs recovered → recall up, <em>and</em> some false candidates added</td></tr>
+        <tr><td>Lower match threshold</td><td>recall up, precision down, review queue grows, <em>over-merges appear</em></td></tr>
+        <tr><td>Transitive clustering off</td><td>the moved person stays split → more masters, lower recall on entities</td></tr>
+        <tr><td>Max-cluster guard tighter</td><td>over-merges blocked → precision up, but a real large cluster may split</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="trap"><strong>Tuning a stage in isolation is a red herring; the system response decides.</strong> There is no "correct" setting for blocking, or scoring, or clustering on its own. There is only a correct <em>system</em> — a combination that hits your target recall, precision, cost, and review capacity together. The next stage lets you hold the whole system in your hands and feel every one of these couplings at once.</div>
+</div>
+
+<!-- ══════ STAGE 10 — THE SIMULATOR ══════ -->
+<div class="stage" id="s10">
+  <p class="sec-eye">Stage 10 · The flagship — interactive</p>
+  <h2 class="sec-h">The End-to-End Pipeline Simulator</h2>
+  <p class="sec-sub">One synthetic dataset — 24 records, 16 true entities — flows through all seven stages. Every control maps to a real YAML key. Turn any knob and the whole chain recomputes: each stage node shows <em>its own</em> governing metric, the final scorecard aggregates the system outcome, and the <strong>lost-pair counters</strong> show exactly how many true pairs a stage permanently dropped. Pin a config as A or B to compare two architectures side by side. Trace one entity to watch its journey, stage by stage. This is Stage 09's coupling, made tactile.</p>
+
+  <div class="note" style="margin-top:0"><strong>The dataset, so the numbers mean something.</strong> 16 true entities, 24 records — 8 of them duplicates. The duplicates include nickname pairs (Bob/Robert, Mike/Michael — only comparable under aggressive normalization), a <strong>moved person</strong> (same Michael Johnson, new city — blocked apart by zip unless LSH or soundex recovers them), abbreviation pairs (St/Street), a null-email pair, and a deliberate <strong>near-collision non-match</strong>: Patricia and Patrick Moore, same address, different people — the trap that punishes a too-low threshold. <strong>The ideal result is exactly 16 masters with zero over-merges.</strong> See how close you can get — and at what cost.</div>
+
+  <div class="pl-sim">
+    <div class="pl-simhead">
+      <span class="pl-label">End-to-End ER Pipeline · live cascade</span>
+      <div class="pl-presets">
+        <button class="pl-preset" onclick="plPreset('naive',this)">Naive</button>
+        <button class="pl-preset on" onclick="plPreset('balanced',this)">Balanced</button>
+        <button class="pl-preset" onclick="plPreset('recallMax',this)">Recall-max</button>
+        <button class="pl-preset" onclick="plPreset('precisionMax',this)">Precision-max</button>
+        <button class="pl-preset" onclick="plPreset('cheapest',this)">Cheapest</button>
+      </div>
+    </div>
+
+    <!-- live flow of stage nodes -->
+    <div class="pl-flow" id="pl-flow">
+      <div class="pl-node">
+        <div class="pl-node-name">Standardize</div>
+        <div class="pl-node-metric" id="pl-m-std">—</div>
+        <div class="pl-node-sub">coverage</div>
+      </div>
+      <div class="pl-node">
+        <div class="pl-node-name">Block</div>
+        <div class="pl-node-metric" id="pl-m-block">—</div>
+        <div class="pl-node-sub" id="pl-m-block-sub">reduction</div>
+        <div class="pl-node-lost" id="pl-m-block-lost">lost 0</div>
+      </div>
+      <div class="pl-node">
+        <div class="pl-node-name">LSH</div>
+        <div class="pl-node-metric" id="pl-m-lsh">—</div>
+        <div class="pl-node-sub">recovered / false</div>
+      </div>
+      <div class="pl-node">
+        <div class="pl-node-name">Score</div>
+        <div class="pl-node-metric" id="pl-m-score">—</div>
+        <div class="pl-node-sub">separation</div>
+      </div>
+      <div class="pl-node">
+        <div class="pl-node-name">Classify</div>
+        <div class="pl-node-metric" id="pl-m-classify">—</div>
+        <div class="pl-node-sub" id="pl-m-classify-sub">P / R</div>
+        <div class="pl-node-lost" id="pl-m-score-lost">lost 0</div>
+      </div>
+      <div class="pl-node">
+        <div class="pl-node-name">Cluster</div>
+        <div class="pl-node-metric" id="pl-m-cluster">—</div>
+        <div class="pl-node-sub" id="pl-m-cluster-sub">masters</div>
+      </div>
+      <div class="pl-node">
+        <div class="pl-node-name">Golden</div>
+        <div class="pl-node-metric" id="pl-m-golden">—</div>
+        <div class="pl-node-sub">completeness</div>
+      </div>
+    </div>
+
+    <div class="pl-grid">
+      <!-- CONTROLS -->
+      <div class="pl-controls">
+        <div class="pl-ctlgroup">
+          <h6>① Standardize <span class="pl-yaml">standardize.nickname_expansion</span></h6>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>Normalization level</span></div>
+            <div class="pl-seg" id="pl-norm">
+              <button class="pl-segbtn" data-v="none" onclick="plSeg('norm','none')">none</button>
+              <button class="pl-segbtn" data-v="basic" onclick="plSeg('norm','basic')">basic</button>
+              <button class="pl-segbtn on" data-v="aggressive" onclick="plSeg('norm','aggressive')">aggressive</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pl-ctlgroup">
+          <h6>② Block <span class="pl-yaml">blocking.key</span></h6>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>Blocking key</span></div>
+            <div class="pl-seg" id="pl-block">
+              <button class="pl-segbtn" data-v="zip" onclick="plSeg('block','zip')">zip</button>
+              <button class="pl-segbtn on" data-v="zip+last" onclick="plSeg('block','zip+last')">zip + last[0]</button>
+              <button class="pl-segbtn" data-v="soundex" onclick="plSeg('block','soundex')">soundex(last)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pl-ctlgroup">
+          <h6>③ LSH <span class="pl-yaml">lsh.bands / lsh.rows</span></h6>
+          <div class="pl-ctl">
+            <div class="pl-toggle on" id="pl-lsh" onclick="plToggle('lsh')"><span class="pl-switch"></span><span>LSH enabled</span></div>
+          </div>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>bands (b)</span><b id="pl-b-lbl">6</b></div>
+            <input type="range" class="pl-slider" id="pl-b" min="2" max="12" value="6" oninput="plRun()">
+          </div>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>rows (r)</span><b id="pl-r-lbl">4</b></div>
+            <input type="range" class="pl-slider" id="pl-r" min="2" max="8" value="4" oninput="plRun()">
+          </div>
+          <div class="pl-ctl-label" style="margin:0"><span>S-curve threshold t ≈ (1/b)^(1/r)</span><b id="pl-t-lbl">0.29</b></div>
+        </div>
+
+        <div class="pl-ctlgroup">
+          <h6>④ Score <span class="pl-yaml">scoring.weights / null_handling</span></h6>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>weight · name</span><b id="pl-wn-lbl">40</b></div>
+            <input type="range" class="pl-slider" id="pl-wn" min="0" max="100" value="40" oninput="plRun()">
+          </div>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>weight · address</span><b id="pl-wa-lbl">25</b></div>
+            <input type="range" class="pl-slider" id="pl-wa" min="0" max="100" value="25" oninput="plRun()">
+          </div>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>weight · dob</span><b id="pl-wd-lbl">20</b></div>
+            <input type="range" class="pl-slider" id="pl-wd" min="0" max="100" value="20" oninput="plRun()">
+          </div>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>weight · email</span><b id="pl-we-lbl">15</b></div>
+            <input type="range" class="pl-slider" id="pl-we" min="0" max="100" value="15" oninput="plRun()">
+          </div>
+          <div class="pl-ctl">
+            <div class="pl-toggle on" id="pl-renorm" onclick="plToggle('renorm')"><span class="pl-switch"></span><span>renormalize on null (drop absent field)</span></div>
+          </div>
+        </div>
+
+        <div class="pl-ctlgroup">
+          <h6>⑤ Classify <span class="pl-yaml">scoring.thresholds</span></h6>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>match threshold</span><b id="pl-match-lbl">0.72</b></div>
+            <input type="range" class="pl-slider" id="pl-match" min="30" max="100" value="72" oninput="plRun()">
+          </div>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>review threshold</span><b id="pl-review-lbl">0.55</b></div>
+            <input type="range" class="pl-slider" id="pl-review" min="20" max="95" value="55" oninput="plRun()">
+          </div>
+        </div>
+
+        <div class="pl-ctlgroup">
+          <h6>⑥ Cluster <span class="pl-yaml">clustering.max_cluster_size</span></h6>
+          <div class="pl-ctl">
+            <div class="pl-toggle on" id="pl-transitive" onclick="plToggle('transitive')"><span class="pl-switch"></span><span>transitive closure (union-find)</span></div>
+          </div>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>max cluster size guard</span><b id="pl-maxc-lbl">6</b></div>
+            <input type="range" class="pl-slider" id="pl-maxc" min="2" max="12" value="6" oninput="plRun()">
+          </div>
+        </div>
+
+        <div class="pl-ctlgroup">
+          <h6>⑦ Golden Record <span class="pl-yaml">survivorship.rule</span></h6>
+          <div class="pl-ctl">
+            <div class="pl-ctl-label"><span>survivorship rule</span></div>
+            <div class="pl-seg" id="pl-surv">
+              <button class="pl-segbtn on" data-v="complete" onclick="plSeg('surv','complete')">most-complete</button>
+              <button class="pl-segbtn" data-v="recent" onclick="plSeg('surv','recent')">most-recent</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCORECARD + A/B + TRACE -->
+      <div>
+        <div class="pl-scorecard">
+          <div class="pl-sc-head"><span>Final scorecard · system outcome</span><span style="color:var(--faint)">ideal: 16 masters</span></div>
+          <div class="pl-sc-grid">
+            <div class="pl-stat"><div class="pl-stat-label">Recall</div><div class="pl-stat-val" id="pl-sc-recall">—</div></div>
+            <div class="pl-stat"><div class="pl-stat-label">Precision</div><div class="pl-stat-val" id="pl-sc-prec">—</div></div>
+            <div class="pl-stat"><div class="pl-stat-label">Master entities</div><div class="pl-stat-val" id="pl-sc-masters">—<small> /16</small></div></div>
+            <div class="pl-stat"><div class="pl-stat-label">Over-merges</div><div class="pl-stat-val" id="pl-sc-over">—</div></div>
+            <div class="pl-stat"><div class="pl-stat-label">Review queue</div><div class="pl-stat-val" id="pl-sc-queue">—</div></div>
+            <div class="pl-stat"><div class="pl-stat-label">Cost · comparisons</div><div class="pl-stat-val" id="pl-sc-cost">—</div></div>
+            <div class="pl-stat span2"><div class="pl-stat-label">Est. shuffle volume (cost proxy · Mod 08)</div><div class="pl-stat-val" id="pl-sc-shuffle">—</div></div>
+          </div>
+          <div class="pl-verdict v-warn" id="pl-verdict">—</div>
+        </div>
+
+        <div class="pl-ab">
+          <div class="pl-ab-head">
+            <span>A / B compare</span>
+            <div class="pl-ab-btns">
+              <button class="pl-ab-btn" onclick="plPin('A')">Pin as A</button>
+              <button class="pl-ab-btn" onclick="plPin('B')">Pin as B</button>
+              <button class="pl-ab-btn" onclick="plClearPins()">clear</button>
+            </div>
+          </div>
+          <table class="pl-ab-table">
+            <thead><tr><th>Metric</th><th>A</th><th>B</th><th>Δ (B−A)</th></tr></thead>
+            <tbody id="pl-ab-body">
+              <tr><td colspan="4" style="color:var(--faint);text-align:center;padding:10px">Pin a config as A, change knobs, pin another as B.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pl-trace">
+          <div class="pl-trace-head">
+            <span>Trace one entity through the pipeline</span>
+            <select class="pl-trace-sel" id="pl-trace-sel" onchange="plRun()">
+              <option value="E3">E3 · Michael Johnson (moved person, 3 records)</option>
+              <option value="E1">E1 · Robert / Bob Smith (nickname + null email)</option>
+              <option value="E15">E15 · Daniel / Dan King (nickname)</option>
+              <option value="MOORE">Patricia vs Patrick Moore (near-collision — should NOT merge)</option>
+            </select>
+          </div>
+          <div id="pl-trace-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><strong>Things worth trying.</strong> (1) Load <em>Naive</em> and watch recall collapse to ~22% with 22 masters — duplicates everywhere — then switch normalization to aggressive and watch the nickname pairs come back. (2) On <em>Balanced</em>, switch the blocking key from <code>zip + last[0]</code> to <code>soundex</code> and watch the moved-person pairs co-block <em>without</em> LSH (Block's lost-counter drops to zero). (3) Load <em>Recall-max</em> and find the over-merge — drop the match threshold and watch Patricia &amp; Patrick Moore wrongly fuse. (4) Pin Balanced as A, Recall-max as B, and read the Δ column: recall buys you over-merges and cost.</div>
+</div>
+
+<!-- ══════ STAGE 11 — PIPELINEENGINE ══════ -->
+<div class="stage" id="s11">
+  <p class="sec-eye">Stage 11 · The production pattern</p>
+  <h2 class="sec-h">The <code>PipelineEngine</code> — Plugins in DAG Order</h2>
+  <p class="sec-sub">Here is the architecture from Stage 03 as a skeleton: an engine that reads the YAML, instantiates each plugin with its config, and runs them in order — materializing between stages (Stage 02) so the run is restartable (Stage 07). This is the spine every prior module's logic plugs into.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><p class="code-label">pipeline_engine.py — config-driven, materialized, restartable</p><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+<pre class="code-block"><span class="k">import</span> yaml
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="k">class</span> <span class="f">PipelineEngine</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, config_path, run_id):
+        self.cfg    = yaml.<span class="f">safe_load</span>(<span class="f">open</span>(config_path))   <span class="co"># behavior = config</span>
+        self.run_id = run_id
+        self.base   = <span class="s">f"s3://mdm/runs/{run_id}"</span>
+
+    <span class="k">def</span> <span class="f">_stage</span>(self, name, fn, *inputs):
+        <span class="s">"""Run one stage, materialize its output, make it restartable."""</span>
+        out = <span class="s">f"{self.base}/{name}"</span>
+<span class="hl">        <span class="k">if</span> self.<span class="f">_exists</span>(out):                       <span class="why"># already done → skip (restart)</span></span>
+            <span class="k">return</span> spark.<span class="f">read</span>.<span class="f">parquet</span>(out)
+        df = <span class="f">fn</span>(*inputs, self.cfg)                   <span class="co"># plugin logic + its config</span>
+<span class="hl">        df.<span class="f">write</span>.<span class="f">mode</span>(<span class="s">"overwrite"</span>).<span class="f">parquet</span>(out)  <span class="why"># idempotent materialize</span></span>
+        <span class="k">return</span> spark.<span class="f">read</span>.<span class="f">parquet</span>(out)
+
+    <span class="k">def</span> <span class="f">run</span>(self):
+        std        = self.<span class="f">_stage</span>(<span class="s">"std"</span>,        standardize, raw)
+<span class="hl">        blk        = self.<span class="f">_stage</span>(<span class="s">"candidates"</span>, block,       std)   <span class="why"># both read std →</span></span>
+<span class="hl">        lsh        = self.<span class="f">_stage</span>(<span class="s">"lsh"</span>,        lsh_pairs,   std)   <span class="why"># independent, parallel</span></span>
+        cands      = blk.<span class="f">union</span>(lsh).<span class="f">distinct</span>()              <span class="co"># hybrid set (Mod 06)</span>
+        scored     = self.<span class="f">_stage</span>(<span class="s">"scored"</span>,     score,    cands, std)
+        verdicts   = self.<span class="f">_stage</span>(<span class="s">"verdicts"</span>,   classify, scored)
+        clusters   = self.<span class="f">_stage</span>(<span class="s">"clusters"</span>,   cluster,  verdicts)
+<span class="hl">        masters    = self.<span class="f">_stage</span>(<span class="s">"masters"</span>,    join_back, clusters, std)  <span class="why"># Stage 04</span></span>
+        <span class="k">return</span> masters
+
+<span class="co"># Each plugin reads ONLY its slice of config:</span>
+<span class="k">def</span> <span class="f">score</span>(cands, std, cfg):
+    w = cfg[<span class="s">"scoring"</span>][<span class="s">"weights"</span>]               <span class="co"># {name:.4, address:.25, ...}</span>
+    <span class="co"># ...weighted sum with null renormalization (Module 04)...</span></pre>
+  </div>
+
+  <div class="note"><strong>Read the shape, not the syntax.</strong> Three things make this an <em>engine</em> rather than a script: behavior comes from <code>self.cfg</code> (config, not literals — Stage 03); <code>_stage</code> materializes every output and <em>skips</em> any that already exists (restartable — Stages 02 &amp; 07); and the stages compose in DAG order with blocking and LSH visibly independent (Stage 01). Swap any plugin's internals and nothing else changes — the contracts hold.</div>
+
+  <div class="trap"><strong>The skip-if-exists line is the restart logic.</strong> Because each stage checks for its output before computing, a re-run after a failure replays instantly through every completed stage and resumes at the first missing one. That single <code>if self._exists(out)</code> is what turns "rerun the whole pipeline" into "resume where it died" — but it only works because every stage <em>materialized</em>. Architecture is the payoff for the boring discipline of writing things down.</div>
+</div>
+
+<!-- ══════ STAGE 12 — DECISIONS & SMELLS ══════ -->
+<div class="stage" id="s12">
+  <p class="sec-eye">Stage 12 · Decision criteria</p>
+  <h2 class="sec-h">Architecture Decision Tree &amp; Design Smells</h2>
+  <p class="sec-sub">Designing the pipeline is a sequence of choices, each with a clear deciding question. Run these top to bottom when you're laying out a new ER pipeline — then check your design against the anti-patterns, which are the same choices made wrong.</p>
+
+  <div class="decision-tree">
+    <div class="dq">
+      <div class="dq-num">Decision 1</div>
+      <div class="dq-q">Full re-resolve or incremental?</div>
+      <div class="dq-a"><strong>→ Delta size decides.</strong> Small corpus or correctness-critical or match-logic just changed → full. Large corpus, small daily delta → incremental, with a periodic full re-resolve to wash out drift. Never run incremental across a config change that touches matching.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">Decision 2</div>
+      <div class="dq-q">Where do you materialize?</div>
+      <div class="dq-a"><strong>→ At expensive stages and restart points.</strong> After standardize (expensive, reused), after scored (the debug surface), after clusters (the hand-off). Not after every transform — each checkpoint is a full disk pass. Your retry granularity equals your materialization granularity.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">Decision 3</div>
+      <div class="dq-q">Broadcast or shuffle the join-back?</div>
+      <div class="dq-a"><strong>→ Size of the skinny side.</strong> The <code>record_id → cluster_id</code> map is two columns — almost always broadcastable, even at hundreds of millions of rows. Broadcast it so the wide <code>std</code> never shuffles. Fall back to sort-merge only when the map genuinely won't fit.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">Decision 4</div>
+      <div class="dq-q">Where does enrichment go?</div>
+      <div class="dq-a"><strong>→ Is it a match signal?</strong> Yes (address validation) → before blocking, so matching benefits. No (firmographics, flags) → after clustering, on the master, so you enrich one row per entity instead of every duplicate.</div>
+    </div>
+    <div class="dq">
+      <div class="dq-num">Decision 5</div>
+      <div class="dq-q">Add LSH, or change the blocking key?</div>
+      <div class="dq-a"><strong>→ Both recover cross-block pairs; pick by cost &amp; control.</strong> A broader blocking key (soundex) can recover the moved person without LSH but raises comparisons across the board. LSH targets just the cross-block pairs above a tunable threshold. If one blocking key fixes it cheaply, prefer it; reach for LSH when no single key covers your match patterns.</div>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Design smells — the decisions made wrong</h3>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Smell</th><th>What goes wrong</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Enrich <em>after</em> clustering when it was a match signal</td><td>matcher never saw the better signal → lost recall, duplicate masters</td><td>move match-signal enrichment <em>before</em> blocking</td></tr>
+        <tr><td>No checkpoints — one lazy chain to the final write</td><td>any failure recomputes the world; nothing is inspectable</td><td>materialize at expensive stages &amp; restart points</td></tr>
+        <tr><td>Transitive closure with no size guard</td><td>one bad bridge edge fuses two large clusters into a mega-entity</td><td>set <code>max_cluster_size</code> (Module 07)</td></tr>
+        <tr><td>Scoring before blocking (or no blocking)</td><td>N² comparisons — the wall every blocking module exists to avoid</td><td>always block (and/or LSH) before scoring</td></tr>
+        <tr><td>Normalization too aggressive</td><td>over-normalizing collapses distinct values → false collisions, precision drops</td><td>normalize to the real variation, not maximally</td></tr>
+        <tr><td>Thresholds hard-coded in plugin code</td><td>every tuning change needs a deploy → nobody tunes</td><td>thresholds &amp; weights live in YAML (Stage 03)</td></tr>
+        <tr><td>Incremental across a match-logic change</td><td>old masters built under old rules silently inconsistent with new ones</td><td>force a full re-resolve on any matching-config change</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════ STAGE 13 — SELF-TEST ══════ -->
+<div class="stage" id="s13">
+  <p class="sec-eye">Stage 13 · Self-test</p>
+  <h2 class="sec-h">Self-Test — Designing &amp; Debugging the Whole Pipeline</h2>
+  <p class="sec-sub">Each question is an architecture decision or a system-level symptom from a real MDM pipeline. The point is to reason about the <em>whole</em> machine — where a problem originates, where a change ripples — not to recite one stage's mechanism.</p>
+
+  <div class="quiz-grid" id="quiz-grid"></div>
+
+  <div class="unlock" style="margin-top:34px">
+    <span class="unlock-icon">★</span>
+    <div class="unlock-body"><strong>Module 09 complete — and with it, the MDM / Spark track.</strong> You can now design the full entity-resolution architecture end to end: lay it out as a DAG of contracted stages, materialize at the right boundaries, drive behavior from a YAML plugin engine, join cluster IDs back into survivorship-resolved masters, place enrichment where it earns its keep, choose incremental vs. full, recover from partial failures, watch a metric per stage — and, above all, reason about recall, precision, cost, and review burden as <em>system</em> properties that no single stage owns. You've gone from "what is a shuffle" to "design the machine."</div>
+  </div>
+
+  <div class="concept-grid" style="margin-top:26px">
+    <div class="cc" style="--acc:var(--green)">
+      <div class="cc-num">Honest Gaps</div>
+      <div class="cc-title">What this capstone didn't cover</div>
+      <div class="cc-body">
+        <strong>Real incremental implementation:</strong> the bridge-merge problem was explained but not built — production incremental ER (delta detection, master-merge logic, state management) is its own large topic.<br><br>
+        <strong>Streaming / real-time ER:</strong> everything here is batch. Resolving entities on a stream (Structured Streaming, stateful matching, late data) is a different architecture.<br><br>
+        <strong>Survivorship depth:</strong> field-level survivorship rules, source-trust hierarchies, and conflict resolution were sketched, not drilled.<br><br>
+        <strong>Data quality &amp; lineage tooling:</strong> the observability stage named per-stage metrics but didn't cover expectation frameworks (Great Expectations), data contracts enforcement, or column-level lineage.<br><br>
+        <strong>The simulator is a teaching model:</strong> 24 records with simplified deterministic sims. Real similarity (Jaro-Winkler, learned weights), real LSH (MinHash signatures), and real cluster sizes behave proportionally but not identically — the couplings are faithful, the exact numbers are illustrative.<br><br>
+        <strong>Governance &amp; serving:</strong> how masters are versioned, served to consumers (an API, a feature store), and audited for compliance is the layer above this pipeline.
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<footer>
+  <div class="foot-inner">
+    <span class="foot-l">the-learning-lab · Module 09 · Pipeline Design (Capstone)</span>
+    <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
+  </div>
+</footer>
+
+<script>
+/* ── STAGE NAV ── */
+function go(id, btn) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.sn').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+/* ── COPY ── */
+function copyCode(btn) {
+  const code = btn.closest('.code-wrap').querySelector('.code-block').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   END-TO-END PIPELINE SIMULATOR
+   Deterministic cascade — verified against hand-computed values.
+   ══════════════════════════════════════════════════════════ */
+const R = [
+ {id:1, ent:'E1', first:'Robert', last:'Smith',   street:'12 Oak St',      zip:'10001', dob:'1980-05-02', email:'rob@a.com',  recency:2},
+ {id:2, ent:'E1', first:'Bob',    last:'Smith',   street:'12 Oak Street',  zip:'10001', dob:'1980-05-02', email:null,         recency:5},
+ {id:3, ent:'E2', first:'Jennifer',last:'Brown',  street:'5 Elm Ave',      zip:'90210', dob:'1975-11-20', email:'jen@b.com',  recency:3},
+ {id:4, ent:'E2', first:'Jenifer', last:'Brown',  street:'5 Elm Ave',      zip:'90210', dob:'1975-11-20', email:'jen@b.com',  recency:4},
+ {id:5, ent:'E3', first:'Michael', last:'Johnson',street:'8 Pine Rd',      zip:'30301', dob:'1990-01-15', email:'mike@c.com', recency:2},
+ {id:6, ent:'E3', first:'Mike',    last:'Johnson',street:'8 Pine Road',    zip:'30301', dob:'1990-01-15', email:null,         recency:4},
+ {id:7, ent:'E3', first:'Michael', last:'Johnson',street:'44 Birch Ln',    zip:'60601', dob:'1990-01-15', email:'mike@c.com', recency:6},
+ {id:8, ent:'E4', first:'Maria',   last:'Garcia', street:'7 Maple Dr',     zip:'75001', dob:'1988-03-30', email:'maria@d.com',recency:1},
+ {id:9, ent:'E5', first:'David',   last:'Lee',    street:'3 Cedar Ct',     zip:'20002', dob:'1982-07-07', email:'dlee@e.com', recency:2},
+ {id:10,ent:'E5', first:'Dave',    last:'Lee',    street:'3 Cedar Court',  zip:'20002', dob:'1982-07-07', email:'dlee@e.com', recency:5},
+ {id:11,ent:'E6', first:'Susan',   last:'Clark',  street:'9 Birch St',     zip:'40404', dob:'1995-09-09', email:'sclark@f.com',recency:1},
+ {id:12,ent:'E7', first:'James',   last:'Wilson', street:'1 Ash Blvd',     zip:'50505', dob:'1978-02-14', email:'jwilson@g.com',recency:3},
+ {id:13,ent:'E7', first:'Jim',     last:'Wilson', street:'1 Ash Boulevard',zip:'50505', dob:'1978-02-14', email:null,         recency:5},
+ {id:14,ent:'E8', first:'Patricia',last:'Moore',  street:'6 Oak St',       zip:'10001', dob:'1985-12-01', email:'pmoore@h.com',recency:2},
+ {id:15,ent:'E9', first:'Patrick', last:'Moore',  street:'6 Oak St',       zip:'10001', dob:'1985-12-02', email:null,         recency:3},
+ {id:16,ent:'E10',first:'Linda',   last:'Hall',   street:'2 Elm St',       zip:'90210', dob:'1970-06-06', email:'lhall@i.com',recency:1},
+ {id:17,ent:'E11',first:'William', last:'Young',  street:'10 Pine St',     zip:'30301', dob:'1992-04-04', email:'wyoung@j.com',recency:2},
+ {id:18,ent:'E11',first:'Bill',    last:'Young',  street:'10 Pine Street', zip:'30301', dob:'1992-04-04', email:null,         recency:4},
+ {id:19,ent:'E12',first:'Karen',   last:'Scott',  street:'4 Cedar St',     zip:'60601', dob:'1983-08-08', email:'kscott@k.com',recency:1},
+ {id:20,ent:'E13',first:'Thomas',  last:'Adams',  street:'15 Oak Ave',     zip:'75001', dob:'1986-10-10', email:'tadams@l.com',recency:1},
+ {id:21,ent:'E14',first:'Nancy',   last:'Baker',  street:'22 Elm Rd',      zip:'20002', dob:'1991-03-03', email:'nbaker@m.com',recency:1},
+ {id:22,ent:'E15',first:'Daniel',  last:'King',   street:'33 Pine Blvd',   zip:'40404', dob:'1989-05-05', email:'dking@n.com',recency:2},
+ {id:23,ent:'E15',first:'Dan',     last:'King',   street:'33 Pine Boulevard',zip:'40404',dob:'1989-05-05',email:null,         recency:5},
+ {id:24,ent:'E16',first:'Betty',   last:'Green',  street:'44 Ash St',      zip:'50505', dob:'1973-01-01', email:'bgreen@o.com',recency:1},
+];
+const PL_N = R.length;
+const PL_IDEAL = new Set(R.map(r=>r.ent)).size;   // 16
+const PL_BYID = Object.fromEntries(R.map(r=>[r.id,r]));
+const NICK = {bob:'robert',mike:'michael',dave:'david',jim:'james',bill:'william',dan:'daniel'};
+const SABBR = {st:'street',rd:'road',ave:'avenue',dr:'drive',ln:'lane',blvd:'boulevard',ct:'court'};
+
+function lev(a,b){const m=a.length,n=b.length;const d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n];}
+function ratio(a,b){if(!a&&!b)return 1;if(!a||!b)return 0;const L=Math.max(a.length,b.length);return L===0?1:1-lev(a,b)/L;}
+function normName(s,l){let x=s.trim().toLowerCase();if(l==='none')return x;x=x.replace(/[^a-z0-9 ]/g,'');if(l==='aggressive'&&NICK[x])x=NICK[x];return x;}
+function normStreet(s,l){let x=s.trim().toLowerCase();if(l==='none')return x;x=x.replace(/[^a-z0-9 ]/g,'');return x.split(' ').map(w=>SABBR[w]||w).join(' ');}
+function soundex(s){s=s.toUpperCase().replace(/[^A-Z]/g,'');if(!s)return '';const code={B:'1',F:'1',P:'1',V:'1',C:'2',G:'2',J:'2',K:'2',Q:'2',S:'2',X:'2',Z:'2',D:'3',T:'3',L:'4',M:'5',N:'5',R:'6'};let out=s[0],prev=code[s[0]]||'';for(let i=1;i<s.length;i++){const c=code[s[i]]||'';if(c&&c!==prev)out+=c;if('HW'.indexOf(s[i])<0)prev=c;}return (out+'000').slice(0,4);}
+function grams(s){const g=new Set();const t=' '+s+' ';for(let i=0;i<t.length-2;i++)g.add(t.slice(i,i+3));return g;}
+function jaccard(a,b){const A=grams(a),B=grams(b);let inter=0;for(const x of A)if(B.has(x))inter++;return inter/(A.size+B.size-inter);}
+R.forEach(r=>{r._sig=(r.first+r.last+r.dob).toLowerCase().replace(/[^a-z0-9]/g,'');});
+
+const PL_TRUE = new Set();
+for(let i=0;i<PL_N;i++)for(let j=i+1;j<PL_N;j++)if(R[i].ent===R[j].ent)PL_TRUE.add(R[i].id+'-'+R[j].id);
+
+function fieldSims(a,b,l){
+  const sf=ratio(normName(a.first,l),normName(b.first,l)), sl=ratio(normName(a.last,l),normName(b.last,l));
+  const nameSim=(sf+sl)/2;
+  const ss=ratio(normStreet(a.street,l),normStreet(b.street,l)), sz=a.zip===b.zip?1:0;
+  const addrSim=(ss+sz)/2;
+  const dobSim=(a.dob&&b.dob)?(a.dob===b.dob?1:0):null;
+  const emailSim=(a.email&&b.email)?(a.email===b.email?1:0):null;
+  return {nameSim,addrSim,dobSim,emailSim};
+}
+function scorePair(a,b,l,W,renorm){
+  const s=fieldSims(a,b,l);
+  let num=0,den=0;
+  for(const [sim,w] of [[s.nameSim,W.name],[s.addrSim,W.addr],[s.dobSim,W.dob],[s.emailSim,W.email]]){
+    if(sim===null){ if(!renorm) den+=w; }       // absent: drop (renorm) or count as 0 weight-stays
+    else { num+=sim*w; den+=w; }
+  }
+  return den===0?0:num/den;
+}
+function blockKey(r,strat){
+  if(strat==='zip') return r.zip;
+  if(strat==='zip+last') return r.zip+'|'+normName(r.last,'basic')[0];
+  return soundex(r.last);
+}
+function tEstimate(b,r){return Math.pow(1/b,1/r);}
+
+function plCompute(cfg){
+  const {level,blocking,lshOn,b,r,W,renorm,matchThr,reviewThr,transitive,maxCluster,surv}=cfg;
+  // blocking
+  const blocks={}; R.forEach(rec=>{const k=blockKey(rec,blocking);(blocks[k]=blocks[k]||[]).push(rec);});
+  const candidates=new Set(); let comparisons=0;
+  for(const k in blocks){const g=blocks[k];comparisons+=g.length*(g.length-1)/2;for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++){const lo=Math.min(g[i].id,g[j].id),hi=Math.max(g[i].id,g[j].id);candidates.add(lo+'-'+hi);}}
+  const blockingComparisons=comparisons;
+  // LSH
+  let lshTrue=0,lshFalse=0; const t=tEstimate(b,r);
+  if(lshOn){
+    for(let i=0;i<PL_N;i++)for(let j=i+1;j<PL_N;j++){
+      const key=R[i].id+'-'+R[j].id;
+      if(candidates.has(key))continue;
+      if(jaccard(R[i]._sig,R[j]._sig)>=t){candidates.add(key);comparisons++;if(PL_TRUE.has(key))lshTrue++;else lshFalse++;}
+    }
+  }
+  // score + classify
+  const matchEdges=[]; const matchedSet=new Set(); let TP=0,FP=0,reviewQ=0;
+  const tScores=[],fScores=[];
+  for(const key of candidates){
+    const [i,j]=key.split('-').map(Number);
+    const sc=scorePair(PL_BYID[i],PL_BYID[j],level,W,renorm);
+    (PL_TRUE.has(key)?tScores:fScores).push(sc);
+    if(sc>=matchThr){matchEdges.push([i,j]);matchedSet.add(key);if(PL_TRUE.has(key))TP++;else FP++;}
+    else if(sc>=reviewThr){reviewQ++;}
+  }
+  const FN=PL_TRUE.size-TP;
+  const recall=PL_TRUE.size?TP/PL_TRUE.size:0;
+  const precision=(TP+FP)?TP/(TP+FP):1;
+  // lost-pair accounting
+  let lostBlocking=0,lostScoring=0;
+  for(const tp of PL_TRUE){ if(!candidates.has(tp))lostBlocking++; else if(!matchedSet.has(tp))lostScoring++; }
+  // clustering (union-find)
+  const parent={},rank={}; R.forEach(r=>{parent[r.id]=r.id;rank[r.id]=0;});
+  function find(x){while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x];}return x;}
+  const idList=R.map(r=>r.id);
+  function compSize(root){let n=0;for(const m of idList)if(find(m)===root)n++;return n;}
+  if(transitive){
+    for(const [i,j] of matchEdges){const ri=find(i),rj=find(j);if(ri===rj)continue;if(compSize(ri)+compSize(rj)>maxCluster)continue;if(rank[ri]<rank[rj])parent[ri]=rj;else if(rank[ri]>rank[rj])parent[rj]=ri;else{parent[rj]=ri;rank[ri]++;}}
+  } else {
+    const used=new Set();
+    for(const [i,j] of matchEdges){ if(used.has(i)||used.has(j))continue; parent[j]=i; used.add(i);used.add(j); }
+  }
+  const comps={}; idList.forEach(id=>{const r=find(id);(comps[r]=comps[r]||[]).push(id);});
+  const clusters=Object.values(comps);
+  const masters=clusters.length;
+  let overMerge=0; clusters.forEach(c=>{if(new Set(c.map(id=>PL_BYID[id].ent)).size>1)overMerge++;});
+  // golden record completeness
+  let qSum=0; const fields=['first','last','street','zip','dob','email'];
+  clusters.forEach(c=>{
+    let filled=0;
+    if(surv==='complete'){ fields.forEach(f=>{ if(c.some(id=>PL_BYID[id][f])) filled++; }); }
+    else { const rec=c.slice().sort((a,bb)=>PL_BYID[bb].recency-PL_BYID[a].recency)[0]; fields.forEach(f=>{ if(PL_BYID[rec][f]) filled++; }); }
+    qSum+=filled/fields.length;
+  });
+  const masterQuality=qSum/clusters.length;
+  // per-stage metrics
+  const allPairs=PL_N*(PL_N-1)/2;
+  const reductionRatio=1-blockingComparisons/allPairs;
+  let coBlockedTrue=0; for(const tp of PL_TRUE){const[i,j]=tp.split('-').map(Number);if(blockKey(PL_BYID[i],blocking)===blockKey(PL_BYID[j],blocking))coBlockedTrue++;}
+  const pairCompleteness=coBlockedTrue/PL_TRUE.size;
+  const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  const separation=mean(tScores)-mean(fScores);
+  let comparable=0; for(const tp of PL_TRUE){const[i,j]=tp.split('-').map(Number);if(fieldSims(PL_BYID[i],PL_BYID[j],level).nameSim>=0.85)comparable++;}
+  const stdCoverage=comparable/PL_TRUE.size;
+  const shuffleGB=(comparisons*0.42).toFixed(1);   // cost proxy: comparisons drive shuffle (Mod 08)
+  return {blockingComparisons,totalComparisons:comparisons,reductionRatio,pairCompleteness,stdCoverage,lshTrue,lshFalse,lshOn,separation,TP,FP,FN,recall,precision,reviewQ,masters,overMerge,masterQuality,lostBlocking,lostScoring,shuffleGB,find,matchedSet,candidates};
+}
+
+/* ── read controls into a config object ── */
+const PL_STATE = {norm:'aggressive', block:'zip+last', surv:'complete', lsh:true, renorm:true, transitive:true};
+function plCfg(){
+  return {
+    level:PL_STATE.norm, blocking:PL_STATE.block, surv:PL_STATE.surv,
+    lshOn:PL_STATE.lsh, renorm:PL_STATE.renorm, transitive:PL_STATE.transitive,
+    b:+document.getElementById('pl-b').value, r:+document.getElementById('pl-r').value,
+    W:{name:+document.getElementById('pl-wn').value, addr:+document.getElementById('pl-wa').value,
+       dob:+document.getElementById('pl-wd').value, email:+document.getElementById('pl-we').value},
+    matchThr:+document.getElementById('pl-match').value/100,
+    reviewThr:+document.getElementById('pl-review').value/100,
+    maxCluster:+document.getElementById('pl-maxc').value
+  };
+}
+function plSeg(group,val){ PL_STATE[group]=val; document.querySelectorAll('#pl-'+group+' .pl-segbtn').forEach(btn=>btn.classList.toggle('on',btn.dataset.v===val)); plRun(); }
+function plToggle(which){ PL_STATE[which]=!PL_STATE[which]; document.getElementById('pl-'+which).classList.toggle('on',PL_STATE[which]); plRun(); }
+
+function fmtPct(x){return Math.round(x*100)+'%';}
+
+function plRun(){
+  const cfg=plCfg();
+  // sync slider labels
+  document.getElementById('pl-b-lbl').textContent=cfg.b;
+  document.getElementById('pl-r-lbl').textContent=cfg.r;
+  document.getElementById('pl-t-lbl').textContent=tEstimate(cfg.b,cfg.r).toFixed(2);
+  document.getElementById('pl-wn-lbl').textContent=cfg.W.name;
+  document.getElementById('pl-wa-lbl').textContent=cfg.W.addr;
+  document.getElementById('pl-wd-lbl').textContent=cfg.W.dob;
+  document.getElementById('pl-we-lbl').textContent=cfg.W.email;
+  document.getElementById('pl-match-lbl').textContent=cfg.matchThr.toFixed(2);
+  document.getElementById('pl-review-lbl').textContent=cfg.reviewThr.toFixed(2);
+  document.getElementById('pl-maxc-lbl').textContent=cfg.maxCluster;
+
+  const o=plCompute(cfg);
+
+  // stage node metrics
+  document.getElementById('pl-m-std').textContent=fmtPct(o.stdCoverage);
+  document.getElementById('pl-m-block').textContent=fmtPct(o.reductionRatio);
+  document.getElementById('pl-m-block-sub').textContent='redux · '+fmtPct(o.pairCompleteness)+' kept';
+  const bl=document.getElementById('pl-m-block-lost'); bl.textContent='lost '+o.lostBlocking; bl.classList.toggle('zero',o.lostBlocking===0);
+  document.getElementById('pl-m-lsh').textContent = cfg.lshOn ? ('+'+o.lshTrue+' / +'+o.lshFalse) : 'off';
+  document.getElementById('pl-m-score').textContent=o.separation.toFixed(2);
+  document.getElementById('pl-m-classify').textContent=fmtPct(o.precision)+' / '+fmtPct(o.recall);
+  document.getElementById('pl-m-classify-sub').textContent='P / R · q='+o.reviewQ;
+  const sl=document.getElementById('pl-m-score-lost'); sl.textContent='lost '+o.lostScoring; sl.classList.toggle('zero',o.lostScoring===0);
+  document.getElementById('pl-m-cluster').textContent=o.masters;
+  document.getElementById('pl-m-cluster-sub').textContent='masters · '+o.overMerge+' over';
+  document.getElementById('pl-m-golden').textContent=fmtPct(o.masterQuality);
+
+  // scorecard
+  document.getElementById('pl-sc-recall').textContent=fmtPct(o.recall);
+  document.getElementById('pl-sc-prec').textContent=fmtPct(o.precision);
+  document.getElementById('pl-sc-masters').innerHTML=o.masters+'<small> /16</small>';
+  document.getElementById('pl-sc-over').textContent=o.overMerge;
+  document.getElementById('pl-sc-queue').textContent=o.reviewQ;
+  document.getElementById('pl-sc-cost').textContent=o.totalComparisons;
+  document.getElementById('pl-sc-shuffle').textContent=o.shuffleGB+' GB';
+
+  // verdict
+  const v=document.getElementById('pl-verdict');
+  if(o.overMerge>0){
+    v.className='pl-verdict v-bad';
+    v.textContent=`Over-merged — ${o.overMerge} cluster(s) fuse different people. Precision ${fmtPct(o.precision)}. Raise the match threshold or tighten the size guard.`;
+  } else if(o.masters>PL_IDEAL){
+    v.className='pl-verdict v-warn';
+    const lostWhere = o.lostBlocking>=o.lostScoring ? 'blocking dropped pairs before scoring ever saw them' : 'scoring fell below the match threshold';
+    v.textContent=`Under-merged — ${o.masters} masters for 16 true entities (${o.masters-PL_IDEAL} duplicate(s) unresolved). Recall ${fmtPct(o.recall)}; ${lostWhere}.`;
+  } else if(o.masters===PL_IDEAL && o.overMerge===0){
+    v.className='pl-verdict v-good';
+    v.textContent=`Ideal — exactly 16 masters, no over-merges. Recall ${fmtPct(o.recall)}, precision ${fmtPct(o.precision)}, ${o.totalComparisons} comparisons. This is a well-tuned system.`;
+  } else {
+    v.className='pl-verdict v-warn';
+    v.textContent=`${o.masters} masters, no over-merges, recall ${fmtPct(o.recall)}. Fewer than 16 with no over-merge means the size guard split a real cluster — loosen it.`;
+  }
+
+  plLast=o; plLastCfg=cfg;
+  plTrace(o,cfg);
+}
+
+/* ── A/B compare ── */
+let plLast=null, plLastCfg=null, plPinA=null, plPinB=null;
+function snap(o){return {Recall:o.recall, Precision:o.precision, Masters:o.masters, 'Over-merges':o.overMerge, 'Review queue':o.reviewQ, Comparisons:o.totalComparisons};}
+function plPin(which){ if(!plLast)return; if(which==='A')plPinA=snap(plLast); else plPinB=snap(plLast); plRenderAB(); }
+function plClearPins(){ plPinA=plPinB=null; plRenderAB(); }
+function plRenderAB(){
+  const body=document.getElementById('pl-ab-body');
+  if(!plPinA && !plPinB){ body.innerHTML='<tr><td colspan="4" style="color:var(--faint);text-align:center;padding:10px">Pin a config as A, change knobs, pin another as B.</td></tr>'; return; }
+  const keys=['Recall','Precision','Masters','Over-merges','Review queue','Comparisons'];
+  const pct=new Set(['Recall','Precision']);
+  const fmt=(k,v)=> v===undefined?'—':(pct.has(k)?Math.round(v*100)+'%':v);
+  body.innerHTML=keys.map(k=>{
+    const a=plPinA?plPinA[k]:undefined, b=plPinB?plPinB[k]:undefined;
+    let d='—', cls='pl-delta-0';
+    if(a!==undefined && b!==undefined){
+      const raw=b-a;
+      // for Over-merges & Comparisons & extra Masters, "down" is generally better — color neutrally by sign
+      const better=(k==='Recall'||k==='Precision')?raw>0:(k==='Over-merges'||k==='Comparisons')?raw<0:false;
+      const worse =(k==='Recall'||k==='Precision')?raw<0:(k==='Over-merges'||k==='Comparisons')?raw>0:false;
+      cls=better?'pl-delta-up':worse?'pl-delta-dn':'pl-delta-0';
+      d=(raw>0?'+':'')+(pct.has(k)?Math.round(raw*100)+'%':raw);
+    }
+    return `<tr><td>${k}</td><td>${fmt(k,a)}</td><td>${fmt(k,b)}</td><td class="${cls}">${d}</td></tr>`;
+  }).join('');
+}
+
+/* ── trace one entity ── */
+function plTrace(o,cfg){
+  const sel=document.getElementById('pl-trace-sel').value;
+  const body=document.getElementById('pl-trace-body');
+  let ids, title, expectMerge;
+  if(sel==='MOORE'){ ids=[14,15]; title='Patricia (14) vs Patrick (15) Moore'; expectMerge=false; }
+  else { ids=R.filter(r=>r.ent===sel).map(r=>r.id); title=sel; expectMerge=true; }
+  // build pairwise rows among the traced records
+  let rows='';
+  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){
+    const a=ids[i],b=ids[j], key=Math.min(a,b)+'-'+Math.max(a,b);
+    const fs=fieldSims(PL_BYID[a],PL_BYID[b],cfg.level);
+    const sc=scorePair(PL_BYID[a],PL_BYID[b],cfg.level,cfg.W,cfg.renorm);
+    const coBlock=blockKey(PL_BYID[a],cfg.blocking)===blockKey(PL_BYID[b],cfg.blocking);
+    const isCand=o.candidates.has(key);
+    const viaLSH=isCand && !coBlock;
+    const matched=o.matchedSet.has(key);
+    const blockTxt = coBlock?'<span class="ok">co-blocked</span>':(viaLSH?'<span class="mid">via LSH</span>':'<span class="no">blocked apart</span>');
+    const candTxt = isCand?'candidate':'<span class="no">never compared</span>';
+    const scoreTxt = isCand ? (`scored <b>${sc.toFixed(2)}</b> → `+(matched?'<span class="ok">MATCH</span>':(sc>=cfg.reviewThr?'<span class="mid">review</span>':'<span class="no">no-match</span>'))) : '—';
+    rows+=`<div class="pl-trace-row">${PL_BYID[a].first} ${PL_BYID[a].last} (${a}) ↔ ${PL_BYID[b].first} ${PL_BYID[b].last} (${b}) · name-sim ${fs.nameSim.toFixed(2)}<br>${blockTxt} · ${candTxt} · ${scoreTxt}</div>`;
+  }
+  // did they all land in one cluster?
+  const roots=new Set(ids.map(id=>o.find(id)));
+  const oneCluster=roots.size===1;
+  let vClass, vTxt;
+  if(expectMerge){
+    if(oneCluster){ vClass='v-good'; vTxt=`✓ All ${ids.length} records resolved into ONE master — correct.`; }
+    else { vClass='v-bad'; vTxt=`✗ Split into ${roots.size} masters — these are the same person but the pipeline left duplicates. A pair was lost upstream (see rows above).`; }
+  } else {
+    if(oneCluster){ vClass='v-bad'; vTxt='✗ Wrongly MERGED — Patricia and Patrick are different people. This is an over-merge; raise the match threshold.'; }
+    else { vClass='v-good'; vTxt='✓ Kept apart — correctly NOT merged. The near-collision was held below the match threshold.'; }
+  }
+  body.innerHTML=rows+`<div class="pl-trace-verdict ${vClass}">${vTxt}</div>`;
+}
+
+/* ── presets ── */
+const PL_PRESETS={
+  naive:       {norm:'none',      block:'zip',     lsh:false,renorm:false,transitive:true, b:4,r:6,wn:40,wa:25,wd:20,we:15,match:72,review:55,maxc:6,surv:'complete'},
+  balanced:    {norm:'aggressive',block:'zip+last',lsh:true, renorm:true, transitive:true, b:6,r:4,wn:40,wa:25,wd:20,we:15,match:72,review:55,maxc:6,surv:'complete'},
+  recallMax:   {norm:'aggressive',block:'soundex', lsh:true, renorm:true, transitive:true, b:10,r:3,wn:40,wa:25,wd:20,we:15,match:60,review:45,maxc:8,surv:'complete'},
+  precisionMax:{norm:'aggressive',block:'zip+last',lsh:false,renorm:true, transitive:true, b:4,r:6,wn:40,wa:25,wd:20,we:15,match:85,review:70,maxc:4,surv:'complete'},
+  cheapest:    {norm:'basic',     block:'zip+last',lsh:false,renorm:false,transitive:true, b:4,r:6,wn:40,wa:25,wd:20,we:15,match:72,review:55,maxc:6,surv:'complete'},
+};
+function plPreset(name,btn){
+  const p=PL_PRESETS[name];
+  PL_STATE.norm=p.norm; PL_STATE.block=p.block; PL_STATE.surv=p.surv;
+  PL_STATE.lsh=p.lsh; PL_STATE.renorm=p.renorm; PL_STATE.transitive=p.transitive;
+  document.getElementById('pl-b').value=p.b; document.getElementById('pl-r').value=p.r;
+  document.getElementById('pl-wn').value=p.wn; document.getElementById('pl-wa').value=p.wa;
+  document.getElementById('pl-wd').value=p.wd; document.getElementById('pl-we').value=p.we;
+  document.getElementById('pl-match').value=p.match; document.getElementById('pl-review').value=p.review;
+  document.getElementById('pl-maxc').value=p.maxc;
+  // sync segmented + toggles
+  ['norm','block','surv'].forEach(g=>document.querySelectorAll('#pl-'+g+' .pl-segbtn').forEach(b=>b.classList.toggle('on',b.dataset.v===PL_STATE[g])));
+  ['lsh','renorm','transitive'].forEach(t=>document.getElementById('pl-'+t).classList.toggle('on',PL_STATE[t]));
+  document.querySelectorAll('.pl-preset').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  plRun();
+}
+plRun();
+
+/* ══════════════════════════════════════════
+   SELF-TEST
+   ══════════════════════════════════════════ */
+const questions = [
+  {
+    prompt: 'A pipeline resolves correctly but its cluster step fails at 2 a.m. on a bad config, and the retry takes 3 hours because it re-reads 2 TB and re-runs every stage. What is the architectural fix?',
+    opts: [
+      'Add more executor memory so the cluster step does not fail',
+      'Materialize each stage to Parquet so the retry restarts from the last good dataset',
+      'Move the cluster step earlier in the pipeline',
+      'Cache the raw table at the start of the job'
+    ],
+    correct: 1,
+    explain: 'This is the recompute-the-world trap. Materializing intermediate datasets (std/, scored/, verdicts/, clusters/) lets the orchestrator restart from the last completed stage instead of from raw source — and makes every stage independently inspectable. Memory does not address a recovery-cost problem.'
+  },
+  {
+    prompt: 'Recall is low. A teammate lowers the match threshold to catch more pairs, but recall barely moves while precision craters and the review queue overflows. What does this tell you?',
+    opts: [
+      'The threshold needs to go even lower',
+      'The missing pairs were never candidates — they were lost upstream at blocking/LSH, not at scoring',
+      'The scorer is broken and needs new weights',
+      'Recall and precision are unrelated to thresholds'
+    ],
+    correct: 1,
+    explain: 'The capstone climax: stages are coupled. If loosening the scorer does not recover recall, the missing true pairs never reached the scorer — blocking dropped them. The real lever is the blocking key or LSH, not the threshold. Tuning the wrong stage damaged two others.'
+  },
+  {
+    prompt: 'You append validated, canonicalized addresses to your records AFTER clustering. Records that should have matched stayed separate. Why?',
+    opts: [
+      'Address validation always hurts matching',
+      'A canonical address is a match signal — enriching after clustering means the matcher never saw it, so those records never blocked/scored together',
+      'Enrichment should never touch addresses',
+      'The validation service returned wrong data'
+    ],
+    correct: 1,
+    explain: 'Enrichment that improves matching must happen UPSTREAM of matching. A canonical address makes duplicates block together and score higher. Placed after clustering, that signal is wasted — the classic "enrich after clustering when it was a match signal" design smell.'
+  },
+  {
+    prompt: 'The join-back attaches cluster_id to your wide standardized table. The cluster mapping is two columns over 80M records (~few GB). Best join strategy?',
+    opts: [
+      'Sort-merge join — both sides are large',
+      'Broadcast the skinny cluster mapping so the wide std table never shuffles',
+      'Cross join then filter',
+      'Broadcast the wide std table'
+    ],
+    correct: 1,
+    explain: 'The record_id → cluster_id map is two narrow columns — almost always broadcastable even at 80M rows. Broadcasting the skinny side means the wide std table never shuffles. You never broadcast the wide side; that is the expensive one you are trying to keep still.'
+  },
+  {
+    prompt: 'You run nightly incremental resolution. Tonight a new record C matches BOTH existing master A and existing master B. A naive incremental run attaches C to one of them. What was missed?',
+    opts: [
+      'Nothing — attaching to either is fine',
+      'C is a bridge: it should MERGE A and B into one master; naive incremental leaves a duplicate',
+      'C should be rejected as ambiguous',
+      'The thresholds are too high'
+    ],
+    correct: 1,
+    explain: 'This is transitive closure across time (Module 07). A new record matching two separate masters means those masters are actually the same entity — C bridges them. Incremental resolution must be able to merge existing masters, not just attach new records, or it silently accumulates duplicates.'
+  },
+  {
+    prompt: 'You bump scoring.thresholds.match from 0.72 to 0.78 in the YAML, then run an incremental job against masters built under 0.72. What is the risk?',
+    opts: [
+      'None — config changes are always safe',
+      'Old masters were built under the old rule and are now inconsistent with the new one; this needs a full re-resolve, not an incremental run',
+      'The job will crash',
+      'Recall will improve automatically'
+    ],
+    correct: 1,
+    explain: 'Changing matching config invalidates incremental state. Masters merged under 0.72 include pairs that would not merge under 0.78. You cannot incrementally patch that — a matching-logic change forces a full re-resolve. Tie config version to master version.'
+  },
+  {
+    prompt: 'On the simulator, switching the blocking key from "zip" to "soundex(last)" makes the moved-person pairs co-block WITHOUT enabling LSH — but total comparisons rise. What is the general lesson?',
+    opts: [
+      'Soundex is always better than zip',
+      'A broader blocking key and LSH both recover cross-block pairs; you trade recall against comparison cost, and pick the cheaper recovery for your match patterns',
+      'LSH is useless',
+      'Blocking has no effect on recall'
+    ],
+    correct: 1,
+    explain: 'Both a broader blocking key and LSH recover cross-block true pairs. Soundex catches the moved person without LSH but raises comparisons everywhere; LSH targets only the cross-block pairs above a tunable threshold. Recall is a system property — choose the recovery mechanism by cost and control, not by reflex.'
+  },
+  {
+    prompt: 'Your pipeline uses transitive closure (union-find) to cluster, with no maximum cluster size. One weak but above-threshold match links two otherwise-separate groups of 200 records each. What happens, and what prevents it?',
+    opts: [
+      'Nothing unusual; clustering is robust to single edges',
+      'The bridge edge fuses both groups into one 400-record mega-cluster; a max_cluster_size guard prevents the fuse',
+      'The two groups stay separate automatically',
+      'You should turn off transitive closure entirely'
+    ],
+    correct: 1,
+    explain: 'Transitive closure means one bridge edge merges everything reachable (Module 07). Without a size guard, a single false-ish match fuses two large clusters into a mega-entity — a precision disaster. The fix is clustering.max_cluster_size, which blocks a merge that would exceed the cap, not abandoning transitive closure (which you need for the legitimate moved-person case).'
+  }
+];
+
+const qg = document.getElementById('quiz-grid');
+questions.forEach((q, i) => {
+  const card = document.createElement('div');
+  card.className = 'qcard';
+  card.innerHTML = `<div class="q-prompt"><strong>Q${i+1}.</strong> ${q.prompt}</div>
+    <div class="q-opts">${q.opts.map((o,j) => `<button class="q-opt" onclick="answerQ(${i},${j},this)">${o}</button>`).join('')}</div>
+    <div class="q-fb" id="qfb-${i}"></div>`;
+  qg.appendChild(card);
+});
+
+function answerQ(qi, oi, btn) {
+  const q = questions[qi];
+  const card = btn.closest('.qcard');
+  card.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  btn.classList.add(oi === q.correct ? 'correct' : 'wrong');
+  if (oi !== q.correct) card.querySelectorAll('.q-opt')[q.correct].classList.add('correct');
+  const fb = document.getElementById(`qfb-${qi}`);
+  fb.className = 'q-fb ' + (oi === q.correct ? 'fb-ok' : 'fb-no');
+  fb.textContent = (oi === q.correct ? '✓ ' : '✗ ') + q.explain;
+  fb.style.display = 'block';
+}
+</script>
+
+</body>
+</html>

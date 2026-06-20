@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LSH &amp; MinHash — Module 06</title>
-<meta name="description" content="Learn how to find candidate pairs at scale using Jaccard similarity, MinHash signatures, banding parameter tuning, S-curves, and PySpark MinHashLSH — Module 06 of The Learning Lab's MDM/Spark track.">
+<title>LSH &amp; MinHash — Module 07</title>
+<meta name="description" content="Learn how to find candidate pairs at scale using Jaccard similarity, MinHash signatures, banding parameter tuning, S-curves, and PySpark MinHashLSH — Module 07 of The Learning Lab's MDM/Spark track.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -219,7 +219,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
     <div class="nav-logo">
       <a href="../index.html">the-learning-lab</a>
       <span class="sep">/</span><span>MDM · Spark</span>
-      <span class="sep">/</span><span class="nav-mod">Module 06</span>
+      <span class="sep">/</span><span class="nav-mod">Module 07</span>
     </div>
     <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">LSH &amp; MinHash</span>
   </div>
@@ -244,9 +244,9 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <!-- ══════ STAGE 0 — OVERVIEW ══════ -->
 <div class="stage on" id="s0">
 <div class="wrap">
-  <p class="sec-eye">Module 06 · MDM / Spark Track · Phase 3 — ER at Scale</p>
+  <p class="sec-eye">Module 07 · MDM / Spark Track · Phase 3 — ER at Scale</p>
   <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">LSH &amp; MinHash</h1>
-  <p class="sec-sub">Module 05 gave you the ThresholdTuner to optimize your field similarity weights and matching thresholds. But that tuner assumes you already have a set of candidate pairs. In a dataset with millions of customer records, how do you find those candidate pairs in the first place? Comparing every record to every other record is impossible at scale. This module introduces **Locality Sensitive Hashing (LSH)** and **MinHash** — the algorithms that bypass the quadratic bottleneck to generate fuzzy candidate pairs in $O(N)$ time.</p>
+  <p class="sec-sub">Module 06 gave you the ThresholdTuner to optimize your field similarity weights and matching thresholds. But that tuner assumes you already have a set of candidate pairs. In a dataset with millions of customer records, how do you find those candidate pairs in the first place? Comparing every record to every other record is impossible at scale. This module introduces **Locality Sensitive Hashing (LSH)** and **MinHash** — the algorithms that bypass the quadratic bottleneck to generate fuzzy candidate pairs in $O(N)$ time.</p>
 
   <div class="pipeline-viz">
     <div class="pv-label">What this module adds to your pipeline</div>
@@ -793,7 +793,7 @@ scored_pairs = scoring_plugin.run(unified_candidates)</div>
 
   <div class="unlock" style="margin-top:34px">
     <span class="unlock-icon">✓</span>
-    <div class="unlock-body"><strong>Module 06 complete.</strong> You now understand how to bypass the $N^2$ scaling wall using Locality Sensitive Hashing. You can shingle strings, compress them into MinHash signature matrices, tune $b$ and $r$ banding parameters mathematically using the S-curve formula, write PySpark MinHashLSH code, and build a hybrid candidate generation pipeline. Next up: <strong>Module 07 · Graph Theory &amp; Clustering</strong>, where matched pairs merge into master entity clusters.</div>
+    <div class="unlock-body"><strong>Module 07 complete.</strong> You now understand how to bypass the $N^2$ scaling wall using Locality Sensitive Hashing. You can shingle strings, compress them into MinHash signature matrices, tune $b$ and $r$ banding parameters mathematically using the S-curve formula, write PySpark MinHashLSH code, and build a hybrid candidate generation pipeline. Next up: <strong>Module 08 · Graph Theory &amp; Clustering</strong>, where matched pairs merge into master entity clusters.</div>
   </div>
 
   <div class="concept-grid" style="margin-top:26px">
@@ -814,7 +814,7 @@ scored_pairs = scoring_plugin.run(unified_candidates)</div>
 
 <footer>
   <div class="foot-inner">
-    <span class="foot-l">the-learning-lab · Module 06 · LSH &amp; MinHash</span>
+    <span class="foot-l">the-learning-lab · Module 07 · LSH &amp; MinHash</span>
     <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
   </div>
 </footer>

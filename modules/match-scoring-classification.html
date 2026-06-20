@@ -404,7 +404,7 @@ composite = <span class="f">sum</span>(field_scores.values()) / <span class="f">
   </table>
   </div>
 
-  <div class="warn"><strong>These numbers are a starting point, not law.</strong> Real weights get tuned against labeled data — you measure which fields actually separate true matches from false ones in <em>your</em> data and adjust. That tuning loop is Module 05. For now, the relative ordering (id &gt; email &gt; phone &gt; name &gt; address &gt; city) is the durable part; the exact decimals are negotiable.</div>
+  <div class="warn"><strong>These numbers are a starting point, not law.</strong> Real weights get tuned against labeled data — you measure which fields actually separate true matches from false ones in <em>your</em> data and adjust. That tuning loop is Module 06. For now, the relative ordering (id &gt; email &gt; phone &gt; name &gt; address &gt; city) is the durable part; the exact decimals are negotiable.</div>
 
   <h3><span class="bar"></span>Where weights live in your pipeline</h3>
   <p>In a YAML-driven plugin like yours, weights are <strong>config, not code.</strong> They sit in the plugin's parameters so an analyst can retune them without touching Python or redeploying:</p>
@@ -714,7 +714,7 @@ composite = 0.470 / 0.70
 
   <div class="unlock">
     <span class="unlock-icon">🔓</span>
-    <div class="unlock-body">This trade-off — and how to tune the two thresholds against labeled data using precision/recall curves and the size of your review queue — is the whole of <strong>Module 05 · Score Aggregation &amp; Confidence</strong>. You've just met the lever; next module you learn to set it with evidence instead of a guess.</div>
+    <div class="unlock-body">This trade-off — and how to tune the two thresholds against labeled data using precision/recall curves and the size of your review queue — is the whole of <strong>Module 06 · Score Aggregation &amp; Confidence</strong>. You've just met the lever; next module you learn to set it with evidence instead of a guess.</div>
   </div>
 </div>
 </div>
@@ -775,7 +775,7 @@ composite = 0.470 / 0.70
 
   <p><strong>Why read everything from <code>self.params</code>?</strong> Because the weights and thresholds are the things analysts tune — frequently — and the scoring <em>logic</em> is the thing engineers change — rarely. Reading them from config keeps the two on separate clocks. An analyst retunes <code>field_weights</code> in YAML; the plugin code never moves.</p>
 
-  <div class="note"><strong>The shape to remember:</strong> config in (weights + thresholds) → one weighted-and-renormalized <code>composite</code> column → one <code>match_decision</code> column out. Everything downstream — clustering in Module 07, the golden record logic from Module 03 — keys off that single <code>match_decision</code>. This plugin is the hinge the whole back half of the pipeline turns on.</div>
+  <div class="note"><strong>The shape to remember:</strong> config in (weights + thresholds) → one weighted-and-renormalized <code>composite</code> column → one <code>match_decision</code> column out. Everything downstream — clustering in Module 08, the golden record logic from Module 03 — keys off that single <code>match_decision</code>. This plugin is the hinge the whole back half of the pipeline turns on.</div>
 </div>
 </div>
 
@@ -827,7 +827,7 @@ composite = 0.470 / 0.70
 
   <div class="unlock" style="margin-top:34px">
     <span class="unlock-icon">✓</span>
-    <div class="unlock-body"><strong>Module 04 complete.</strong> You can now turn a bag of field scores into a single, null-safe, importance-weighted verdict — the core of your ScoringPlugin. Next up: <strong>Module 05 · Score Aggregation &amp; Confidence</strong>, where those two thresholds stop being guesses and start being tuned against labeled data with precision/recall in hand.</div>
+    <div class="unlock-body"><strong>Module 04 complete.</strong> You can now turn a bag of field scores into a single, null-safe, importance-weighted verdict — the core of your ScoringPlugin. Next up: <strong>Module 06 · Score Aggregation &amp; Confidence</strong>, where those two thresholds stop being guesses and start being tuned against labeled data with precision/recall in hand.</div>
   </div>
 </div>
 </div>
@@ -1023,7 +1023,7 @@ const questions = [
       'Remove the review band entirely'
     ],
     correct: 1,
-    explain: 'Wrong merges are a precision problem — false positives. Raising match_threshold (e.g. 0.80 → 0.90) means only the most confident pairs auto-merge; borderline ones drop into review instead. You catch fewer true matches automatically (lower recall) but make far fewer false merges (higher precision). That precision/recall tuning is Module 05.'
+    explain: 'Wrong merges are a precision problem — false positives. Raising match_threshold (e.g. 0.80 → 0.90) means only the most confident pairs auto-merge; borderline ones drop into review instead. You catch fewer true matches automatically (lower recall) but make far fewer false merges (higher precision). That precision/recall tuning is Module 06.'
   },
   {
     prompt: 'In the PySpark ScoringPlugin, why is null handling written as <code>F.when(sim.isNotNull(), ...).otherwise(0.0)</code> instead of a plain Python <code>if sim is None</code>?',

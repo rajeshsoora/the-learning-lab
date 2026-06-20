@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Module 08 — Spark Performance (Remaining Levers)</title>
+<title>Module 10 — Spark Performance (Remaining Levers)</title>
 <meta name="description" content="The remaining Spark performance levers beyond shuffle/join/skew: column pruning, predicate pushdown, partition sizing, spill & memory, caching, and AQE — applied to the MDM entity-resolution pipeline.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -221,7 +221,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
     <div class="nav-logo">
       <a href="../index.html">the-learning-lab</a>
       <span class="sep">/</span><span>MDM · Spark</span>
-      <span class="sep">/</span><span class="nav-mod">Module 08</span>
+      <span class="sep">/</span><span class="nav-mod">Module 10</span>
     </div>
     <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Spark Performance · Remaining Levers</span>
   </div>
@@ -249,10 +249,10 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="stage on" id="s0">
   <p class="sec-eye">Stage 00 · Overview</p>
   <h2 class="sec-h">The Pipeline Works. Now Make It Cheap.</h2>
-  <p class="sec-sub">By Module 07 your entity-resolution pipeline is functionally complete — it standardizes, blocks, scores, classifies, tunes, and clusters into master entities. Every result it produces is correct. This module changes none of those results. It changes what they <em>cost</em>: the bytes read off disk, the data shuffled across the network, the memory each task burns, and the number of files you write. Same answers, a fraction of the cluster bill.</p>
+  <p class="sec-sub">By Module 08 your entity-resolution pipeline is functionally complete — it standardizes, blocks, scores, classifies, tunes, and clusters into master entities. Every result it produces is correct. This module changes none of those results. It changes what they <em>cost</em>: the bytes read off disk, the data shuffled across the network, the memory each task burns, and the number of files you write. Same answers, a fraction of the cluster bill.</p>
 
   <div class="pipeline-viz">
-    <div class="pv-label">Module 08 doesn't add a stage — it tunes every stage you already built</div>
+    <div class="pv-label">Module 10 doesn't add a stage — it tunes every stage you already built</div>
     <div class="pv-flow">
       <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
       <span class="pv-box done">Block</span><span class="pv-arr">→</span>
@@ -294,7 +294,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
     </div>
   </div>
 
-  <div class="note"><strong>How to read this module.</strong> Levers 1–2 make Spark <em>read less</em>. Lever 3 makes each task the right size. Lever 4 keeps each task in memory. Lever 5 reuses work and lets the engine auto-tune. Every lever is shown against your real MDM pipeline, and Stage 08 assembles them into one tuned read of that pipeline. There's a separate <a href="spark-performance-code.html" style="color:var(--amber)">Code Companion</a> that drills the PySpark idioms themselves.</p></div>
+  <div class="note"><strong>How to read this module.</strong> Levers 1–2 make Spark <em>read less</em>. Lever 3 makes each task the right size. Lever 4 keeps each task in memory. Lever 5 reuses work and lets the engine auto-tune. Every lever is shown against your real MDM pipeline, and Stage 08 assembles them into one tuned read of that pipeline. The preceding <a href="spark-performance-code.html" style="color:var(--amber)">Module 09 — Code Companion</a> drills the PySpark idioms themselves.</p></div>
 </div>
 
 <!-- ══════ STAGE 1 — THE COST TRAP ══════ -->
@@ -628,7 +628,7 @@ metrics  = <span class="f">compute_metrics</span>(scored)       <span class="co"
 <span class="hl">candidates.<span class="f">explain</span>()    <span class="why"># expect PushedFilters:[EqualTo(status,active)] + 6 cols</span></span></pre>
   </div>
 
-  <div class="note"><strong>Want more reps on the idioms themselves?</strong> This stage shows each idiom once, anchored to this exact pipeline. The <a href="spark-performance-code.html" target="_blank" style="color:var(--amber)">Code Companion — Stage 08.1</a> drills the same five idioms (<code>.select</code>, <code>repartition</code> vs <code>coalesce</code>, <code>F.broadcast</code>, <code>.cache</code>, <code>spark.conf.set</code>) with fresh examples and multiple predict-then-check reps, separate from this walkthrough. Optional — this stage stands on its own.</div>
+  <div class="note"><strong>Want more reps on the idioms themselves?</strong> This stage shows each idiom once, anchored to this exact pipeline. The preceding <a href="spark-performance-code.html" style="color:var(--amber)">Module 09 — Code Companion</a> drills the same five idioms (<code>.select</code>, <code>repartition</code> vs <code>coalesce</code>, <code>F.broadcast</code>, <code>.cache</code>, <code>spark.conf.set</code>) with fresh examples and multiple predict-then-check reps, separate from this walkthrough. Optional — this stage stands on its own.</div>
 
   <div class="trap"><strong>Order matters here.</strong> The <code>select</code> and <code>filter</code> come <em>before</em> the join and cache on purpose — prune and filter first so everything downstream operates on the smaller dataset. Cache <em>after</em> the expensive read-prune-filter-join chain so what's stored is the reusable result, not the raw scan. Reorder these and you cache the wrong thing or push the filter past where it can be pushed down.</div>
 </div>
@@ -716,7 +716,7 @@ metrics  = <span class="f">compute_metrics</span>(scored)       <span class="co"
 
   <div class="unlock" style="margin-top:34px">
     <span class="unlock-icon">✓</span>
-    <div class="unlock-body"><strong>Module 08 complete.</strong> You can now read a slow ER pipeline and name the lever: prune columns and push down predicates to read less, size partitions to ~128 MB with <code>repartition</code> vs <code>coalesce</code>, recognize spill as a partition-size problem before a memory problem, cache deliberately, and let AQE re-tune shuffles while you own the read. Next up: <strong>Module 09 · Pipeline Design (Capstone)</strong> — assembling every module into one end-to-end MDM architecture.</div>
+    <div class="unlock-body"><strong>Module 10 complete.</strong> You can now read a slow ER pipeline and name the lever: prune columns and push down predicates to read less, size partitions to ~128 MB with <code>repartition</code> vs <code>coalesce</code>, recognize spill as a partition-size problem before a memory problem, cache deliberately, and let AQE re-tune shuffles while you own the read. Next up: <strong>Module 11 · Pipeline Design (Capstone)</strong> — assembling every module into one end-to-end MDM architecture.</div>
   </div>
 
   <div class="concept-grid" style="margin-top:26px">
@@ -738,7 +738,7 @@ metrics  = <span class="f">compute_metrics</span>(scored)       <span class="co"
 
 <footer>
   <div class="foot-inner">
-    <span class="foot-l">the-learning-lab · Module 08 · Spark Performance (Remaining Levers)</span>
+    <span class="foot-l">the-learning-lab · Module 10 · Spark Performance (Remaining Levers)</span>
     <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
   </div>
 </footer>

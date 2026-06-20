@@ -67,7 +67,8 @@ Last updated: 2026-06-19
 
 ---
 
-## Module 05 — Score Aggregation & Confidence (2026-06-19)
+## Module 06 — Score Aggregation & Confidence (2026-06-19)
+> *(Renumbered: was Module 05. Its code-fluency drills are now the standalone **Module 05 — Code Companion**, `score-aggregation-confidence-code.html`.)*
 
 **Covered (depth `use`):** Why fixed thresholds fail (distribution problem), labeled data (stratified sampling, sizing), confusion matrix (TP/FP/FN/TN), precision ("how clean are merges") and recall ("how many matches caught"), PR curve (sweep + elbow), confidence bands (calibration table: score bin → match rate), review queue sizing (capacity formula, overflow risk), ThresholdTuner PySpark pattern (confusion_matrix, pr_at, pr_curve, calibration_table, queue_size methods), interactive threshold tuner widget.
 
@@ -83,41 +84,42 @@ Last updated: 2026-06-19
 
 ---
 
-## Module 06 — LSH & MinHash (2026-06-19)
+## Module 07 — LSH & MinHash (2026-06-19)
 
 **Covered (depth `use`):** The $N^2$ scaling wall (pair explosion), fuzzy blocking, Jaccard similarity (k-gram character shingling overlap metric), MinHash signatures (permutations matrix compression), LSH banding (signatures split into $b$ bands of $r$ rows, Murmur hashing bands), tuning LSH (S-curve collision probability $P = 1-(1-s^r)^b$, threshold estimate $t \approx (1/b)^{1/r}$), PySpark MinHashLSH pattern (NGram vector inputs, `approxSimilarityJoin`, Jaccard distance threshold trap), hybrid blocking candidate join (union & distinct of blocking and LSH pairs), interactive LSH tuner widget.
 
-**What worked:** 11-stage flow matching Module 05's structure. Table-driven teaching for Jaccard sets, MinHash permutations matrix, and S-curve thresholds. "X is a red herring; Y decides" contrast used for: LSH as a replacement for scoring (candidate generation only vs final verdict). Analogies: mail cubby sorting (banding), Venn diagram overlay (Jaccard similarity). Interactive widget with responsive bands/rows sliders and dynamic SVG-drawn S-curve graph with dot intersection, combined with a 10-profile deterministic band match simulator showing direct collisions.
+**What worked:** 11-stage flow matching Module 06's structure. Table-driven teaching for Jaccard sets, MinHash permutations matrix, and S-curve thresholds. "X is a red herring; Y decides" contrast used for: LSH as a replacement for scoring (candidate generation only vs final verdict). Analogies: mail cubby sorting (banding), Venn diagram overlay (Jaccard similarity). Interactive widget with responsive bands/rows sliders and dynamic SVG-drawn S-curve graph with dot intersection, combined with a 10-profile deterministic band match simulator showing direct collisions.
 
 **Known gaps:** SimHash for Cosine distance vector embeddings, custom hash family mathematical proofs, partition skew in signature joins, multi-probe LSH query support.
 
-**Artifact:** lsh-minhash.html (interactive, matches Module 05's HTML walkthrough format with 11 stages, live S-curve calculator, 8-question self-test).
+**Artifact:** lsh-minhash.html (interactive, matches Module 06's HTML walkthrough format with 11 stages, live S-curve calculator, 8-question self-test).
 
 **Sustain:** Website module session — treated as unlimited budget. Full 11-stage module produced.
 
 ---
 
-## Module 07 — Graph Theory & Clustering (2026-06-19)
+## Module 08 — Graph Theory & Clustering (2026-06-19)
 
 **Covered (depth `use`):** Graph model (records as nodes, match verdicts as edges, connected components as master entities), BFS/DFS component-finding traced step-by-step, union-find (find/union, path compression) traced on the identical graph for direct comparison, transitive closure as the climax (moved-person scenario, bridge-edge risk where one weak match fuses two large clusters), decision criteria for BFS/DFS vs hand-rolled union-find vs GraphFrames, GraphFrames `connectedComponents()` PySpark pattern with the checkpoint-dir trap, join-back into Module 03's golden-record window functions, interactive canvas-based union-find cluster builder.
 
-**What worked:** 10-stage flow matching Module 06's structure. "X is a red herring; Y decides" contrast used for: clustering as pairwise bookkeeping vs clustering as transitive-closure fact-creation. Same worked example (6-record graph) traced through both BFS/DFS and union-find so the two algorithms could be compared directly rather than taught in isolation. Decision-tree format (reused from Module 01's nested-types pattern) for the BFS/DFS vs union-find vs GraphFrames choice. Interactive widget used a live canvas + union-find instead of sliders, since the tunable parameter here is "which edges exist," not a numeric threshold — matched to the topic instead of reusing the slider pattern by default.
+**What worked:** 10-stage flow matching Module 07's structure. "X is a red herring; Y decides" contrast used for: clustering as pairwise bookkeeping vs clustering as transitive-closure fact-creation. Same worked example (6-record graph) traced through both BFS/DFS and union-find so the two algorithms could be compared directly rather than taught in isolation. Decision-tree format (reused from Module 01's nested-types pattern) for the BFS/DFS vs union-find vs GraphFrames choice. Interactive widget used a live canvas + union-find instead of sliders, since the tunable parameter here is "which edges exist," not a numeric threshold — matched to the topic instead of reusing the slider pattern by default.
 
 **Known gaps:** Weighted/probabilistic clustering (edge-confidence-aware community detection) not covered. Cluster-splitting/review-queue tooling at the cluster level named but not built. GraphFrames' internal algorithm (Hash-to-Min label propagation) and convergence behavior not traced. Graph algorithms beyond connectivity (centrality, shortest-path, fraud-ring community detection) out of scope.
 
-**Artifact:** graph-clustering.html (interactive, matches Module 06's HTML walkthrough format with 10 stages, live canvas-based cluster builder, 8-question self-test).
+**Artifact:** graph-clustering.html (interactive, matches Module 07's HTML walkthrough format with 10 stages, live canvas-based cluster builder, 8-question self-test).
 
 **Sustain:** Website module session — treated as unlimited budget. Full 10-stage module produced.
 
 ---
 
-## Module 08 — Spark Performance (Remaining Levers) (2026-06-19)
+## Module 10 — Spark Performance (Remaining Levers) (2026-06-19)
+> *(Renumbered: was Module 08. Its code-fluency drills are now the standalone **Module 09 — Code Companion**, `spark-performance-code.html`.)*
 
 **Covered (depth `use`):** The five "remaining" perf levers (vs Module 00's structural shuffle/join/skew) — column pruning (columnar Parquet skips unread column-runs; CSV can't), predicate pushdown (filter-in-engine vs pushed-into-scan, partition pruning vs row-group min/max, `.explain()`/`PushedFilters` verification), partition sizing (~128 MB target, `repartition` full-shuffle/can-grow/even vs `coalesce` no-shuffle/shrink-only/uneven, the 200-default `shuffle.partitions` tiny-files trap), spill & memory (execution-region overflow→disk, spill≠OOM, the "add more RAM" red herring → it's per-task data-vs-memory, fix with more/smaller partitions or skew), caching (reuse-across-branches win, "cache everything" anti-pattern, cache-is-lazy), AQE (coalesce/skew-join/dynamic-broadcast runtime re-optimization; "AQE owns the shuffle, you own the read"), the symptom→lever decision tree, full tuned-pipeline PySpark pattern, combined two-mode tuning-calculator widget.
 
-**New artifact type introduced — Code Companion (per the "supplement session for coding" Rajesh asked to include):** a standalone sibling HTML (`spark-performance-code.html`, Stage 08.1) that drills the PySpark idioms separately from the concept walkthrough — predict-then-reveal, fresh data, two reps per idiom, hand-verified trace values, violet accent. This is the first Code Companion on the MDM track (the Module 05 one — `score-aggregation-confidence-code.html` — was the prototype). Pattern: the main module's PySpark-pattern stage shows each idiom once and links out via a `.note`; the companion gives the extra reps. Idioms drilled here: `.select` pruning, `repartition` vs `coalesce`, `F.broadcast`, `.cache` laziness, `spark.sql.shuffle.partitions`. Logged in `code-fluency.md`.
+**Code Companion — now a standalone before-module (Module 09):** `spark-performance-code.html` drills the PySpark idioms separately from this concept walkthrough — predict-then-reveal, fresh data, two reps per idiom, hand-verified trace values, violet accent. Originally shipped as a supplement; **later promoted to its own module (09), placed immediately before this one (10)**, alongside the sibling **Module 05 — Code Companion** (`score-aggregation-confidence-code.html`) for ThresholdTuner. Decimal stage labels (the old "Stage 08.1") were dropped in the promotion. Pattern: the concept module's PySpark-pattern stage shows each idiom once and links to the preceding companion module; the companion gives the extra reps. Idioms drilled here: `.select` pruning, `repartition` vs `coalesce`, `F.broadcast`, `.cache` laziness, `spark.sql.shuffle.partitions`. Logged in `code-fluency.md`.
 
-**What worked (held this session):** 11-stage flow matching Module 07. Table-driven throughout (cost-trap table, row-major-vs-columnar, repartition-vs-coalesce, pushdown-mechanism, AQE-handles-vs-you). "X is a red herring; Y decides" used twice — (1) "add more RAM" vs data-per-task for spill, (2) "cache everything" vs reuse-pattern. Desks/paper analogy reused from Module 00 for partition sizing (continuity across the track). Widget matched to the topic's real tunables (partition sizing + shuffle count) rather than reusing a default slider pattern blindly. Every code block shows highlighted lever lines with inline `why` comments.
+**What worked (held this session):** 11-stage flow matching Module 08. Table-driven throughout (cost-trap table, row-major-vs-columnar, repartition-vs-coalesce, pushdown-mechanism, AQE-handles-vs-you). "X is a red herring; Y decides" used twice — (1) "add more RAM" vs data-per-task for spill, (2) "cache everything" vs reuse-pattern. Desks/paper analogy reused from Module 00 for partition sizing (continuity across the track). Widget matched to the topic's real tunables (partition sizing + shuffle count) rather than reusing a default slider pattern blindly. Every code block shows highlighted lever lines with inline `why` comments.
 
 **Known gaps:** Bucketing/pre-sorted tables, unified-memory-model knobs in detail (`spark.memory.fraction`/`storageFraction`), `.persist()` storage levels, hands-on Spark-UI tour, dynamic resource allocation/cluster sizing. (Carried in roadmap "Parked / for later".)
 

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Graph Theory &amp; Clustering — Module 07</title>
-<meta name="description" content="Learn how matched pairs merge into master entities using connected components, union-find, BFS/DFS, and transitive closure — Module 07 of The Learning Lab's MDM/Spark track.">
+<title>Graph Theory &amp; Clustering — Module 08</title>
+<meta name="description" content="Learn how matched pairs merge into master entities using connected components, union-find, BFS/DFS, and transitive closure — Module 08 of The Learning Lab's MDM/Spark track.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -224,7 +224,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
     <div class="nav-logo">
       <a href="../index.html">the-learning-lab</a>
       <span class="sep">/</span><span>MDM · Spark</span>
-      <span class="sep">/</span><span class="nav-mod">Module 07</span>
+      <span class="sep">/</span><span class="nav-mod">Module 08</span>
     </div>
     <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Graph Theory &amp; Clustering</span>
   </div>
@@ -249,9 +249,9 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <!-- ══════ STAGE 0 — OVERVIEW ══════ -->
 <div class="stage on" id="s0">
 <div class="wrap">
-  <p class="sec-eye">Module 07 · MDM / Spark Track · Phase 3 — ER at Scale</p>
+  <p class="sec-eye">Module 08 · MDM / Spark Track · Phase 3 — ER at Scale</p>
   <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">Graph Theory &amp; Clustering</h1>
-  <p class="sec-sub">Module 06 gave you LSH to find candidate pairs at scale without all-pairs comparison. Module 04/05 gave you a ScoringPlugin and ThresholdTuner that turn each candidate pair into a match/review/no-match verdict. But a verdict is still just a fact about <strong>one pair</strong>. If A matches B, and B matches C, are A, B, and C one entity, or three separate facts about two entities? This module is the final ER step: turning a pile of pairwise match verdicts into actual master entity clusters, using graph theory — connected components, BFS/DFS, union-find, and the transitive closure that makes clustering necessary in the first place.</p>
+  <p class="sec-sub">Module 07 gave you LSH to find candidate pairs at scale without all-pairs comparison. Module 04/05 gave you a ScoringPlugin and ThresholdTuner that turn each candidate pair into a match/review/no-match verdict. But a verdict is still just a fact about <strong>one pair</strong>. If A matches B, and B matches C, are A, B, and C one entity, or three separate facts about two entities? This module is the final ER step: turning a pile of pairwise match verdicts into actual master entity clusters, using graph theory — connected components, BFS/DFS, union-find, and the transitive closure that makes clustering necessary in the first place.</p>
 
   <div class="pipeline-viz">
     <div class="pv-label">What this module adds to your pipeline</div>
@@ -317,7 +317,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   </table>
   </div>
 
-  <p>Your ScoringPlugin (Module 04) and ThresholdTuner (Module 05) classify each pair independently:</p>
+  <p>Your ScoringPlugin (Module 04) and ThresholdTuner (Module 06) classify each pair independently:</p>
 
   <div class="data-table-wrap">
   <table class="data-table">
@@ -538,7 +538,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   </table>
   </div>
 
-  <div class="trap"><strong>The bridge-edge trap:</strong> The damage from one wrong match scales with cluster size, not with how confident that one match was. A 60%-confidence match between two singleton records merges 2 records into a wrong entity. The same 60%-confidence match between two existing 10-record clusters merges 20 records into one wrong entity. <strong>Clustering amplifies every scoring mistake by the size of the clusters it touches.</strong> This is why threshold tuning (Module 05) and clustering (this module) cannot be reasoned about independently — a threshold that looked "safe enough" in pairwise precision/recall terms can still be unsafe once you account for what it does when it becomes a bridge edge between two large existing clusters.</div>
+  <div class="trap"><strong>The bridge-edge trap:</strong> The damage from one wrong match scales with cluster size, not with how confident that one match was. A 60%-confidence match between two singleton records merges 2 records into a wrong entity. The same 60%-confidence match between two existing 10-record clusters merges 20 records into one wrong entity. <strong>Clustering amplifies every scoring mistake by the size of the clusters it touches.</strong> This is why threshold tuning (Module 06) and clustering (this module) cannot be reasoned about independently — a threshold that looked "safe enough" in pairwise precision/recall terms can still be unsafe once you account for what it does when it becomes a bridge edge between two large existing clusters.</div>
 
   <h3><span class="bar"></span>The mitigation: cluster-level sanity checks</h3>
   <p>Because transitive closure can silently merge a crowd, production clustering steps add a guard the pairwise ScoringPlugin never needed: after computing connected components, re-examine any cluster above a size threshold (e.g. &gt;5 records) and check whether it is internally consistent — do all records in the cluster pairwise agree on enough core fields (SSN, DOB) to plausibly be one person? A cluster that only holds together through one or two bridge edges, with otherwise dissimilar members, is a strong signal of a bad bridge match and should be flagged for review rather than auto-merged.</p>
@@ -589,7 +589,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="wrap">
   <p class="sec-eye">Stage 07</p>
   <h2 class="sec-h">The Production Pattern — GraphFrames in PySpark</h2>
-  <p class="sec-sub">GraphFrames (a Spark package) gives you a distributed <code>connectedComponents()</code> that takes exactly the edge list your hybrid candidate pipeline (Module 06) and ScoringPlugin/ThresholdTuner (Modules 04–05) already produce.</p>
+  <p class="sec-sub">GraphFrames (a Spark package) gives you a distributed <code>connectedComponents()</code> that takes exactly the edge list your hybrid candidate pipeline (Module 07) and ScoringPlugin/ThresholdTuner (Modules 04–05) already produce.</p>
 
   <h3><span class="bar"></span>The input shape GraphFrames expects</h3>
   <p>GraphFrames needs two DataFrames: <code>vertices</code> with an <code>id</code> column, and <code>edges</code> with <code>src</code> and <code>dst</code> columns. Your pipeline already has both — vertices are your standardized records, edges are the rows from your ThresholdTuner that classified as `match`.</p>
@@ -606,7 +606,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 vertices = standardized_df.select(F.col(<span class="s">"record_id"</span>).alias(<span class="s">"id"</span>))
 
 <span class="co"># 2. Edges: only the pairs your ThresholdTuner classified as "match"</span>
-<span class="co"># (matches Module 05's classify() output, filtered to the match band)</span>
+<span class="co"># (matches Module 06's classify() output, filtered to the match band)</span>
 edges = scored_pairs_df.filter(
     F.col(<span class="s">"verdict"</span>) == <span class="s">"match"</span>
 ).select(
@@ -704,7 +704,7 @@ golden_df = clustered_df.withColumn(<span class="s">"rn"</span>, F.row_number().
 
   <div class="unlock" style="margin-top:34px">
     <span class="unlock-icon">✓</span>
-    <div class="unlock-body"><strong>Module 07 complete.</strong> You now understand how matched pairs become master entities: model records and verdicts as a graph, find connected components via BFS/DFS or union-find, recognize and guard against transitive closure's bridge-edge risk, choose between hand-rolled union-find and GraphFrames based on scale, and run <code>connectedComponents()</code> in production PySpark. Next up: <strong>Module 08 · Spark Performance (Remaining Levers)</strong>, where you optimize the full pipeline beyond shuffle/join/skew.</div>
+    <div class="unlock-body"><strong>Module 08 complete.</strong> You now understand how matched pairs become master entities: model records and verdicts as a graph, find connected components via BFS/DFS or union-find, recognize and guard against transitive closure's bridge-edge risk, choose between hand-rolled union-find and GraphFrames based on scale, and run <code>connectedComponents()</code> in production PySpark. Next up: <strong>Module 10 · Spark Performance (Remaining Levers)</strong>, where you optimize the full pipeline beyond shuffle/join/skew.</div>
   </div>
 
   <div class="concept-grid" style="margin-top:26px">
@@ -713,7 +713,7 @@ golden_df = clustered_df.withColumn(<span class="s">"rn"</span>, F.row_number().
       <div class="cc-title">What this module didn't cover</div>
       <div class="cc-body">
         <strong>Weighted/probabilistic clustering:</strong> Real production systems sometimes weight edges by match confidence and use community-detection algorithms (e.g. label propagation with edge weights, or graph cuts) instead of treating every match edge as equally binding. We treated all match edges as equally strong, which is the simpler and more common starting point but not the only approach.<br><br>
-        <strong>Cluster-splitting / cluster review workflows:</strong> We named the bridge-edge mitigation (flag oversized clusters for review) but didn't build the actual review-queue logic or a "split this cluster" operational tool — that's a natural follow-on to Module 05's review queue concept, applied at the cluster level instead of the pair level.<br><br>
+        <strong>Cluster-splitting / cluster review workflows:</strong> We named the bridge-edge mitigation (flag oversized clusters for review) but didn't build the actual review-queue logic or a "split this cluster" operational tool — that's a natural follow-on to Module 06's review queue concept, applied at the cluster level instead of the pair level.<br><br>
         <strong>GraphFrames internals:</strong> We used <code>connectedComponents()</code> as a black box. The actual algorithm (a distributed variant of Hash-to-Min / Alternating-update label propagation) and its convergence/iteration-count behavior at scale weren't traced.<br><br>
         <strong>Graph algorithms beyond connectivity:</strong> Centrality measures, shortest-path, or community detection beyond connected components — useful for fraud-ring detection or relationship graphs, but out of scope for straightforward entity-resolution clustering.
       </div>
@@ -725,7 +725,7 @@ golden_df = clustered_df.withColumn(<span class="s">"rn"</span>, F.row_number().
 
 <footer>
   <div class="foot-inner">
-    <span class="foot-l">the-learning-lab · Module 07 · Graph Theory &amp; Clustering</span>
+    <span class="foot-l">the-learning-lab · Module 08 · Graph Theory &amp; Clustering</span>
     <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
   </div>
 </footer>

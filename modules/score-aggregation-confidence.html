@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Score Aggregation &amp; Confidence — Module 05</title>
-<meta name="description" content="Learn how to tune match/review/no-match thresholds using labeled data, precision/recall curves, confidence bands, and review queue sizing — Module 05 of The Learning Lab's MDM/Spark track.">
+<title>Score Aggregation &amp; Confidence — Module 06</title>
+<meta name="description" content="Learn how to tune match/review/no-match thresholds using labeled data, precision/recall curves, confidence bands, and review queue sizing — Module 06 of The Learning Lab's MDM/Spark track.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -258,7 +258,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
     <div class="nav-logo">
       <a href="../index.html">the-learning-lab</a>
       <span class="sep">/</span><span>MDM · Spark</span>
-      <span class="sep">/</span><span class="nav-mod">Module 05</span>
+      <span class="sep">/</span><span class="nav-mod">Module 06</span>
     </div>
     <span style="font-family:var(--mo);font-size:11px;color:var(--faint)">Score Aggregation &amp; Confidence</span>
   </div>
@@ -283,7 +283,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <!-- ══════ STAGE 0 — OVERVIEW ══════ -->
 <div class="stage on" id="s0">
 <div class="wrap">
-  <p class="sec-eye">Module 05 · MDM / Spark Track · Phase 2 — The ER Algorithms</p>
+  <p class="sec-eye">Module 06 · MDM / Spark Track · Phase 2 — The ER Algorithms</p>
   <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">Score Aggregation &amp; Confidence</h1>
   <p class="sec-sub">Module 04 gave you the ScoringPlugin — field weights, null renormalization, a composite score, and two thresholds that slice the number line into match / review / no-match. But those thresholds were <em>guesses</em>: 0.80 and 0.55, chosen by intuition. This module replaces intuition with evidence. You'll learn to <strong>measure</strong> how good your thresholds are, <strong>tune</strong> them against labeled data, and <strong>size</strong> the review queue so it actually fits your team's capacity.</p>
 
@@ -818,11 +818,11 @@ df = df.withColumn(<span class="s">"confidence"</span>, confidence)
 <!-- ══════ STAGE 7 — THRESHOLD TUNER PATTERN ══════ -->
 <div class="stage" id="s7">
 <div class="wrap">
-  <p class="sec-eye">Stage 07.2</p>
+  <p class="sec-eye">Stage 07</p>
   <h2 class="sec-h">The Full ThresholdTuner Pattern</h2>
   <p class="sec-sub">Every mechanism from the last six stages — labeled data, confusion matrix, precision/recall, PR curve, confidence calibration, queue sizing — assembles into one utility that runs alongside your ScoringPlugin. Built one method at a time below, against the same toy dataset throughout, so you can watch real numbers move at each step before seeing the whole class together.</p>
 
-  <div class="note"><strong>Looking for more reps on the PySpark idioms themselves?</strong> This stage shows each idiom once, anchored to this exact class. <a href="score-aggregation-confidence-code.html" target="_blank">Stage 07.1 — the code companion</a> drills the same idioms with fresh examples, multiple reps each, separate from this walkthrough. Optional — this stage stands on its own.</div>
+  <div class="note"><strong>Looking for more reps on the PySpark idioms themselves?</strong> This stage shows each idiom once, anchored to this exact class. The preceding <a href="score-aggregation-confidence-code.html">Module 05 — Code Companion</a> drills the same idioms with fresh examples, multiple reps each, separate from this walkthrough. Optional — this module stands on its own.</div>
 
   <h3><span class="bar"></span>The toy dataset</h3>
   <p>Eight labeled pairs — a human already said which ones are real matches. Every method below runs against these same eight rows.</p>
@@ -1241,7 +1241,7 @@ q = tuner.queue_size(scored_df, match_t=<span class="n">0.80</span>, review_t=<s
 
   <div class="unlock" style="margin-top:34px">
     <span class="unlock-icon">✓</span>
-    <div class="unlock-body"><strong>Module 05 complete.</strong> You can now tune thresholds against labeled data, read a precision-recall trade-off, size a review queue for your team, and calibrate composite scores into confidence bands. Your ScoringPlugin's thresholds are no longer guesses — they're evidence-based settings fitted to your data. Next up: <strong>Module 06 · LSH &amp; MinHash</strong>, where you move from scoring pairs to <em>finding</em> pairs at scale without comparing everything to everything.</div>
+    <div class="unlock-body"><strong>Module 06 complete.</strong> You can now tune thresholds against labeled data, read a precision-recall trade-off, size a review queue for your team, and calibrate composite scores into confidence bands. Your ScoringPlugin's thresholds are no longer guesses — they're evidence-based settings fitted to your data. Next up: <strong>Module 07 · LSH &amp; MinHash</strong>, where you move from scoring pairs to <em>finding</em> pairs at scale without comparing everything to everything.</div>
   </div>
 
   <div class="concept-grid" style="margin-top:26px">
@@ -1262,7 +1262,7 @@ q = tuner.queue_size(scored_df, match_t=<span class="n">0.80</span>, review_t=<s
 
 <footer>
   <div class="foot-inner">
-    <span class="foot-l">the-learning-lab · Module 05 · Score Aggregation &amp; Confidence</span>
+    <span class="foot-l">the-learning-lab · Module 06 · Score Aggregation &amp; Confidence</span>
     <span class="foot-r"><a href="../index.html">← all modules</a> &nbsp;·&nbsp; <a href="../roadmap.html">roadmap</a></span>
   </div>
 </footer>
