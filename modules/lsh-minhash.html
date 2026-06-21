@@ -263,33 +263,35 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 
   <p>In Module 00 you saw that standard exact blocking key joins (e.g. comparing records only if they have the exact same `zip_code` or `soundex(last_name)`) are fast but brittle: a single typo splits the keys, and the records are never compared. MinHash and LSH solve this by projecting your records into hash buckets where similar records collide with high probability, even if they have typos across multiple fields.</p>
 
-  <h3><span class="bar"></span>The exact scaling challenge</h3>
-  <p>You have a database of 1 million customers. If you run a naive nested loop to find matches, you must compare record 1 to record 2, record 1 to record 3, all the way to $N \times (N - 1) / 2$. For 1 million records, that requires **500 billion comparisons**. If each comparison takes 1 microsecond, your pipeline will run for **5.7 days**. If you scale to 10 million records, it will take **1.5 years**. Locality Sensitive Hashing cuts this search space down by 99.9% in minutes.</p>
+  <h3><span class="bar"></span>The one question this whole module answers</h3>
+  <p>You have a million customer records and you can't afford to compare them all to each other. So here's the single question every stage below is chasing:</p>
+  <p style="font-size:18px;line-height:1.5;margin:14px 0;padding:14px 18px;border-left:3px solid var(--amber);background:rgba(255,255,255,0.02)"><strong>How do you find just the handful of record pairs that are actually similar — without ever looking at most pairs at all?</strong></p>
+  <p>That "without ever looking at most pairs" is the hard part. A naive nested loop compares record 1 to every other record, then record 2 to every other, all the way to $N \times (N-1)/2$ pairs. For 1 million records that's **500 billion comparisons** — at 1 microsecond each, your pipeline runs for **5.7 days**; at 10 million records, **1.5 years**. We need a trick that surfaces the similar pairs directly, never paying for the rest. The chain below builds that trick one link at a time — each link exists only because the previous one left a gap.</p>
 
   <div class="concept-grid">
     <div class="cc" style="--acc:var(--amber)">
-      <div class="cc-num">Concept 01</div>
-      <div class="cc-title">Jaccard Similarity</div>
-      <div class="cc-body">The mathematical ground truth for token similarity. It is the size of the intersection of two token sets divided by the size of their union. Essential for measuring shingled strings.</div>
+      <div class="cc-num">Link 01 · Jaccard</div>
+      <div class="cc-title">"How similar are two records?"</div>
+      <div class="cc-body">First we need a number for similarity at all. Jaccard answers "of all the pieces these two records have between them, what fraction do they share?" Everything downstream is built to estimate this one number cheaply.</div>
     </div>
     <div class="cc" style="--acc:var(--teal)">
-      <div class="cc-num">Concept 02</div>
-      <div class="cc-title">MinHash Signatures</div>
-      <div class="cc-body">A compression mechanism. Maps a large shingle set to a small vector of $K$ integers, such that the probability of signature elements matching is exactly their Jaccard similarity.</div>
+      <div class="cc-num">Link 02 · MinHash</div>
+      <div class="cc-title">"Can we estimate it without the full record?"</div>
+      <div class="cc-body">Comparing whole records is expensive. MinHash shrinks each record to a short fingerprint of $K$ numbers — built so that the fraction of fingerprint slots two records share <em>is</em> their Jaccard similarity.</div>
     </div>
     <div class="cc" style="--acc:var(--violet)">
-      <div class="cc-num">Concept 03</div>
-      <div class="cc-title">Banding (LSH)</div>
-      <div class="cc-body">Slicing signatures into $b$ bands of $r$ rows. Records are placed in buckets per band. Colliding in *at least one* band makes them a candidate pair, bypassing all-pairs comparison.</div>
+      <div class="cc-num">Link 03 · Banding</div>
+      <div class="cc-title">"Can we avoid comparing fingerprints too?"</div>
+      <div class="cc-body">Even comparing every pair of fingerprints is still too many. Banding sorts records into bins by chunks of their fingerprint, so we only ever compare records that already landed in the same bin.</div>
     </div>
     <div class="cc" style="--acc:var(--coral)">
-      <div class="cc-num">Concept 04</div>
-      <div class="cc-title">S-Curve Tuning</div>
-      <div class="cc-body">The non-linear probability curve $P = 1 - (1 - s^r)^b$. By adjusting $b$ and $r$, you tune a mathematical threshold that controls your candidate generator's precision and recall.</div>
+      <div class="cc-num">Link 04 · The S-curve</div>
+      <div class="cc-title">"How picky should the bins be?"</div>
+      <div class="cc-body">Bin size is the one knob you turn. Make it stricter and you catch only near-identical records; looser and you catch typo-heavy ones too — at the cost of junk. The S-curve is the picture of that trade-off.</div>
     </div>
   </div>
 
-  <div class="note"><strong>How to use this module:</strong> Each stage builds one mechanistic piece. Stage 01 visualizes the scaling wall. Stage 02 covers Jaccard math. Stage 03 explains MinHash signature matrices. Stages 04–05 trace the LSH banding math and parameter selection. Stage 06 shows the PySpark ML pattern. Stage 07 shows how it fits in a hybrid pipeline. Stage 08 provides a live visual simulator. Stage 09 is the self-test.</div>
+  <div class="note"><strong>How to read this module:</strong> it's a single chain, not a menu. Each stage ends by exposing a gap that the next stage exists to close — Jaccard gives us the target number, but it's too slow to compute → MinHash estimates it cheaply, but comparing fingerprints is still $O(N^2)$ → banding removes that too, but introduces one knob → the S-curve shows how to set the knob. Read it top to bottom and you should never have to ask "why are we doing this next?" — the previous stage will have told you.</div>
 </div>
 </div>
 
@@ -301,7 +303,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   <h2 class="sec-h">The N² Scaling Wall &amp; Fuzzy Blocking</h2>
   <p class="sec-sub">To perform entity resolution, you must compare records. But comparing everything to everything creates a quadratic explosion ($N^2$) that crashes cluster memory. Exact blocking stops this explosion, but at a severe cost to match recall.</p>
 
-  <h3><span class="bar"></span>The quadratic explosion</h3>
+  <h3><span class="bar"></span>Why you can't just compare everything</h3>
   <p>The math is simple and unforgiving. As the number of records $N$ grows, the number of candidate pairs grows quadratically:</p>
 
   <div class="data-table-wrap">
@@ -316,7 +318,7 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   </table>
   </div>
 
-  <h3><span class="bar"></span>Exact Blocking: A rigid compromise</h3>
+  <h3><span class="bar"></span>The usual escape hatch — and where it leaks</h3>
   <p>To survive, pipelines use **Blocking Keys** (e.g. comparing records only if they have the exact same `zip_code` or `soundex(last_name)`). While this reduces the comparisons from $O(N^2)$ to local partitions, it introduces a hard boundary:</p>
 
   <div class="herring">
@@ -336,14 +338,16 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 
   <div class="trap"><strong>The blocking key trap:</strong> Adding more blocking keys (e.g., zip, phone, email) increases your chances of finding matches, but running multiple exact join queries creates massive shuffle overhead. We need an algorithm that hashes records based on similarity directly — Locality Sensitive Hashing.</div>
 
-  <h3><span class="bar"></span>The Goal of LSH</h3>
-  <p>LSH is a **hashing family** where:
+  <h3><span class="bar"></span>What we actually want: hashing by similarity</h3>
+  <p>So exact blocking is too rigid (one typo and the pair is lost forever) and all-pairs is too slow. What we want sits between them — a hashing family where:
   <ul>
     <li>If two records are **highly similar**, their hash values are **highly likely to collide**.</li>
     <li>If two records are **different**, their hash values are **highly unlikely to collide**.</li>
   </ul>
-  By placing records into hash buckets, we restrict our pairwise comparisons *only* to records that share a bucket.
+  Place records into buckets with that property, and you only ever compare records that share a bucket. That's Locality Sensitive Hashing.
   </p>
+
+  <div class="note" style="border-left:3px solid var(--violet)"><strong>The gap this leaves open →</strong> "Highly similar" is hand-wavy. Before we can build a hash that fires on similarity, we have to <em>define</em> similarity as a number — one we can point at and say "these two are 0.7 alike." That number is <strong>Jaccard similarity</strong>, and it's the next link in the chain.</div>
 </div>
 </div>
 
@@ -353,29 +357,29 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="wrap">
   <p class="sec-eye">Stage 02</p>
   <h2 class="sec-h">Jaccard Similarity — Token Sets</h2>
-  <p class="sec-sub">To measure similarity between two records, we convert them into sets of tokens (shingles). Jaccard similarity is the overlap metric that forms the foundation of MinHash and LSH.</p>
-
-  <h3><span class="bar"></span>String Shingling (k-grams)</h3>
-  <p>A shingle is a contiguous substring of length $k$ (character level) or a token of length $n$ (word level). Character shingling turns a raw string into a set, absorbing minor typos.</p>
-  <p>Let's use 2-shingles ($k=2$) on name fields (case-normalized, whitespace collapsed):</p>
-  <code>"JON"</code> &rarr; <code>{'JO', 'ON'}</code><br>
-  <code>"JOHN"</code> &rarr; <code>{'JO', 'OH', 'HN'}</code>
-
-  <h3><span class="bar"></span>The Jaccard Formula</h3>
-  <p>The Jaccard similarity $J(A, B)$ of two sets $A$ and $B$ is the size of their intersection divided by the size of their union:</p>
-  <div style="font-family:var(--mo);font-size:16px;margin:16px 0;text-align:center;color:var(--amber)">
-    J(A, B) = |A ∩ B| / |A ∪ B|
-  </div>
+  <p class="sec-sub">We need a number for "how similar are two records." It comes from one simple idea: chop each record into little pieces, then ask what fraction of pieces the two records share. That fraction is Jaccard similarity — the target number the rest of the module spends its energy estimating cheaply.</p>
 
   <div class="analogy">
-    <div class="analogy-eye">Analogy — The Venn Diagram overlay</div>
+    <div class="analogy-eye">The picture to hold for the whole module — two kids and their stickers</div>
     <div class="analogy-body">
-      Imagine you have two blueprints. If you slide one blueprint over the other, the <em>intersection</em> is the area where the drawings line up exactly. The <em>union</em> is the total area covered by both blueprints combined.<br><br>
-      Jaccard similarity is the percentage of the total area that overlaps. If the blueprints are identical, overlap is 100% (1.0). If they share absolutely nothing, overlap is 0% (0.0). A single typo is just a small line that doesn't overlap, keeping the overall percentage high.
+      Give each record a kid. The kid's <strong>sticker collection</strong> is the set of little pieces that record breaks into. Two records are "similar" when their two kids own a lot of the <em>same</em> stickers.<br><br>
+      Jaccard is just: <em>out of every distinct sticker the two kids own between them, what fraction do they both have?</em> Identical collections → 1.0. Nothing in common → 0.0. One typo only swaps out a sticker or two, so the fraction stays high — which is exactly why this survives messy data. <span style="color:var(--muted)">Keep these two kids in mind; every later stage is just a faster way to estimate this one fraction.</span>
     </div>
   </div>
 
-  <h3><span class="bar"></span>Worked Examples — 2-shingles</h3>
+  <h3><span class="bar"></span>What the "stickers" actually are (shingles)</h3>
+  <p>The pieces are called <strong>shingles</strong>: a shingle is a contiguous substring of length $k$ (character level) or a token of length $n$ (word level). Character shingling turns a raw string into a set of stickers, absorbing minor typos.</p>
+  <p>Let's use 2-shingles ($k=2$) on name fields (case-normalized, whitespace collapsed):</p>
+  <code>"JON"</code> &rarr; stickers <code>{'JO', 'ON'}</code><br>
+  <code>"JOHN"</code> &rarr; stickers <code>{'JO', 'OH', 'HN'}</code>
+
+  <h3><span class="bar"></span>The fraction, written as a formula</h3>
+  <p>Now that the picture is in place, the formula is just it in symbols. Calling the two sticker collections $A$ and $B$, Jaccard similarity is the shared stickers ($A \cap B$) over all distinct stickers ($A \cup B$):</p>
+  <div style="font-family:var(--mo);font-size:16px;margin:16px 0;text-align:center;color:var(--amber)">
+    J(A, B) = |A ∩ B| / |A ∪ B|  ·  "shared stickers ÷ all stickers"
+  </div>
+
+  <h3><span class="bar"></span>Watch the fraction on real names</h3>
   <div class="data-table-wrap">
   <table class="data-table">
     <tr><th>String A</th><th>String B</th><th>Set A</th><th>Set B</th><th>Intersection ($A \cap B$)</th><th>Union ($A \cup B$)</th><th>Jaccard $J(A, B)$</th></tr>
@@ -387,6 +391,8 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   </div>
 
   <div class="note"><strong>Why shingle size matters:</strong> If $k$ is too small (e.g. 1-shingles, plain characters), strings with completely different meanings share high overlap (e.g., "MARIA" and "AMIRA" share 100% of characters). If $k$ is too large (e.g. 5-shingles), a single typo ruins multiple shingles, making Jaccard fall to 0. For name/address data, **2-grams or 3-grams** are the optimal sweet spot.</div>
+
+  <div class="note" style="border-left:3px solid var(--violet)"><strong>The gap this leaves open →</strong> We have our target number. But look at what computing it costs: to get the shared fraction you must hold both kids' <em>full</em> sticker collections and intersect them — and to find matches you'd do that for every pair of records. That's the same all-pairs bill from Stage 01, just dressed up. The next question is the whole trick: <strong>can we estimate that same fraction from a tiny fingerprint, without ever comparing full collections?</strong> That's MinHash.</div>
 </div>
 </div>
 
@@ -395,57 +401,49 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="stage" id="s3">
 <div class="wrap">
   <p class="sec-eye">Stage 03</p>
-  <h2 class="sec-h">The MinHash Trick — Signature Matrices</h2>
-  <p class="sec-sub">To compute Jaccard similarity, you must compare shingle sets directly. But distributing sets across a cluster is slow and memory-intensive. MinHashing compresses shingle sets into fixed-size integer signatures that preserve Jaccard similarity.</p>
+  <h2 class="sec-h">The MinHash Trick — From Sets to Fingerprints</h2>
+  <p class="sec-sub">This is the sleight of hand the whole module is built on. We're going to estimate the shared-sticker fraction from a short fingerprint — and we'll never once compare two full sticker collections to do it. The mechanism looks like a game.</p>
 
-  <h3><span class="bar"></span>The MinHash Core Property</h3>
-  <p>If we apply a random permutation (shuffle) to the rows of our shingles universe, the index of the first row containing a <code>1</code> for a record is its **MinHash**. </p>
-  <p>The mathematical magic of MinHash is that:
-  <div style="font-family:var(--mo);font-size:14px;margin:16px 0;text-align:center;color:var(--amber)">
-    P( MinHash(A) == MinHash(B) ) = Jaccard(A, B)
-  </div>
-  By generating $K$ different random permutations, we get $K$ MinHash values for each record. This vector of $K$ values is the record's **MinHash Signature**. The fraction of matching elements between two signatures is an unbiased estimator of their Jaccard similarity.
-  </p>
-
-  <h3><span class="bar"></span>Worked Example — The Permutation Matrix</h3>
-  <p>Let's take three shingle sets: Record A: <code>{JO, ON}</code>, Record B: <code>{JO, ON, OH}</code>, Record C: <code>{RI, IA}</code>. We apply 3 random hash functions (representing permutations of the shingles universe):</p>
-
-  <div class="data-table-wrap">
-  <table class="data-table">
-    <tr><th>Shingle</th><th>A</th><th>B</th><th>C</th><th>Hash 1: $h_1(x) = (x+1)\%5$</th><th>Hash 2: $h_2(x) = (3x+1)\%5$</th><th>Hash 3: $h_3(x) = (2x+4)\%5$</th></tr>
-    <tr><td>JO (idx 0)</td><td>1</td><td>1</td><td>0</td><td>1</td><td>1</td><td>4</td></tr>
-    <tr><td>ON (idx 1)</td><td>1</td><td>1</td><td>0</td><td>2</td><td>4</td><td>1</td></tr>
-    <tr class="hl-row"><td>OH (idx 2)</td><td>0</td><td>1</td><td>0</td><td>3</td><td>2</td><td>3</td></tr>
-    <tr><td>RI (idx 3)</td><td>0</td><td>0</td><td>1</td><td>4</td><td>0</td><td>0</td></tr>
-    <tr><td>IA (idx 4)</td><td>0</td><td>0</td><td>1</td><td>0</td><td>3</td><td>2</td></tr>
-    <tr class="tot-row">
-      <td><strong>MinHash Signature:</strong></td>
-      <td><span class="badge b-amber">[0, 1, 1]</span></td>
-      <td><span class="badge b-teal">[0, 1, 1]</span></td>
-      <td><span class="badge b-violet">[0, 0, 0]</span></td>
-      <td colspan="3"><span class="faint">Signature elements are the minimum hash value where record has a 1</span></td>
-    </tr>
-  </table>
-  </div>
-
-  <div class="debug-trace">
-    <div class="dt-header">signature generation trace</div>
-    <div class="dt-step">
-      <div class="dt-line">Tracing Hash 1 for Record B (shingles: JO, ON, OH):</div>
-      <div class="dt-state">hash_values = { JO: h1(0)=1, ON: h1(1)=2, OH: h1(2)=3 } &rarr; min is JO with h1(0) = 0 (after index wrap) or 1</div>
-      <div class="dt-why">The minimum value of Hash 1 for the shingles present in B is <b>0</b> (corresponding to shingles index 4 if we wrap, or index 0 depending on permutation). In the table: for Hash 1, the minimum hash value for A's shingles (JO, ON) is h1(4)=0 is not present, h1(0)=1 is. So MinHash for A under Hash 1 is 1 (or 0 for index 4 if we look at the values: h1 value at idx 4 is 0 but A has 0 there. So A has 1s at idx 0 and idx 1. Hash 1 values are: idx 0 is 1, idx 1 is 2. The min hash value for A is 1). For B, 1s are at 0, 1, 2. Hash 1 values are 1, 2, 3. Min value is 1. For C, 1s are at 3, 4. Hash 1 values are 4, 0. Min value is 0.</div>
+  <h3><span class="bar"></span>The bag trick</h3>
+  <div class="analogy">
+    <div class="analogy-eye">Same two kids — now play a game with one bag</div>
+    <div class="analogy-body">
+      Take <em>every</em> distinct sticker the two kids own between them and throw them all into one bag. Shuffle it. Now pull stickers out one at a time, and each kid watches for <strong>the first sticker pulled that they personally own</strong> — that's their answer for this round.<br><br>
+      Here's the only rule that matters: the two kids give the <strong>same answer</strong> exactly when the first sticker pulled out of the bag — the very first one either of them owns — happens to be one they <em>both</em> own. If the first one out is owned by only one kid, their answers differ that round.<br><br>
+      Play the round once and you get a yes/no. Play it many times (re-shuffle each round) and the <em>fraction of rounds they agree</em> creeps toward something meaningful — and you never compared their collections directly. You only ever asked each kid one thing per round: "what's your first?"
     </div>
   </div>
 
-  <h3><span class="bar"></span>Comparing Signatures vs Comparing Sets</h3>
-  <p>Instead of comparing large, variable-sized sets across the cluster, we now compare fixed-size arrays (e.g. $K=100$ integers).
+  <h3><span class="bar"></span>Watch it happen — and watch the number emerge</h3>
+  <p>Let Ana own stickers <code>{A, B, C, D}</code> and Ben own <code>{A, B, C, E}</code>. Between them the bag holds 5 distinct stickers <code>{A, B, C, D, E}</code>; they share 3 of them <code>{A, B, C}</code>. So their true Jaccard is $3/5 = \mathbf{0.6}$ — that's the number we're secretly trying to recover, <em>without computing it directly</em>. Five shuffles:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Round</th><th>Order pulled from bag</th><th>Ana's first owned</th><th>Ben's first owned</th><th>Agree?</th></tr>
+    <tr><td>1</td><td>D, A, E, B, C</td><td>D</td><td>A</td><td>✗ (first out, D, is Ana-only)</td></tr>
+    <tr class="hl-row"><td>2</td><td>C, E, A, B, D</td><td>C</td><td>C</td><td>✓ (first out, C, is shared)</td></tr>
+    <tr><td>3</td><td>E, D, A, B, C</td><td>D</td><td>E</td><td>✗ (first out, E, is Ben-only)</td></tr>
+    <tr class="hl-row"><td>4</td><td>B, A, C, E, D</td><td>B</td><td>B</td><td>✓ (first out, B, is shared)</td></tr>
+    <tr class="hl-row"><td>5</td><td>A, C, E, B, D</td><td>A</td><td>A</td><td>✓ (first out, A, is shared)</td></tr>
+    <tr class="tot-row"><td colspan="4"><strong>Agreement rate over 5 rounds</strong></td><td><span class="badge b-amber">3 / 5 = 0.60</span></td></tr>
+  </table>
+  </div>
+
+  <p>Three agreements out of five — <strong>0.60</strong>, landing right on the true Jaccard. That's not luck. Look at column "Agree?": the round agrees precisely when the <em>first sticker out of the bag</em> is one of the shared ones. Since the shuffle is fair, the first sticker out is equally likely to be any of the 5 in the bag — so the chance it's a shared one is exactly $3/5$. The agreement rate <em>is</em> the shared fraction. Written as the one line you'll see in textbooks:</p>
+  <div style="font-family:var(--mo);font-size:14px;margin:16px 0;text-align:center;color:var(--amber)">
+    P( both kids give the same answer ) = |shared| / |all| = Jaccard(A, B)
+  </div>
+  <p>Five rounds is noisy (it could have come out 2/5 or 4/5 on a different day). Play <strong>$K$ rounds</strong> — say $K=100$ — and the agreement rate tightens around the true 0.6. That's the entire idea: <em>turn an expensive set-overlap into a cheap coin we can flip as many times as we like.</em></p>
+
+  <h3><span class="bar"></span>From rounds to a fingerprint (the signature)</h3>
+  <p>In code we don't literally shuffle a bag — each "shuffle" is a hash function that orders the stickers, and each kid's answer for that round is the smallest hash value among the stickers they own (hence <strong>Min</strong>-Hash). Record each kid's $K$ answers in order and you get their <strong>MinHash signature</strong>: a fixed-length vector of $K$ numbers, the same length for everyone no matter how many stickers they had.</p>
   <ul>
-    <li>Signature similarity $Sim(A, B) = \frac{\text{matching slots}}{K}$</li>
-    <li>For A and B: matches at index 1, 2, 3 &rarr; $3 / 3 = 1.0$ (approximating Jaccard 0.67)</li>
-    <li>For A and C: matches at index 1 &rarr; $0 / 3 = 0.0$ (approximating Jaccard 0.0)</li>
+    <li>A 200-sticker record and a 3-sticker record both compress to, say, $K=100$ numbers.</li>
+    <li>To estimate two records' Jaccard, you don't touch their stickers again — you just count how many of the $K$ signature slots match, position by position, and divide by $K$.</li>
+    <li>Bigger $K$ → more rounds → tighter estimate. That's the only knob here, and it just trades compute for accuracy.</li>
   </ul>
-  As $K$ increases, the estimated signature similarity converges to the true Jaccard similarity.
-  </p>
+
+  <div class="note" style="border-left:3px solid var(--violet)"><strong>The gap this leaves open →</strong> We've shrunk every record to $K$ numbers, and we can estimate similarity by comparing two fingerprints slot-by-slot. Huge win — but notice what we <em>haven't</em> fixed: to actually <em>find</em> the matches we'd still compare every fingerprint against every other fingerprint. That's $N^2$ all over again, just cheaper per comparison. The last link asks the boldest question yet: <strong>can we avoid comparing fingerprints to each other at all?</strong> That's banding.</div>
 </div>
 </div>
 
@@ -457,8 +455,18 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   <h2 class="sec-h">Banding &amp; Locality Sensitive Hashing</h2>
   <p class="sec-sub">MinHash signatures compress your data, but comparing all signature pairs is still $O(N^2)$. Banding is the magic step that groups similar signatures into hash buckets without performing a single pairwise comparison.</p>
 
-  <h3><span class="bar"></span>The Banding Mechanism</h3>
-  <p>Take your MinHash signature of length $K$ (e.g., $K = 100$ integers). Slice it into $b$ non-overlapping bands, where each band contains exactly $r$ rows. Thus, $K = b \times r$.</p>
+  <h3><span class="bar"></span>The idea: sort kids into bins, then only look inside a bin</h3>
+  <div class="analogy">
+    <div class="analogy-eye">Still the same kids — now we stop comparing fingerprints one-by-one</div>
+    <div class="analogy-body">
+      Each kid now carries a fingerprint: their $K$ round-answers in a row. Chop that fingerprint into a few equal <strong>chunks</strong> — say a 100-number fingerprint into 20 chunks of 5 numbers each.<br><br>
+      Now run a mailroom. For each chunk position, every kid drops into the <em>bin</em> labelled by the exact contents of that chunk. Two kids land in the same bin for a chunk only if that whole chunk of their fingerprint is <strong>identical</strong>. Then the rule: <strong>any two kids who ever share a bin become a candidate pair</strong> — and those are the only pairs you ever actually compare.<br><br>
+      Why this is safe: a real near-duplicate agrees on most rounds, so at least one of its chunks will match exactly and land it in a shared bin. A single typo only disturbs a round or two — it can't ruin every chunk. So you skip almost all pairs, yet rarely drop a true match. <em>You never compared two fingerprints directly; the bins did the work.</em>
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>The same thing in symbols</h3>
+  <p>"Fingerprint of $K$ numbers, chopped into chunks" written formally: take the MinHash signature of length $K$ and slice it into $b$ non-overlapping <strong>bands</strong> ("chunks"), each holding exactly $r$ <strong>rows</strong> ("numbers per chunk"). So $K = b \times r$. Here $K=9$ sliced into $b=3$ bands of $r=3$:</p>
 
   <div class="data-table-wrap" style="max-width: 600px; margin: 20px auto;">
   <table class="data-table" style="text-align: center;">
@@ -467,23 +475,15 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   </table>
   </div>
 
-  <p>For each band, we pass the $r$ integers into a standard hash function (e.g., MurmurHash) that maps the vector to a bucket ID.
+  <p>The "bin" is just a hash bucket: for each band we feed its $r$ integers into a standard hash function (e.g. MurmurHash) to get a bucket ID. That makes the mailroom concrete —
   <ul>
-    <li>If two records share the **exact same signature elements** in a band, they hash to the same bucket ID for that band.</li>
-    <li>If they collide in **at least one** of the $b$ bands, they are nominated as a **candidate pair**.</li>
+    <li>Two records with the **exact same signature elements** in a band hash to the **same bucket ID** for that band (same bin).</li>
+    <li>Collide in **at least one** of the $b$ bands → nominated as a **candidate pair**.</li>
   </ul>
   </p>
 
-  <div class="analogy">
-    <div class="analogy-eye">Analogy — sorting mail into bags</div>
-    <div class="analogy-body">
-      Imagine you have thousands of books. You want to find books with similar chapters. Comparing every page of every book is too slow.<br><br>
-      Instead, you divide each book's summary into 5 sections (bands). You write the words of section 1 on a card, put it in an envelope, and drop it in slot 1. You do the same for sections 2 through 5. If two books share the <em>exact same envelope contents</em> in slot 3, they land in the same bag.<br><br>
-      You only compare books that land in the same bag. Even if a book has a typo in section 1, it will still collide in sections 2, 3, 4, or 5, ensuring you don't miss it.
-    </div>
-  </div>
-
-  <h3><span class="bar"></span>The Red Herring: "LSH is a replacement for scoring"</h3>
+  <h3><span class="bar"></span>One warning before we tune it</h3>
+  <p>The banding mailroom is now a complete candidate generator — but it's tempting to over-trust it. Before we turn the one knob it exposes, settle what banding is and isn't <em>for</em>:</p>
 
   <div class="herring">
     <div class="herring-col left">
@@ -499,6 +499,8 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
       <p>LSH saves the cluster; ScoringPlugin saves the data quality.</p>
     </div>
   </div>
+
+  <div class="note" style="border-left:3px solid var(--violet)"><strong>The gap this leaves open →</strong> Banding works, but it handed us a knob and walked off: <em>how big should each chunk be, and how many chunks?</em> Make chunks big and a pair must agree on a long run of rounds to ever share a bin — very picky, misses typo-heavy matches. Make them small and near-strangers start colliding — junk floods in. The last stage is the dial for exactly this: how picky the bins are, and the S-shaped curve that picture makes.</div>
 </div>
 </div>
 
@@ -508,40 +510,63 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="wrap">
   <p class="sec-eye">Stage 05</p>
   <h2 class="sec-h">Tuning LSH — The S-Curve Math</h2>
-  <p class="sec-sub">The probability of two records colliding in LSH is a non-linear function of their Jaccard similarity. By adjusting $b$ (bands) and $r$ (rows), you shape this curve to match your target similarity threshold.</p>
+  <p class="sec-sub">The knob from the last stage is really one question: how picky are the bins? Pick the chunk size and chunk count, and you've decided which pairs collide. Let's feel that out on real numbers first — the famous "S-curve" is just the shape those numbers trace, not a formula to memorize.</p>
 
-  <h3><span class="bar"></span>The Collision Probability Formula</h3>
-  <p>Let $s$ be the true Jaccard similarity between two records.
+  <h3><span class="bar"></span>Trace one pair through the bins</h3>
+  <p>Take a config of $b = 20$ chunks ("bands") of $r = 5$ rounds each ("rows"), and ask: a pair that's truly $s = 0.7$ alike — what's the chance they share a bin? Walk it, one step at a time:</p>
+
+  <div class="debug-trace">
+    <div class="dt-header">does this pair land in a shared bin?  (s = 0.70, r = 5, b = 20)</div>
+    <div class="dt-step">
+      <div class="dt-line">1 · For ONE chunk to match, all 5 of its rounds must agree.</div>
+      <div class="dt-state">each round agrees with prob s = 0.7  →  whole chunk matches with prob 0.7⁵ ≈ <b>0.168</b>  (~1 in 6)</div>
+      <div class="dt-why">A single chunk matching is unlikely — that feels like bad news for catching this pair.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">2 · But you only need ONE of the 20 chunks to match.</div>
+      <div class="dt-state">chance a given chunk does NOT match = 1 − 0.168 = 0.832  →  chance ALL 20 fail = 0.832²⁰ ≈ <b>0.025</b></div>
+      <div class="dt-why">Twenty independent shots at a 1-in-6 event: almost certainly at least one lands.</div>
+    </div>
+    <div class="dt-step">
+      <div class="dt-line">3 · So they DO share a bin with the leftover probability.</div>
+      <div class="dt-state">P(share a bin) = 1 − 0.025 ≈ <b>0.975</b>  →  a 70%-similar pair is caught ~97% of the time</div>
+    </div>
+  </div>
+
+  <p>Now rerun the exact same walk for a near-stranger at $s = 0.4$: one chunk matches with prob $0.4^5 \approx 0.010$, all 20 fail with prob $0.990^{20} \approx 0.815$, so they share a bin only $\approx \mathbf{0.185}$ — about 18%. That jump — <strong>18% at similarity 0.4, but 97% at 0.7</strong> — is the whole point. The chance stays low for dissimilar pairs, then rises steeply through a narrow band of similarity, then saturates near 1. Plot it and you get an <strong>S</strong>:</p>
+
+  <h3><span class="bar"></span>The same walk, written as a formula</h3>
+  <p>Every step you just traced is one line of algebra. Let $s$ be the true Jaccard similarity:</p>
   <ol>
-    <li>Probability that signatures match in all rows of a single band: $s^r$</li>
-    <li>Probability that signatures do *not* match in a single band: $1 - s^r$</li>
-    <li>Probability that signatures do *not* match in any of the $b$ bands: $(1 - s^r)^b$</li>
-    <li>Probability that signatures match in **at least one** band (collision probability):</li>
+    <li>One chunk's 5 rounds all agree: $s^r$ &nbsp;<span class="faint">(step 1: $0.7^5$)</span></li>
+    <li>That chunk does <em>not</em> fully match: $1 - s^r$</li>
+    <li><em>None</em> of the $b$ chunks match: $(1 - s^r)^b$ &nbsp;<span class="faint">(step 2: $0.832^{20}$)</span></li>
+    <li>At least one chunk matches → they share a bin:</li>
   </ol>
-  </p>
 
   <div style="font-family:var(--mo);font-size:18px;margin:20px 0;text-align:center;color:var(--amber)">
     P(collision) = 1 - (1 - s^r)^b
   </div>
 
-  <p>This formula plots an **S-Curve**. The curve is flat at low similarity, rises steeply near the threshold, and flattens out near 1.0.</p>
+  <p>That's it — the formula is just the trace you already did, with $0.7$ replaced by $s$. Flat at low similarity, steep through the middle, flat near 1.0: the S-curve.</p>
 
-  <h3><span class="bar"></span>The S-Curve Threshold (Elbow)</h3>
-  <p>The "elbow" or transition threshold $t$ where collision probability is exactly 0.50 is approximated by:</p>
+  <h3><span class="bar"></span>Where you set the dial: the threshold</h3>
+  <p>The one number you actually care about is <em>where</em> the curve makes its steep jump — the similarity at which a pair becomes more-likely-than-not to share a bin. That "elbow" threshold $t$ (where collision probability crosses 0.50) is set entirely by your choice of $b$ and $r$:</p>
   <div style="font-family:var(--mo);font-size:16px;margin:12px 0;text-align:center;color:var(--amber)">
     t ≈ (1 / b)^(1 / r)
   </div>
+  <p>So tuning LSH is really just: pick the similarity $t$ you want to catch, then choose $b$ and $r$ that put the elbow there. Watch two configs move the elbow:</p>
 
-  <h3><span class="bar"></span>Worked Table — How $b$ and $r$ shape the curve</h3>
-  <p>Let's compare two configurations for a signature size $K = 100$:</p>
+  <h3><span class="bar"></span>Watch the curve move with $b$ and $r$</h3>
+  <p>Same fingerprint length $K = 100$, two very different dials:</p>
 
   <div class="data-table-wrap">
   <table class="data-table">
     <tr><th>Jaccard $s$</th><th>Config A: $b=20, r=5$ ($t \approx 0.55$)</th><th>Config B: $b=5, r=20$ ($t \approx 0.92$)</th><th>What it means</th></tr>
     <tr><td>0.20</td><td>$1 - (1 - 0.20^5)^{20} \approx \mathbf{0.006}$</td><td>$1 - (1 - 0.20^{20})^5 \approx \mathbf{0.000}$</td><td>Low similarities are safely filtered in both configs.</td></tr>
-    <tr><td>0.50</td><td>$1 - (1 - 0.50^5)^{20} \approx \mathbf{0.474}$</td><td>$1 - (1 - 0.50^{20})^5 \approx \mathbf{0.000}$</td><td>Config A nominates ~47% of these as candidates; Config B drops all.</td></tr>
-    <tr class="hl-row"><td>0.70</td><td>$1 - (1 - 0.70^5)^{20} \approx \mathbf{0.970}$</td><td>$1 - (1 - 0.70^{20})^5 \approx \mathbf{0.004}$</td><td>Config A catches 97% of these (high recall); Config B still drops them.</td></tr>
-    <tr><td>0.90</td><td>$1 - (1 - 0.90^5)^{20} \approx \mathbf{1.000}$</td><td>$1 - (1 - 0.90^{20})^5 \approx \mathbf{0.490}$</td><td>Config A catches all; Config B only catches half.</td></tr>
+    <tr><td>0.50</td><td>$1 - (1 - 0.50^5)^{20} \approx \mathbf{0.470}$</td><td>$1 - (1 - 0.50^{20})^5 \approx \mathbf{0.000}$</td><td>Config A nominates ~47% of these as candidates; Config B drops all.</td></tr>
+    <tr class="hl-row"><td>0.70</td><td>$1 - (1 - 0.70^5)^{20} \approx \mathbf{0.975}$</td><td>$1 - (1 - 0.70^{20})^5 \approx \mathbf{0.004}$</td><td>Config A catches 97% of these (high recall); Config B still drops them.</td></tr>
+    <tr><td>0.90</td><td>$1 - (1 - 0.90^5)^{20} \approx \mathbf{1.000}$</td><td>$1 - (1 - 0.90^{20})^5 \approx \mathbf{0.477}$</td><td>Config A catches all; Config B only catches half.</td></tr>
   </table>
   </div>
 
@@ -551,6 +576,8 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
       <li>**Too few bands $b$ (high $r$):** The threshold shifts right. Your candidate generation is very clean (high precision), but you will miss pairs with moderate typos (low recall).</li>
     </ul>
   </div>
+
+  <div class="note" style="border-left:3px solid var(--teal)"><strong>The chain is complete →</strong> define similarity (Jaccard) → estimate it from a fingerprint (MinHash) → skip the fingerprint comparisons with bins (banding) → set how picky the bins are (the S-curve). Every link closed the gap the one before it left open. From here it's no longer "why" — it's "how, in code." The remaining stages are the PySpark that runs this, where it sits in a real pipeline, and a live tuner to play the dial yourself.</div>
 </div>
 </div>
 
@@ -604,7 +631,7 @@ candidates_df.select(
 
   <div class="trap"><strong>The PySpark LSH Distance Trap:</strong> PySpark's LSH join uses <strong>Jaccard Distance</strong> ($D = 1 - S$), not similarity. If you want to find candidate pairs with Jaccard similarity $\ge 0.70$, you must set <code>threshold=0.30</code>. If you pass <code>threshold=0.70</code>, you are asking for similarity $\ge 0.30$, which will flood your cluster with false positives.</div>
 
-  <h3><span class="bar"></span>Input vs Output Output</h3>
+  <h3><span class="bar"></span>Input vs output</h3>
   <div class="compare-grid">
     <div class="compare-panel">
       <div class="compare-header wrong-header">Input Data (df_vectors)</div>

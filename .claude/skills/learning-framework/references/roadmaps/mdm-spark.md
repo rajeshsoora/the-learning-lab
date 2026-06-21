@@ -92,14 +92,14 @@
 - **Stage 08** Interactive Threshold Tuner — live sliders for match/review thresholds, 200 simulated labeled pairs, real-time precision/recall/F1/queue readouts, 5 presets (conservative, balanced, aggressive, tight review, reset).
 - **Stage 09** Self-test — 8 scenario-recognition questions covering precision failures, sampling bias, queue overflow, calibration per-dataset, the elbow, F1 limitations, calibration table interpretation, calibration drift.
 
-## Module 07 — what was covered (built 2026-06-19)
-11-stage treatment, matching the Module 06 style.
-- **Stage 00** Overview — visualizes LSH blocking in the pipeline; Jaccard, MinHash, Banding, and S-curve tuning.
-- **Stage 01** The N² Wall — growth table of N vs N²/2 comparisons; contrasts rigid blocking keys vs LSH fuzzy blocking.
-- **Stage 02** Jaccard Similarity — k-gram character shingling; Venn diagram analogy; worked shingle intersection/union table.
-- **Stage 03** The MinHash Trick — set compression; random permutations index matching math; worked shingle permutation matrix.
-- **Stage 04** Banding & LSH — dividing signature $K = b \times r$; Murmur hashing bands; "LSH is a replacement for scoring" red herring.
-- **Stage 05** Tuning LSH — S-curve formula $P = 1 - (1 - s^r)^b$; threshold elbow calculation $t \approx (1/b)^{1/r}$; worked b/r tuning table.
+## Module 07 — what was covered (built 2026-06-19; Stages 00–05 rebuilt for flow 2026-06-21)
+11-stage treatment. Stages 00–05 rebuilt as a single descending thread (one spine question + one chained sticker-bag analogy world + tension-handoffs, analogy-first math); Stages 06–09 retained as built.
+- **Stage 00** Overview — states the one spine question (find similar pairs without comparing all pairs); the four links (Jaccard → MinHash → banding → S-curve) framed as a chain, each closing the prior gap.
+- **Stage 01** The N² Wall — growth table of N vs N²/2 comparisons; contrasts rigid blocking keys vs LSH fuzzy blocking; hands off to "we need a number for similarity."
+- **Stage 02** Jaccard Similarity — sticker-collection analogy first (shared ÷ all stickers), then formula; k-gram shingling; worked intersection/union table on real names.
+- **Stage 03** The MinHash Trick — bag-pull analogy (first sticker out that's shared → agreement); hand-verified 5-shuffle illustration where agreement-rate emerges as Jaccard; fingerprint/signature as K rounds.
+- **Stage 04** Banding & LSH — bins/mailroom analogy first (share a whole chunk → same bin → candidate), then $K = b \times r$ + Murmur hashing; "LSH is a replacement for scoring" red herring.
+- **Stage 05** Tuning LSH — traced one pair through the bins (s=0.7 → ~97%, s=0.4 → ~18%) so the S-shape is felt, then S-curve formula $P = 1 - (1 - s^r)^b$; threshold elbow $t \approx (1/b)^{1/r}$; verified b/r tuning table.
 - **Stage 06** PySpark Pattern — RegexTokenizer, NGram, CountVectorizer, MinHashLSH, approxSimilarityJoin; PySpark Jaccard distance trap ($D = 1-S$).
 - **Stage 07** The Hybrid Pipeline — union and distinct of exact blocking and LSH candidates; full Spark pipeline pattern.
 - **Stage 08** Interactive LSH Tuner — live b and r sliders; dynamic SVG S-curve plotting; deterministic band collision simulation on 10 customer records.
