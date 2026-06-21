@@ -105,18 +105,19 @@
 - **Stage 08** Interactive LSH Tuner — live b and r sliders; dynamic SVG S-curve plotting; deterministic band collision simulation on 10 customer records.
 - **Stage 09** Self-test — 8 scenario-recognition questions covering LSH parameters, distance join, shingle size, case tokenization.
 
-## Module 08 — what was covered (built 2026-06-19)
-10-stage treatment, matching the Module 07 style.
-- **Stage 00** Overview — visualizes clustering closing the pipeline; connected components, BFS/DFS, union-find, transitive closure.
-- **Stage 01** From Pairs to Entities — the moved-person scenario (A↔B match, B↔C match, A↔C never scores), motivating why pairwise verdicts alone are insufficient.
-- **Stage 02** Graph Model — ER-to-graph-theory term mapping table; friendship-circle analogy; worked component trace on the moved-person graph.
-- **Stage 03** BFS/DFS Traversal — component-finding algorithm; full debug trace on a 6-record graph (A-B, B-C, D-E, isolated F); cost/scale caveat motivating union-find.
-- **Stage 04** Union-Find — find/union operations; same 6-record graph traced via union-find for direct comparison; path compression explained.
-- **Stage 05 (climax)** Transitive Closure — the "clustering just groups matched pairs" red herring; the bridge-edge failure mode (one weak match fuses two large clusters); cluster-size sanity-check mitigation.
-- **Stage 06** Choosing an Approach — 3-question decision tree (memory fit → Spark-native vs hand-rolled → audit-path needs) + side-by-side comparison table.
-- **Stage 07** PySpark Pattern — GraphFrames `connectedComponents()` from ThresholdTuner match verdicts; checkpoint-dir trap; join-back into Module 03's window-function golden-record selection.
-- **Stage 08** Interactive Cluster Builder — canvas-based union-find widget; click candidate pairs to add edges live; guided sequence demonstrating the transitive-fuse climax visually.
-- **Stage 09** Self-test — 8 scenario-recognition questions covering transitive closure, bridge-edge risk, checkpoint dir, path compression, BFS/DFS vs Spark fit, edge-list sourcing, singleton components.
+## Module 08 — what was covered (built 2026-06-19; flow-rebuilt + §14/§15 folded in 2026-06-21)
+11-stage treatment. **Rebuilt for flow (2026-06-21)** in the same single-descending-thread style as the Module 07 rebuild — was originally the pre-rebuild catalog style (mechanism-noun headers, restating `sec-sub`s, cold-start stages). Every header is now a tension/question; one **town-census** analogy world (forms → residents → name badges → households) carries the whole module; each stage boundary is an explicit tension-handoff. **Two new beats folded in** because §14 (Entity ID Generation) and §15 (Secondary Clustering) were sitting partial/parked off this module and are the natural next pulls after connected-components. Spine question: *"How do you turn a pile of pairwise verdicts into a stable directory of real people — and the households they live in — that stays consistent every re-run?"*
+- **Stage 00** The pile of verdicts — spine question stated up front; town-census analogy world introduced; pipeline viz now highlights three new amber boxes (Cluster → Entity ID → Households); 3 movement cards.
+- **Stage 01** "A verdict only ever talks about two records" — moved-person scenario (A↔B & B↔C match, A↔C scores 0.52 no-match); the pile-of-slips-isn't-a-directory tension.
+- **Stage 02** "So what *is* the shape hiding in the pile?" — friendship-map analogy first; node/edge/component term table; "reachable, not directly connected" is the load-bearing idea; moved-person drawn as a shape.
+- **Stage 03** "Your eye saw the circle; a computer can't" — BFS/DFS as the literal recipe; full BFS trace on the 6-record town (A-B, B-C, D-E, isolated F); scale caveat (random jumps don't distribute) hands off to union-find.
+- **Stage 04** "A method that never holds the whole map" — name-tag/"ask your leader" analogy for find/union; same 6-record town traced slip-by-slip; path compression as the speed trick.
+- **Stage 05 (climax)** "Both methods just merged records nobody compared" — the "clustering just bundles matches" red herring; transitive closure named; bridge-edge failure (one weak line fuses two crowds, damage scales with cluster size); large-cluster consistency-check guard.
+- **Stage 06** "Which one do you actually run in production?" — merged decision tree (memory fit → Spark-native vs hand-rolled → audit path) + GraphFrames `connectedComponents()` pattern + checkpoint-dir trap + golden-record join-back; closes on the **opaque, run-specific `component=17179869184`** to set up §14.
+- **Stage 07 (NEW · §14)** "Your entity is named 17179869184 — and won't be tomorrow" — census-badge analogy; deterministic hash (same-in-same-out / distinct); the sort-before-hash order-independence step (worked table: {C,A,B} and {A,B,C} → same badge); PySpark `collect_list → array_sort → concat_ws → sha2` with subgoal `.note`s + Spark logical-vs-execution caveat; `record → entity_id` durable map; **hash-the-set vs persist-a-map** decision (herring); cross-run/cross-source dedup via membership overlap.
+- **Stage 08 (NEW · §15)** "You found individuals — not households" — possible-match (review-band) second pass kept separate from the trusted graph; household clustering = same `connectedComponents()` but dots are *entities* and lines mean *shared roof* (address+last-name self-join); pass-1-vs-pass-2 swap table; **never-collapse-a-household-into-a-person** trap; cluster aggregation (household rollup row); generalizes to any entity-to-entity link.
+- **Stage 09** Interactive Cluster Builder — canvas union-find widget (unchanged); guided sequence demonstrating the bridge-edge fuse climax visually.
+- **Stage 10** Self-test — now **13** scenario-recognition questions (added: opaque-vs-deterministic id, sort-before-hash, hash-set-vs-persist-map, household nodes/edges, household≠golden-record).
 
 ## Module 10 — what was covered (built 2026-06-19)
 11-stage treatment, matching the Module 08 style. *(Code drills for its five idioms live in the preceding **Module 09 — Code Companion**, `spark-performance-code.html`.)*
@@ -138,7 +139,7 @@ Now a standalone module sitting just before Module 10 (sibling to Module 05, the
 ## Parked / for later
 - Nothing parked from Module 07 itself.
 - **From Module 10:** bucketing & pre-sorted tables (write-time-for-read-time), the unified memory model knobs (`spark.memory.fraction`/`storageFraction`, region borrowing) in detail, `.persist()` storage levels (MEMORY_ONLY vs MEMORY_AND_DISK vs serialized/off-heap), a hands-on Spark-UI tour (SQL/Stages tabs), dynamic resource allocation & cluster sizing (executor count, cores-per-executor, autoscaling).
-- **From Module 08:** weighted/probabilistic clustering (edge-confidence-aware community detection), cluster-splitting/review-queue tooling at the cluster level, GraphFrames' internal algorithm (Hash-to-Min label propagation) and convergence behavior, graph algorithms beyond connectivity (centrality, shortest-path, community detection for fraud rings).
+- **From Module 08:** §14 (Entity ID Generation) and §15 (Secondary Clustering) are **now covered** — folded into the 2026-06-21 rebuild as Stages 07 and 08. Still parked: weighted/probabilistic clustering (edge-confidence-aware community detection), cluster-splitting/review-queue tooling at the cluster level, GraphFrames' internal algorithm (Hash-to-Min label propagation) and convergence behavior, graph algorithms beyond connectivity (centrality, shortest-path, fraud-ring community detection), and **entity-ID survivorship depth** (full split/merge audit-trail logic over time — framed in Stage 07 but not built).
 - **Carried from an earlier Module 01 planning note (not confirmed resolved on the live site):** null handling inside arrays · schema evolution mechanics (Delta `mergeSchema`) · array-of-structs (the real MDM shape) · `transform`/`inline`. Worth a 15-min warm-up check next time nested-data content resurfaces, to confirm these were actually covered.
 
 ## Calibration notes that held this session

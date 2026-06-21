@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Graph Theory &amp; Clustering — Module 08</title>
-<meta name="description" content="Learn how matched pairs merge into master entities using connected components, union-find, BFS/DFS, and transitive closure — Module 08 of The Learning Lab's MDM/Spark track.">
+<meta name="description" content="How a pile of pairwise match verdicts becomes a stable directory of real people and the households they live in — connected components, union-find, transitive closure, deterministic entity IDs, and secondary (household) clustering. Module 08 of The Learning Lab's MDM/Spark track.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -232,16 +232,17 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 
 <div class="stage-nav">
   <div class="stage-nav-inner">
-    <button class="sn on" onclick="go('s0',this)">00 · Overview</button>
-    <button class="sn" onclick="go('s1',this)">01 · From Pairs to Entities</button>
-    <button class="sn" onclick="go('s2',this)">02 · Graph Model</button>
-    <button class="sn" onclick="go('s3',this)">03 · BFS/DFS Traversal</button>
+    <button class="sn on" onclick="go('s0',this)">00 · The Pile of Verdicts</button>
+    <button class="sn" onclick="go('s1',this)">01 · Pairs → Entities</button>
+    <button class="sn" onclick="go('s2',this)">02 · The Graph</button>
+    <button class="sn" onclick="go('s3',this)">03 · Walk the Graph</button>
     <button class="sn" onclick="go('s4',this)">04 · Union-Find</button>
     <button class="sn" onclick="go('s5',this)">05 · Transitive Closure</button>
-    <button class="sn" onclick="go('s6',this)">06 · Choosing an Approach</button>
-    <button class="sn" onclick="go('s7',this)">07 · PySpark / GraphFrames</button>
-    <button class="sn" onclick="go('s8',this)">08 · Cluster Builder</button>
-    <button class="sn" onclick="go('s9',this)">09 · Self-Test</button>
+    <button class="sn" onclick="go('s6',this)">06 · In Production</button>
+    <button class="sn" onclick="go('s7',this)">07 · Entity IDs</button>
+    <button class="sn" onclick="go('s8',this)">08 · Households</button>
+    <button class="sn" onclick="go('s9',this)">09 · Cluster Builder</button>
+    <button class="sn" onclick="go('s10',this)">10 · Self-Test</button>
   </div>
 </div>
 
@@ -251,49 +252,50 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="wrap">
   <p class="sec-eye">Module 08 · MDM / Spark Track · Phase 3 — ER at Scale</p>
   <h1 class="sec-h" style="font-size:clamp(28px,4vw,44px);letter-spacing:-.025em;margin-bottom:14px">Graph Theory &amp; Clustering</h1>
-  <p class="sec-sub">Module 07 gave you LSH to find candidate pairs at scale without all-pairs comparison. Module 04/05 gave you a ScoringPlugin and ThresholdTuner that turn each candidate pair into a match/review/no-match verdict. But a verdict is still just a fact about <strong>one pair</strong>. If A matches B, and B matches C, are A, B, and C one entity, or three separate facts about two entities? This module is the final ER step: turning a pile of pairwise match verdicts into actual master entity clusters, using graph theory — connected components, BFS/DFS, union-find, and the transitive closure that makes clustering necessary in the first place.</p>
+  <p class="sec-sub">Everything before this module ends the same way: with a <strong>pile of slips of paper</strong>, each one saying "record A and record B are the same person." Blocking found the candidate pairs. The ScoringPlugin scored them. The ThresholdTuner stamped each one <em>match</em>, <em>review</em>, or <em>no-match</em>. But a pile of "these two are the same" slips is not yet a list of people — and it is definitely not yet a list of <em>households</em>. This whole module answers one question.</p>
+
+  <div class="analogy">
+    <div class="analogy-eye">The one question this module answers</div>
+    <div class="analogy-body">
+      You're handed a shoebox of pairwise <em>"same person"</em> slips. <strong>How do you turn that shoebox into a stable directory of real people — and the households they live in — that stays consistent every single time the pipeline re-runs?</strong> Hold onto that question. Every stage below is one step toward it, and each step exists only because the previous step left something unfinished.
+    </div>
+  </div>
+
+  <p>We'll keep one picture in mind the whole way through — a <strong>town census</strong>. Each record is one census form someone filled out. A <em>match</em> slip means "these two forms describe the same resident." First we'll group forms into residents (Stages 01–06). Then we'll give every resident a name badge that survives next year's census (Stage 07). Then we'll group residents who live under one roof into households (Stage 08). Same picture, start to finish.</p>
 
   <div class="pipeline-viz">
-    <div class="pv-label">What this module adds to your pipeline</div>
+    <div class="pv-label">Where this module sits — and the three new things it adds (amber)</div>
     <div class="pv-flow">
       <span class="pv-box done">Standardize</span><span class="pv-arr">→</span>
-      <span class="pv-box done">Block (Exact + LSH)</span><span class="pv-arr">→</span>
-      <span class="pv-box done">Self-Join</span><span class="pv-arr">→</span>
-      <span class="pv-box done">Field Scoring</span><span class="pv-arr">→</span>
-      <span class="pv-box done">Combine &amp; Classify</span><span class="pv-arr">→</span>
-      <span class="pv-box done">Tune &amp; Calibrate</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Block + LSH</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Score</span><span class="pv-arr">→</span>
+      <span class="pv-box done">Classify</span><span class="pv-arr">→</span>
       <span class="pv-box hl">Cluster (Graph)</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Entity ID</span><span class="pv-arr">→</span>
+      <span class="pv-box hl">Households</span><span class="pv-arr">→</span>
       <span class="pv-box">Golden Record</span>
     </div>
   </div>
 
-  <h3><span class="bar"></span>Why pairwise verdicts aren't enough</h3>
-  <p>Every prior module in Phase 2 and Phase 3 produces <strong>pairs</strong>: candidate pairs from blocking and LSH, scored pairs from the ScoringPlugin, classified pairs from the ThresholdTuner. None of that machinery ever looks at three records at once. But real customer databases don't split cleanly into pairs — a person who moved twice and changed their phone number each time might match record A↔B, B↔C, but A↔C scores too low to ever surface as a candidate. Treated as isolated facts, you'd merge A with B, and B with C, but never realize all three are the same person unless something forces the transitive leap.</p>
+  <p>Three amber boxes, three movements in this module. <strong>Cluster</strong> turns the slips into people (the graph half). <strong>Entity ID</strong> gives each person a durable name. <strong>Households</strong> groups people who belong together but aren't the same person. Here's the shape of each before we start:</p>
 
   <div class="concept-grid">
     <div class="cc" style="--acc:var(--amber)">
-      <div class="cc-num">Concept 01</div>
-      <div class="cc-title">Graph Model</div>
-      <div class="cc-body">Records become nodes; match verdicts become edges. The entire pairwise output of your pipeline is just one big graph waiting to be traversed.</div>
+      <div class="cc-num">Movement 01 · Stages 01–06</div>
+      <div class="cc-title">Slips → People</div>
+      <div class="cc-body">Treat the slips as a graph: records are dots, match slips are lines connecting them. A "person" is a clump of dots all reachable from each other. Two algorithms find the clumps; one gotcha makes the whole thing dangerous.</div>
     </div>
     <div class="cc" style="--acc:var(--teal)">
-      <div class="cc-num">Concept 02</div>
-      <div class="cc-title">Connected Components</div>
-      <div class="cc-body">A cluster is a connected component — every node reachable from every other node by following match edges. This is the formal definition of a "master entity."</div>
-    </div>
-    <div class="cc" style="--acc:var(--violet)">
-      <div class="cc-num">Concept 03</div>
-      <div class="cc-title">BFS/DFS &amp; Union-Find</div>
-      <div class="cc-body">Two different algorithms to discover the same connected components — one explores the graph node-by-node, the other merges sets incrementally as edges arrive.</div>
+      <div class="cc-num">Movement 02 · Stage 07</div>
+      <div class="cc-title">People → Stable Names</div>
+      <div class="cc-body">The clustering step names each person with a throwaway number that changes every run. We replace it with a <em>fingerprint</em> computed from who's in the clump — so the same person keeps the same ID forever, across runs and across source systems.</div>
     </div>
     <div class="cc" style="--acc:var(--coral)">
-      <div class="cc-num">Concept 04</div>
-      <div class="cc-title">Transitive Closure</div>
-      <div class="cc-body">The reason clustering exists at all: if A matches B and B matches C, A and C end up in the same entity — even if A and C were never directly scored.</div>
+      <div class="cc-num">Movement 03 · Stage 08</div>
+      <div class="cc-title">People → Households</div>
+      <div class="cc-body">A second clustering pass — but the dots are now <em>people</em>, not records, and a line means "same roof," not "same person." Same machinery, different rules, run on top of the first result.</div>
     </div>
   </div>
-
-  <div class="note"><strong>How to use this module:</strong> Stage 01 motivates clustering with the moved-person scenario. Stage 02 formalizes the graph model. Stages 03–04 cover the two traversal algorithms (BFS/DFS and union-find) with worked traces. Stage 05 is the climax — the transitive closure gotcha. Stage 06 gives decision criteria for picking an approach. Stage 07 shows the production PySpark/GraphFrames pattern. Stage 08 is a live cluster-builder widget. Stage 09 is the self-test.</div>
 </div>
 </div>
 
@@ -302,11 +304,11 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="stage" id="s1">
 <div class="wrap">
   <p class="sec-eye">Stage 01</p>
-  <h2 class="sec-h">From Pairs to Entities — The Moved-Person Problem</h2>
-  <p class="sec-sub">Module 04 introduced the moved-person scenario as a reason field weighting matters. Now it's the reason clustering exists: a chain of true matches your scoring pipeline only ever sees two at a time.</p>
+  <h2 class="sec-h">A Verdict Only Ever Talks About Two Records</h2>
+  <p class="sec-sub">Your scoring pipeline is powerful, but it has a blind spot built into its shape: it looks at exactly two records at a time, forever. Watch what that costs you the moment a real person shows up three times.</p>
 
-  <h3><span class="bar"></span>The scenario</h3>
-  <p>One real person appears three times in your raw data, once per address they've lived at:</p>
+  <h3><span class="bar"></span>One person, three forms</h3>
+  <p>Here's a single real person — call her the resident — who filled out a census form once at each address she ever lived at. Three forms, one human:</p>
 
   <div class="data-table-wrap">
   <table class="data-table">
@@ -317,20 +319,22 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
   </table>
   </div>
 
-  <p>Your ScoringPlugin (Module 04) and ThresholdTuner (Module 06) classify each pair independently:</p>
+  <p>Your ScoringPlugin (Module 04) and ThresholdTuner (Module 06) only ever see two forms side by side. So they produce three independent verdicts:</p>
 
   <div class="data-table-wrap">
   <table class="data-table">
-    <tr><th>Pair</th><th>Shared fields</th><th>Composite score</th><th>Verdict</th></tr>
-    <tr><td>A ↔ B</td><td>Same name, same SSN, <em>different address/phone</em></td><td>0.81</td><td><span class="badge b-green">match</span></td>
-    <tr><td>B ↔ C</td><td>Same address/phone/SSN, <em>name variant (Jon vs Jonathan)</em></td><td>0.88</td><td><span class="badge b-green">match</span></td></tr>
-    <tr class="hl-row"><td>A ↔ C</td><td>Same SSN only — <em>different address, different name spelling</em></td><td>0.52</td><td><span class="badge b-amber">no-match (below threshold)</span></td></tr>
+    <tr><th>Pair</th><th>What they share</th><th>Score</th><th>Verdict</th></tr>
+    <tr><td>A ↔ B</td><td>Same name &amp; SSN, <em>different address/phone</em> (she moved)</td><td>0.81</td><td><span class="badge b-green">match</span></td></tr>
+    <tr><td>B ↔ C</td><td>Same address/phone/SSN, <em>name variant</em> (Jon → Jonathan)</td><td>0.88</td><td><span class="badge b-green">match</span></td></tr>
+    <tr class="hl-row"><td>A ↔ C</td><td>Same SSN only — <em>different address AND name spelling</em></td><td>0.52</td><td><span class="badge b-red">no-match</span></td></tr>
   </table>
   </div>
 
-  <p>A↔C never scores high enough to surface as a match — it might not even have been generated as a candidate pair by blocking or LSH, since the address and phone differ and the name spelling differs too. Looked at as three isolated pairwise facts, you'd be tempted to merge {A, B} into one entity and treat C separately, or merge {B, C} and leave A alone. Either choice loses information you already proved twice over: A=B (via the move) and B=C (via the name normalization). The only correct answer is that all three are the same person, and the only way to get there is to stop thinking pair-by-pair and start thinking about the <strong>graph</strong> of all match verdicts together.</p>
+  <p>Look at the highlighted row. A and C are the <em>same person</em> — but the only thing they still share is the SSN, because between form A and form C she both moved <strong>and</strong> changed how she wrote her name. So the pair A↔C scores 0.52 and gets stamped <em>no-match</em>. It may not even have been generated as a candidate pair in the first place.</p>
 
-  <div class="trap"><strong>The pairwise trap:</strong> If your pipeline stops at the ThresholdTuner and just writes `(id_a, id_b, verdict)` rows to a table, you have a list of edges — not a list of entities. Two different downstream consumers querying "who is this person's other records" could get two different, inconsistent answers depending on which row they happen to look at first. You need one more step that resolves the whole edge list into a consistent partition of records into entities.</div>
+  <p>Now you're stuck. You have proof A=B. You have proof B=C. But the pipeline told you A≠C. If you trust the verdicts literally and pair them up, you'd merge {A,B} and separately {B,C} — and never realize all three are one human. The truth (A, B, C are one person) is a fact <strong>no single pairwise verdict can ever state</strong>, because stating it requires looking at all three at once.</p>
+
+  <div class="trap"><strong>This is the gap that creates this entire module.</strong> A pile of <code>(id_a, id_b, verdict)</code> slips is a list of <em>connections</em>, not a list of <em>people</em>. Two parts of your system could ask "what are all the records for this person?" and get two different answers depending on which slip they read first. Something has to take the whole pile at once and resolve it into one clean, agreed-upon grouping. To do that, we need to stop seeing slips — and start seeing a shape.</div>
 </div>
 </div>
 
@@ -339,42 +343,46 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="stage" id="s2">
 <div class="wrap">
   <p class="sec-eye">Stage 02</p>
-  <h2 class="sec-h">The Graph Model — Nodes, Edges, Components</h2>
-  <p class="sec-sub">Everything your pipeline has produced so far — candidate pairs, scores, verdicts — is secretly a graph. Naming it as one is what unlocks the algorithms in this module.</p>
-
-  <h3><span class="bar"></span>Mapping ER concepts onto graph theory</h3>
-  <div class="data-table-wrap">
-  <table class="data-table">
-    <tr><th>ER pipeline concept</th><th>Graph theory term</th><th>What it is</th></tr>
-    <tr><td>A raw record (post-standardization)</td><td><strong>Node / vertex</strong></td><td>One point in the graph. Every distinct record_id is a node.</td></tr>
-    <tr><td>A match verdict between two records</td><td><strong>Edge</strong></td><td>An undirected connection between two nodes. Only `match` verdicts become edges — `review` and `no-match` do not (until a human resolves a review).</td></tr>
-    <tr><td>A set of records that should become one golden record</td><td><strong>Connected component</strong></td><td>A maximal set of nodes where every node is reachable from every other node by following edges, directly or through intermediate nodes.</td></tr>
-    <tr><td>A record with no matches at all</td><td><strong>Singleton component</strong></td><td>A connected component of size 1 — a node with no edges. Still a valid "entity" of one record.</td></tr>
-  </table>
-  </div>
+  <h2 class="sec-h">So What <em>Is</em> the Shape Hiding in the Pile?</h2>
+  <p class="sec-sub">Stage 01 said "look at the whole pile at once" — but a pile has no structure to look at. The trick is to notice the slips were secretly drawing a picture all along. Name the picture, and a hundred years of mathematics suddenly applies to your customer data.</p>
 
   <div class="analogy">
-    <div class="analogy-eye">Analogy — the friendship-circle test</div>
+    <div class="analogy-eye">Analogy — the friendship map</div>
     <div class="analogy-body">
-      Think of match edges like "these two people know each other." If Jon knows Maria, and Maria knows Diego, Jon and Diego are in the <em>same friend circle</em> even if they've never met directly — because there's a path connecting them. A connected component is exactly a friend circle: everyone reachable from everyone else, with no path leading outside the group. Master entity clustering asks the identical question, just with "knows" replaced by "is the same real-world person as."
+      Forget records for a second. Imagine a room of people, and you draw a line between any two who <em>know each other</em>. Now ask: who's in Jon's <em>circle of friends</em>? Not just the people Jon directly knows — also the friends of his friends, and theirs, as far as the lines reach. If Jon knows Maria, and Maria knows Diego, then Jon and Diego are in the <em>same circle</em> even though they've never met. A circle is <em>everyone you can reach by walking along the lines.</em> That's the whole idea. Entity resolution asks the identical question — just swap "knows" for <em>"is the same person as."</em>
     </div>
   </div>
 
-  <h3><span class="bar"></span>Worked example — drawing the moved-person graph</h3>
-  <p>Take Stage 01's three records and draw the match edges (A↔B and B↔C are matches; A↔C is not an edge):</p>
+  <h3><span class="bar"></span>The three words that make it precise</h3>
+  <p>The friendship map has exactly three pieces, and each one is just a record-pipeline thing wearing a math name:</p>
 
   <div class="data-table-wrap">
   <table class="data-table">
-    <tr><th>Node</th><th>Edges to</th><th>Directly reachable</th><th>Component membership</th></tr>
-    <tr><td>A</td><td>B</td><td>B</td><td>Component 1</td></tr>
-    <tr class="hl-row"><td>B</td><td>A, C</td><td>A, C</td><td>Component 1</td></tr>
-    <tr><td>C</td><td>B</td><td>B</td><td>Component 1</td></tr>
+    <tr><th>In the friendship map…</th><th>…the math name is</th><th>…and in your pipeline it's</th></tr>
+    <tr><td>A person (a dot)</td><td><strong>Node</strong> (or vertex)</td><td>One record. Every distinct record_id is one dot.</td></tr>
+    <tr><td>A "they know each other" line</td><td><strong>Edge</strong></td><td>One <em>match</em> verdict. Only <em>match</em> slips become lines — <em>review</em> and <em>no-match</em> draw nothing.</td></tr>
+    <tr><td>A whole circle of friends</td><td><strong>Connected component</strong></td><td>One master entity — all the records that are the same real person.</td></tr>
+    <tr><td>A loner who knows nobody</td><td><strong>Singleton component</strong></td><td>A record that matched nothing. Still a valid person — a circle of one.</td></tr>
   </table>
   </div>
 
-  <p>Even though A and C have no direct edge, both A and C are reachable from B, and B is reachable from both. By the connected-component definition, {A, B, C} is <strong>one</strong> component — one master entity — even though only 2 of the 3 possible pairs were ever scored as matches. This is the formal justification for the conclusion Stage 01 reached by inspection: graph connectivity, not pairwise agreement, decides entity membership.</p>
+  <p>That middle row is the quiet, important one: <strong>a connected component is "everyone reachable by walking the lines,"</strong> not "everyone directly connected." That single word — <em>reachable</em> — is what's about to rescue our moved-person.</p>
 
-  <div class="note"><strong>Why this matters operationally:</strong> Every "find all records for this person" query, every golden-record merge, every downstream join to this MDM data is implicitly a connected-components query. Getting clustering right is what makes "the same entity" mean the same thing everywhere in your system.</div>
+  <h3><span class="bar"></span>Drawing Stage 01's person as a shape</h3>
+  <p>Take A, B, C from Stage 01. We proved two lines: A–B and B–C. (A–C scored <em>no-match</em>, so there's <strong>no</strong> line there.) Draw it:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Dot</th><th>Lines it has</th><th>Who it can reach by walking</th><th>Circle</th></tr>
+    <tr><td>A</td><td>A–B</td><td>B directly → then C through B</td><td>Circle 1</td></tr>
+    <tr class="hl-row"><td>B</td><td>A–B, B–C</td><td>A and C, both directly</td><td>Circle 1</td></tr>
+    <tr><td>C</td><td>B–C</td><td>B directly → then A through B</td><td>Circle 1</td></tr>
+  </table>
+  </div>
+
+  <p>There it is. A and C have <strong>no line between them</strong> — but A can <em>reach</em> C by walking A→B→C. So all three sit in one circle: <strong>one person</strong>, even though only 2 of the 3 possible pairs ever scored as a match. The thing Stage 01 could only point at ("surely they're the same"), the graph now <em>proves</em> by a rule: connectivity decides membership, not pairwise agreement.</p>
+
+  <div class="note"><strong>Why this is the load-bearing idea of the module:</strong> every "show me all records for this customer" query, every golden-record merge, every downstream join is secretly asking "what circle is this dot in?" Get that right and "the same entity" means the same thing everywhere in your company. Now there's only one thing missing — we have a <em>definition</em> of a circle, but no <em>procedure</em> for finding one. A computer can't "just see" the circle the way your eye did. That's Stage 03.</div>
 </div>
 </div>
 
@@ -383,61 +391,62 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="stage" id="s3">
 <div class="wrap">
   <p class="sec-eye">Stage 03</p>
-  <h2 class="sec-h">Finding Components by Traversal — BFS &amp; DFS</h2>
-  <p class="sec-sub">The most direct way to find connected components: pick an unvisited node, walk every edge reachable from it, and mark everything you touch as one component. Breadth-first and depth-first search are two orderings of the same walk.</p>
+  <h2 class="sec-h">Your Eye Saw the Circle Instantly. A Computer Can't.</h2>
+  <p class="sec-sub">"Everyone reachable by walking the lines" is a perfect definition and a useless instruction — a machine needs a literal recipe. The most natural one is exactly what you'd do by hand: pick a dot, and physically walk every line out of it, marking everything you touch.</p>
 
-  <h3><span class="bar"></span>The algorithm (component-finding via traversal)</h3>
-  <p>For each node not yet assigned to a component:</p>
+  <h3><span class="bar"></span>The recipe — walk until you can't</h3>
+  <p>To find one circle: stand on an unvisited dot, then keep walking outward along lines, painting every dot you reach with the same color, until there's nowhere new to go.</p>
   <ol style="margin-left:18px;margin-bottom:14px;font-size:14px;color:var(--muted);line-height:1.8">
-    <li>Start a new component, add the node to it.</li>
-    <li>Visit every neighbor via an edge; if unvisited, add it to the same component and queue it for visiting.</li>
-    <li>Repeat until no more reachable unvisited nodes remain — the component is complete.</li>
-    <li>Move to the next unassigned node and repeat for the next component.</li>
+    <li>Stand on a dot nobody's visited yet. Start a new circle; paint this dot.</li>
+    <li>Walk each line out of it. Any dot on the far end that isn't painted — paint it the same color, and add it to your "still to walk from" list.</li>
+    <li>Keep going until your list is empty. That circle is now complete.</li>
+    <li>Find any still-unpainted dot and repeat for the next circle.</li>
   </ol>
-  <p><strong>BFS</strong> (breadth-first search) explores all direct neighbors before going further out, using a queue (FIFO). <strong>DFS</strong> (depth-first search) follows one path as deep as it can before backtracking, using a stack (LIFO) or recursion. Both visit the exact same set of nodes for a connected component — they just visit them in a different order. For component-finding alone, the order doesn't change the answer.</p>
+  <p>There are two flavors of this walk, and the only difference is the <em>order</em> you walk in. <strong>BFS</strong> (breadth-first) fans out — it visits all your immediate neighbors before going deeper, working in rings outward. <strong>DFS</strong> (depth-first) plunges — it follows one path as far as it goes, then backtracks. For finding circles, <strong>they give the identical answer</strong>; they just paint the dots in a different order. So pick whichever's easier to write.</p>
 
-  <h3><span class="bar"></span>Worked example — a 6-record graph, traced with BFS</h3>
-  <p>Edges from your ScoringPlugin's match verdicts: <code>A-B, B-C, D-E</code>. Record F has no matches.</p>
+  <h3><span class="bar"></span>Watch it run — a 6-record town, traced step by step</h3>
+  <p>Six records this time. The match slips drew these lines: <code>A–B, B–C, D–E</code>. Record F matched nobody. Let's walk it with BFS and watch the circles fall out:</p>
 
   <div class="debug-trace">
-    <div class="dt-header">BFS component trace</div>
+    <div class="dt-header">BFS walk — finding every circle</div>
     <div class="dt-step">
-      <div class="dt-line">Start at A (unvisited). New component_id = 1. Queue: [A]</div>
-      <div class="dt-state">visited = {A:1}</div>
+      <div class="dt-line">Stand on A (unpainted). Start Circle 1, paint A. To-walk list: [A]</div>
+      <div class="dt-state">painted = {A:1}</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">Pop A. Neighbors of A: [B]. B is unvisited → assign component 1, enqueue.</div>
-      <div class="dt-state">visited = {A:1, B:1} · queue = [B]</div>
+      <div class="dt-line">Walk from A. Its lines reach: B. B is unpainted → paint it Circle 1, add to list.</div>
+      <div class="dt-state">painted = {A:1, B:1} · to-walk = [B]</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">Pop B. Neighbors of B: [A, C]. A already visited (skip). C unvisited → assign component 1, enqueue.</div>
-      <div class="dt-state">visited = {A:1, B:1, C:1} · queue = [C]</div>
+      <div class="dt-line">Walk from B. Its lines reach: A, C. A is already painted (skip). C unpainted → paint Circle 1, add to list.</div>
+      <div class="dt-state">painted = {A:1, B:1, C:1} · to-walk = [C]</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">Pop C. Neighbors of C: [B]. Already visited. Queue empty → component 1 complete: {A, B, C}.</div>
-      <div class="dt-state">components so far = [{A,B,C}]</div>
+      <div class="dt-line">Walk from C. Its lines reach: B (already painted). Nothing new. List empty → Circle 1 done: {A, B, C}.</div>
+      <div class="dt-state">circles so far = [{A,B,C}]</div>
+      <div class="dt-why">Notice C got painted because of B, <em>never because of a direct A–C line</em> — the walk found the moved-person automatically.</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">Next unvisited node: D. New component_id = 2. Traverse D→E (same pattern). Component 2 complete: {D, E}.</div>
-      <div class="dt-state">components so far = [{A,B,C}, {D,E}]</div>
+      <div class="dt-line">Next unpainted dot: D. Start Circle 2, walk D→E the same way. Done: {D, E}.</div>
+      <div class="dt-state">circles so far = [{A,B,C}, {D,E}]</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">Next unvisited node: F. No neighbors. Component 3 = {F} (singleton).</div>
-      <div class="dt-why">F never matched anything, but it's still a valid entity of one record — <em>every node ends up in exactly one component, including isolated ones</em>.</div>
+      <div class="dt-line">Next unpainted dot: F. No lines at all. Circle 3 = {F}.</div>
+      <div class="dt-why">F matched no one, but it still becomes its own circle of one — <em>every dot lands in exactly one circle, loners included</em>.</div>
     </div>
   </div>
 
-  <h3><span class="bar"></span>Final result</h3>
+  <h3><span class="bar"></span>The result — a shoebox of slips, finally turned into people</h3>
   <div class="data-table-wrap">
   <table class="data-table">
-    <tr><th>Component ID</th><th>Records</th><th>Size</th><th>Master entity</th></tr>
-    <tr><td>1</td><td>A, B, C</td><td>3</td><td>One merged golden record</td></tr>
-    <tr><td>2</td><td>D, E</td><td>2</td><td>One merged golden record</td></tr>
-    <tr><td>3</td><td>F</td><td>1</td><td>Unchanged — its own entity</td></tr>
+    <tr><th>Circle</th><th>Records</th><th>Size</th><th>Becomes</th></tr>
+    <tr><td>1</td><td>A, B, C</td><td>3</td><td>One person → one golden record</td></tr>
+    <tr><td>2</td><td>D, E</td><td>2</td><td>One person → one golden record</td></tr>
+    <tr><td>3</td><td>F</td><td>1</td><td>A person all on their own</td></tr>
   </table>
   </div>
 
-  <div class="warn"><strong>Cost characteristic:</strong> BFS/DFS visits every node once and every edge once — $O(N + E)$ total. That's the right complexity, but it assumes the whole graph fits comfortably in memory on one machine for the traversal to walk. At MDM scale (millions of nodes, an unstructured edge list scattered across a cluster), a single-machine, single-threaded BFS/DFS over the raw adjacency list is the wrong tool — it doesn't parallelize naturally the way a Spark job needs to. That gap is exactly why union-find (Stage 04) and GraphFrames (Stage 07) exist.</div>
+  <div class="warn"><strong>So why isn't this the end of the module?</strong> This walk is correct and even efficient on paper — it touches each dot once and each line once. But read the recipe again: "walk from this dot to that dot" means constantly <em>jumping around</em> the graph, looking up "who are this dot's neighbors?" on demand. That's fine when all six records sit in your laptop's memory. It falls apart when there are 50 million records and the lines are scattered in pieces across a hundred machines in a Spark cluster — there's no single place to "stand" and "walk" from. We need a method that never has to hold the whole map at once. That's Stage 04.</div>
 </div>
 </div>
 
@@ -446,59 +455,64 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <div class="stage" id="s4">
 <div class="wrap">
   <p class="sec-eye">Stage 04</p>
-  <h2 class="sec-h">Union-Find — Merging Sets Incrementally</h2>
-  <p class="sec-sub">Instead of walking the graph from scratch, union-find processes edges one at a time, incrementally merging the sets each edge connects. It never needs the whole adjacency list in memory at once, which is why it's the standard approach for streaming or distributed clustering.</p>
+  <h2 class="sec-h">A Method That Never Holds the Whole Map</h2>
+  <p class="sec-sub">The walk needed to roam the graph. Union-find refuses to roam. It looks at the match slips <em>one at a time</em>, in any order, and just keeps a running answer to a single question: "what's the name of this dot's circle right now?" That tiny shift is what lets it run across a hundred machines.</p>
 
-  <h3><span class="bar"></span>The core idea: every node starts as its own component</h3>
-  <p>Union-find (a.k.a. "disjoint-set union") tracks a parent pointer for every node. Initially every node points to itself — every node is its own component of size 1. Processing an edge `(x, y)` means: "find the representative (root) of x's component, find the representative of y's component, and if they differ, merge the two components by pointing one root at the other."</p>
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — name tags and "ask your leader"</div>
+    <div class="analogy-body">
+      Everyone in the room starts wearing a name tag that just says their <em>own</em> name — everyone is their own group leader. Now you read match slips one at a time. Each slip says "these two are in the same group." To merge them, you ask each person <em>"who's your leader?"</em> (they point to whoever their tag names, who points to <em>their</em> leader, until you reach someone whose tag names themselves — that's the real leader). If the two leaders are different people, you tell one leader: <em>"from now on, your leader is the other one."</em> One pointer change, and two whole groups are now one. You never had to gather everybody — <strong>you only ever touched the two people on the slip and their leaders.</strong>
+    </div>
+  </div>
 
+  <h3><span class="bar"></span>The two moves, named</h3>
   <div class="concept-grid">
     <div class="cc" style="--acc:var(--amber)">
-      <div class="cc-num">Operation 1</div>
-      <div class="cc-title">find(x)</div>
-      <div class="cc-body">Follow x's parent pointer up the chain until you reach a node that points to itself — that's the component's root/representative.</div>
+      <div class="cc-num">Move 1</div>
+      <div class="cc-title">find(x) — "who's your leader?"</div>
+      <div class="cc-body">Follow x's pointer to whoever it names, then theirs, and so on, until you reach someone who points to <em>themselves</em>. That person is the circle's leader (its "root").</div>
     </div>
     <div class="cc" style="--acc:var(--teal)">
-      <div class="cc-num">Operation 2</div>
-      <div class="cc-title">union(x, y)</div>
-      <div class="cc-body">find(x) and find(y); if the roots differ, set one root's parent to the other root. The two components are now one.</div>
+      <div class="cc-num">Move 2</div>
+      <div class="cc-title">union(x, y) — "you're one group now"</div>
+      <div class="cc-body">find the leader of x and the leader of y. If they're different, point one leader at the other. The two circles are now a single circle, in one step.</div>
     </div>
   </div>
 
-  <h3><span class="bar"></span>Worked example — the same 6-record graph, traced with union-find</h3>
-  <p>Edges arrive in this order: <code>A-B, D-E, B-C</code>. Record F never appears in an edge.</p>
+  <h3><span class="bar"></span>The same 6-record town — but processed slip by slip</h3>
+  <p>Same town as Stage 03. The slips arrive in this order: <code>A–B, D–E, B–C</code>. F never appears on any slip. Watch the leader pointers update:</p>
 
   <div class="debug-trace">
-    <div class="dt-header">union-find trace</div>
+    <div class="dt-header">union-find — one slip at a time</div>
     <div class="dt-step">
-      <div class="dt-line">Initialize: every node is its own parent.</div>
-      <div class="dt-state">parent = {A:A, B:B, C:C, D:D, E:E, F:F}</div>
+      <div class="dt-line">Start: everyone is their own leader.</div>
+      <div class="dt-state">leader = {A→A, B→B, C→C, D→D, E→E, F→F}</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">Process edge A-B. find(A)=A, find(B)=B. Roots differ → union: parent[B] = A.</div>
-      <div class="dt-state">parent = {A:A, B:A, C:C, D:D, E:E, F:F}</div>
-      <div class="dt-why">A and B are now in the same component, rooted at A.</div>
+      <div class="dt-line">Slip A–B. Leader of A is A; leader of B is B. Different → point B's leader at A.</div>
+      <div class="dt-state">leader = {A→A, B→A, C→C, D→D, E→E, F→F}</div>
+      <div class="dt-why">A and B are now one circle, led by A.</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">Process edge D-E. find(D)=D, find(E)=E. Roots differ → union: parent[E] = D.</div>
-      <div class="dt-state">parent = {A:A, B:A, C:C, D:D, E:D, F:F}</div>
+      <div class="dt-line">Slip D–E. Leader of D is D; leader of E is E. Different → point E's leader at D.</div>
+      <div class="dt-state">leader = {A→A, B→A, C→C, D→D, E→D, F→F}</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">Process edge B-C. find(B): B→A (root A). find(C)=C. Roots differ → union: parent[C] = A.</div>
-      <div class="dt-state">parent = {A:A, B:A, C:A, D:D, E:D, F:F}</div>
-      <div class="dt-why">C joins A and B's component <em>without ever having a direct edge to A</em> — this is transitive closure happening automatically, one union at a time.</div>
+      <div class="dt-line">Slip B–C. Ask B's leader: B→A, so A. Ask C's leader: C. Different → point C's leader at A.</div>
+      <div class="dt-state">leader = {A→A, B→A, C→A, D→D, E→D, F→F}</div>
+      <div class="dt-why">C joined A's circle <em>without any A–C slip ever existing</em> — the moved-person got resolved again, this time one pointer at a time.</div>
     </div>
     <div class="dt-step">
-      <div class="dt-line">No more edges. F's parent is still itself.</div>
-      <div class="dt-state">Final roots: find(A)=A, find(B)=A, find(C)=A, find(D)=D, find(E)=D, find(F)=F</div>
-      <div class="dt-why">Group every node by its root: {A,B,C} (root A), {D,E} (root D), {F} (root F) — identical result to the BFS trace in Stage 03.</div>
+      <div class="dt-line">No more slips. Group everyone by their final leader.</div>
+      <div class="dt-state">{A,B,C} led by A · {D,E} led by D · {F} led by F</div>
+      <div class="dt-why">Identical answer to the BFS walk in Stage 03 — same circles, completely different method.</div>
     </div>
   </div>
 
-  <div class="note"><strong>Why union-find fits distributed pipelines better than BFS/DFS:</strong> Union-find processes edges as a stream, in any order, without needing the full adjacency structure in memory — it only needs a parent-pointer map, which can be represented as a Spark DataFrame and updated iteratively. BFS/DFS needs to actively walk from node to node, which requires random-access lookups that don't map cleanly onto Spark's columnar, distributed execution model. This is the real reason GraphFrames' <code>connectedComponents()</code> (Stage 07) is implemented as a union-find-style iterative label-propagation algorithm under the hood, not a literal distributed BFS.</div>
+  <div class="note"><strong>Why this one survives a Spark cluster and the walk didn't:</strong> union-find eats slips as a <em>stream</em>, in any order, holding nothing but the leader pointers — a structure that's just a table of <code>(node → its leader)</code>, exactly the kind of thing a Spark DataFrame is built to update over and over. The walk needed to chase neighbors around the graph (random jumps); union-find only ever pokes at the two dots on the current slip. This is the real reason the production tool in Stage 06 is a union-find-style algorithm under the hood, not a giant distributed walk.</div>
 
-  <h3><span class="bar"></span>Path compression — keeping find() fast</h3>
-  <p>In a naive union-find, long chains of parent pointers (A→B→C→D→...) make `find()` slow over many unions. <strong>Path compression</strong> fixes this: every time `find(x)` walks up to the root, it re-points every node along the way directly to the root, flattening the chain for future lookups. Combined with union-by-size (always attaching the smaller component's root to the larger one), this gives near-constant-time operations even on millions of edges — the textbook reason union-find scales where naive traversal doesn't.</p>
+  <h3><span class="bar"></span>One speed trick: keep the leader chains short</h3>
+  <p>If you're not careful, "ask your leader, who asks their leader, who asks theirs…" can grow into a long chain, and every <code>find</code> crawls the whole thing. <strong>Path compression</strong> fixes it cheaply: every time you trace a chain up to the real leader, you re-point everyone you passed <em>straight at that leader</em>. Next time, they answer in one hop. Combined with "always attach the smaller group under the bigger one's leader," this keeps every operation effectively constant-time, even over millions of slips — the textbook reason union-find scales where the walk chokes.</p>
 </div>
 </div>
 
@@ -506,107 +520,98 @@ footer{border-top:1px solid var(--line);padding:28px 0;margin-top:60px}
 <!-- ══════ STAGE 5 — TRANSITIVE CLOSURE (CLIMAX) ══════ -->
 <div class="stage" id="s5">
 <div class="wrap">
-  <p class="sec-eye">Stage 05 · The Climax</p>
-  <h2 class="sec-h">Transitive Closure — The Gotcha That Justifies This Whole Module</h2>
-  <p class="sec-sub">Both algorithms above quietly did something that pairwise scoring never could: they merged records that were never directly compared. This is transitive closure, and it cuts both ways — it's the entire point of clustering, and also its biggest risk.</p>
+  <p class="sec-eye">Stage 05 · The Turn</p>
+  <h2 class="sec-h">Both Methods Just Merged Records Nobody Ever Compared</h2>
+  <p class="sec-sub">Did you catch what happened twice? In both the BFS walk and the union-find pass, C ended up in A's circle — and A–C was never scored, never even a candidate. That "reach through the middle" is the entire point of clustering. It's also the most dangerous thing in your pipeline. Same mechanism, both faces.</p>
 
-  <h3><span class="bar"></span>The red herring: "clustering just groups the matched pairs"</h3>
+  <h3><span class="bar"></span>The comforting story that's wrong</h3>
 
   <div class="herring">
     <div class="herring-col left">
-      <div class="herring-eye">✗ Red Herring — the naive mental model</div>
-      <h5>"Clustering takes the match pairs and bundles each one into a group."</h5>
-      <p>This makes it sound like clustering only ever combines pairs that were <em>already proven to match by your ScoringPlugin</em> — as if it's just a bookkeeping step that relabels existing verdicts.</p>
-      <p>Under this model, you'd expect every pair inside a cluster to have a high composite score. That assumption is false, and believing it leads directly to data-quality incidents.</p>
+      <div class="herring-eye">✗ The tempting belief</div>
+      <h5>"Clustering just bundles up the matches my scorer already found."</h5>
+      <p>This makes clustering sound like harmless filing — it only ever groups pairs your ScoringPlugin <em>already proved</em> match, so every pair inside a circle must be a strong, checked match.</p>
+      <p>If that were true, clustering could never surprise you. It would just relabel verdicts you already trusted.</p>
     </div>
     <div class="herring-col right">
       <div class="herring-eye">✓ What actually happens</div>
-      <h5>Clustering creates new "facts" — pairs that were never scored at all.</h5>
-      <p>If A↔B is a match and B↔C is a match, A and C land in the same cluster <strong>even if A↔C was never a candidate pair, never scored, and would score below threshold if it were</strong>. The cluster asserts A and C are the same entity — a claim your ScoringPlugin never made and never checked.</p>
-      <p>This is mathematically correct <em>and</em> exactly how the moved-person scenario (Stage 01) gets resolved. But it is also exactly how an over-eager clustering step <strong>silently merges unrelated people</strong> through a single weak bridge match.</p>
+      <h5>Clustering invents brand-new "facts" your scorer never checked.</h5>
+      <p>When A–B and B–C are matches, A and C land in one circle <strong>even though A–C was never scored, and would score <em>below threshold</em> if it had been.</strong> The circle now asserts "A and C are the same person" — a claim no verdict ever made.</p>
+      <p>This is exactly how the moved-person gets correctly reunited. It is <em>also</em> exactly how one bad match can quietly swallow a crowd.</p>
     </div>
   </div>
 
-  <h3><span class="bar"></span>The failure mode: a single weak edge merges a crowd</h3>
-  <p>Suppose your blocking/LSH/scoring pipeline produces a borderline `review`-band match between two genuinely different people who happen to share a common, generic name and a shared apartment complex address (a classic high-density-address false positive). If that review pair is mistakenly auto-approved (or your threshold band is set too loosely), it becomes one edge — and that single edge can fuse two entire pre-existing clusters into one giant, wrong entity:</p>
+  <p>This "reach through the middle" has a name: <strong>transitive closure</strong>. If A connects to B and B connects to C, the circle silently adds the A–C connection for you. Wonderful when B is a true bridge. Catastrophic when B is a mistake.</p>
+
+  <h3><span class="bar"></span>The failure mode — one weak line swallows two crowds</h3>
+  <p>Suppose two genuinely different people share a generic name ("Maria G.") and live in the same big apartment complex. Your pipeline coughs up a borderline <em>review</em>-band slip between them — and someone (or a too-loose threshold) lets that one slip through as a line. Watch what a single bad line does when it lands <em>between two existing circles</em>:</p>
 
   <div class="data-table-wrap">
   <table class="data-table">
-    <tr><th>Before the bad edge</th><th>After adding 1 bad edge (X↔Y)</th><th>Consequence</th></tr>
-    <tr><td>Cluster 1: {Maria G., 4 records, same household}</td><td rowspan="2">One merged cluster: 7 records, two unrelated families</td><td rowspan="2">Golden record now blends two people's SSNs, phones, and addresses into one "entity" — a serious data-quality and possibly compliance incident.</td></tr>
-    <tr><td>Cluster 2: {Maria G., 3 records, different family, same apartment complex}</td></tr>
+    <tr><th>Before the bad line</th><th>After adding ONE bad line (X–Y)</th><th>The damage</th></tr>
+    <tr><td>Circle 1: Maria G. — 4 records, one real family</td><td rowspan="2">One fused circle: 7 records, two unrelated families, treated as a single person</td><td rowspan="2">The golden record now blends two people's SSNs, phones, and addresses into one "entity" — a serious data-quality and possibly compliance incident.</td></tr>
+    <tr><td>Circle 2: Maria G. — 3 records, a different family, same complex</td></tr>
   </table>
   </div>
 
-  <div class="trap"><strong>The bridge-edge trap:</strong> The damage from one wrong match scales with cluster size, not with how confident that one match was. A 60%-confidence match between two singleton records merges 2 records into a wrong entity. The same 60%-confidence match between two existing 10-record clusters merges 20 records into one wrong entity. <strong>Clustering amplifies every scoring mistake by the size of the clusters it touches.</strong> This is why threshold tuning (Module 06) and clustering (this module) cannot be reasoned about independently — a threshold that looked "safe enough" in pairwise precision/recall terms can still be unsafe once you account for what it does when it becomes a bridge edge between two large existing clusters.</div>
+  <div class="trap"><strong>The bridge-edge trap — the one sentence to carry out of this module:</strong> the damage from a wrong match scales with the <em>size of the circles it touches</em>, not with how confident that one match was. A 60%-confidence mistake between two loners corrupts 2 records. The <em>same</em> 60% mistake between two 10-record circles corrupts <strong>20</strong>. Clustering takes every scoring error and multiplies it by the size of whatever it bridges. This is precisely why Module 06's threshold tuning and this module can't be reasoned about separately — a threshold that looked "safe enough" in pairwise precision terms can be quietly unsafe the instant it becomes a bridge between two big circles.</div>
 
-  <h3><span class="bar"></span>The mitigation: cluster-level sanity checks</h3>
-  <p>Because transitive closure can silently merge a crowd, production clustering steps add a guard the pairwise ScoringPlugin never needed: after computing connected components, re-examine any cluster above a size threshold (e.g. &gt;5 records) and check whether it is internally consistent — do all records in the cluster pairwise agree on enough core fields (SSN, DOB) to plausibly be one person? A cluster that only holds together through one or two bridge edges, with otherwise dissimilar members, is a strong signal of a bad bridge match and should be flagged for review rather than auto-merged.</p>
+  <h3><span class="bar"></span>The guard the pairwise world never needed</h3>
+  <p>Because transitive closure can fuse a crowd in silence, production clustering adds a check the ScoringPlugin never had to: after the circles form, re-examine any unusually large one and ask <em>"do these members actually agree with each other on core fields — SSN, DOB — enough to plausibly be one person?"</em> A big circle that only holds together through one or two thin bridge lines, with members who otherwise look nothing alike, is the fingerprint of a bad bridge. Flag it for a human instead of auto-merging. You'll get hands on exactly this fusing-of-two-circles moment in the live widget at Stage 09.</p>
 </div>
 </div>
 
 
-<!-- ══════ STAGE 6 — CHOOSING AN APPROACH (DECISION CRITERIA) ══════ -->
+<!-- ══════ STAGE 6 — CHOOSING + GRAPHFRAMES PRODUCTION ══════ -->
 <div class="stage" id="s6">
 <div class="wrap">
   <p class="sec-eye">Stage 06</p>
-  <h2 class="sec-h">Choosing an Approach — BFS/DFS vs Union-Find vs GraphFrames</h2>
-  <p class="sec-sub">All three approaches find the same connected components. The choice between them is about scale and execution environment, not correctness.</p>
+  <h2 class="sec-h">Which of These Do You Actually Run in Production?</h2>
+  <p class="sec-sub">You now know two methods plus the gotcha they share. In a real Spark MDM job, which one runs — and how? The honest answer is "neither, by hand" — at scale you reach for a library that does the union-find idea for you, distributed. Let's pick deliberately, then run it.</p>
 
+  <h3><span class="bar"></span>The three-question pick</h3>
   <div class="decision-tree">
     <div class="dq">
       <div class="dq-num">QUESTION 1</div>
-      <div class="dq-q">Does the whole edge list fit comfortably in memory on one machine?</div>
-      <div class="dq-a"><strong>Yes</strong> → BFS/DFS (or a simple in-memory union-find) is fine — e.g. a one-off analysis script, a small reference dataset, or debugging a sample of records pulled out of the pipeline. <strong>No</strong> (millions+ of records/edges, data lives in a Spark DataFrame) → go to Question 2.</div>
+      <div class="dq-q">Does the whole pile of lines fit comfortably in one machine's memory?</div>
+      <div class="dq-a"><strong>Yes</strong> (a one-off script, a small reference set, debugging a sample) → a plain in-memory BFS/DFS or union-find is totally fine. <strong>No</strong> (millions of records, lines living in a Spark DataFrame) → go to Question 2.</div>
     </div>
     <div class="dq">
       <div class="dq-num">QUESTION 2</div>
-      <div class="dq-q">Are you inside a Spark pipeline already, with edges as a DataFrame of `(id_a, id_b)` pairs?</div>
-      <div class="dq-a"><strong>Yes</strong> → use <strong>GraphFrames' <code>connectedComponents()</code></strong> (Stage 07) — it's a distributed, union-find-style label-propagation implementation built specifically for this. Don't hand-roll a distributed BFS. <strong>No</strong>, you're prototyping in plain Python/pandas → a hand-rolled <strong>union-find with path compression</strong> is simple, fast, and easy to unit test before porting the logic's intent into the Spark job.</div>
+      <div class="dq-q">Are you already inside a Spark pipeline, with lines as a DataFrame of <code>(id_a, id_b)</code> pairs?</div>
+      <div class="dq-a"><strong>Yes</strong> → use <strong>GraphFrames' <code>connectedComponents()</code></strong> (below). It's a distributed, union-find-style algorithm built for exactly this. Do <em>not</em> hand-roll a distributed walk. <strong>No</strong>, you're prototyping in plain Python → a hand-rolled union-find with path compression is simple, fast, and easy to unit-test before you port its intent into the Spark job.</div>
     </div>
     <div class="dq">
       <div class="dq-num">QUESTION 3</div>
-      <div class="dq-q">Do you need to inspect the traversal path (e.g. "show me the chain of matches that connected A to C") for audit/debugging, not just the final grouping?</div>
-      <div class="dq-a"><strong>Yes</strong> → BFS/DFS naturally gives you the path as a byproduct of the traversal order. Union-find's parent pointers can reconstruct a path too, but it takes an extra step (walking parent chains for both nodes back to their common root). <strong>No</strong>, you only need the final cluster assignment → either works; pick based on Questions 1–2.</div>
+      <div class="dq-q">Do you need to <em>show the chain</em> — "here's the path of matches that connected A to C" — for audit or debugging?</div>
+      <div class="dq-a"><strong>Yes</strong> → BFS/DFS hands you the path for free as a byproduct of the walk. <strong>No</strong>, you only need the final grouping → use whatever Questions 1–2 pointed you at.</div>
     </div>
   </div>
 
-  <h3><span class="bar"></span>Side-by-side summary</h3>
   <div class="data-table-wrap">
   <table class="data-table">
-    <tr><th>Approach</th><th>Best for</th><th>Complexity</th><th>Distributes well?</th></tr>
-    <tr><td>BFS/DFS</td><td>Small in-memory graphs, debugging, audit-path reconstruction</td><td>$O(N + E)$</td><td><span class="badge b-red">No — needs random-access node lookups</span></td></tr>
-    <tr><td>Union-find (hand-rolled)</td><td>Prototyping, unit tests, small-to-medium edge streams</td><td>~$O(E \log^* N)$ with path compression</td><td><span class="badge b-amber">Partially — edges can stream in any order, but the parent map is still one structure</span></td></tr>
-    <tr class="hl-row"><td>GraphFrames <code>connectedComponents()</code></td><td>Production MDM pipelines on millions+ of records</td><td>Iterative, distributed (multiple Spark stages)</td><td><span class="badge b-green">Yes — built for this</span></td></tr>
+    <tr><th>Approach</th><th>Best for</th><th>Distributes across a cluster?</th></tr>
+    <tr><td>BFS / DFS walk</td><td>Small in-memory graphs, debugging, showing the audit path</td><td><span class="badge b-red">No — needs random jumps around the graph</span></td></tr>
+    <tr><td>Union-find (hand-rolled)</td><td>Prototyping, unit tests, small-to-medium streams of lines</td><td><span class="badge b-amber">Partly — eats lines in any order, but the leader table is one structure</span></td></tr>
+    <tr class="hl-row"><td>GraphFrames <code>connectedComponents()</code></td><td>Production MDM on millions+ of records</td><td><span class="badge b-green">Yes — built for it</span></td></tr>
   </table>
   </div>
-</div>
-</div>
 
-
-<!-- ══════ STAGE 7 — PYSPARK / GRAPHFRAMES PATTERN ══════ -->
-<div class="stage" id="s7">
-<div class="wrap">
-  <p class="sec-eye">Stage 07</p>
-  <h2 class="sec-h">The Production Pattern — GraphFrames in PySpark</h2>
-  <p class="sec-sub">GraphFrames (a Spark package) gives you a distributed <code>connectedComponents()</code> that takes exactly the edge list your hybrid candidate pipeline (Module 07) and ScoringPlugin/ThresholdTuner (Modules 04–05) already produce.</p>
-
-  <h3><span class="bar"></span>The input shape GraphFrames expects</h3>
-  <p>GraphFrames needs two DataFrames: <code>vertices</code> with an <code>id</code> column, and <code>edges</code> with <code>src</code> and <code>dst</code> columns. Your pipeline already has both — vertices are your standardized records, edges are the rows from your ThresholdTuner that classified as `match`.</p>
+  <h3><span class="bar"></span>Running it — GraphFrames wants two tables</h3>
+  <p>GraphFrames asks for a <code>vertices</code> table (an <code>id</code> column — your records) and an <code>edges</code> table (<code>src</code>, <code>dst</code> columns — your <em>match</em> lines). You already produce both:</p>
 
   <div class="code-wrap">
     <div class="code-header">
-      <span class="code-label">GraphFrames connected components pattern</span>
+      <span class="code-label">connected components in PySpark</span>
       <button class="code-copy" onclick="copyCode(this)">copy</button>
     </div>
     <div class="code-block"><span class="k">from</span> graphframes <span class="k">import</span> GraphFrame
 <span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
 
-<span class="co"># 1. Vertices: every standardized record is a node</span>
+<span class="co"># 1. Vertices: every standardized record is a dot</span>
 vertices = standardized_df.select(F.col(<span class="s">"record_id"</span>).alias(<span class="s">"id"</span>))
 
-<span class="co"># 2. Edges: only the pairs your ThresholdTuner classified as "match"</span>
-<span class="co"># (matches Module 06's classify() output, filtered to the match band)</span>
+<span class="co"># 2. Edges: ONLY the pairs the ThresholdTuner stamped "match"</span>
 edges = scored_pairs_df.filter(
     F.col(<span class="s">"verdict"</span>) == <span class="s">"match"</span>
 ).select(
@@ -614,97 +619,279 @@ edges = scored_pairs_df.filter(
     F.col(<span class="s">"id_b"</span>).alias(<span class="s">"dst"</span>)
 )
 
-<span class="co"># 3. Build the graph and run connected components</span>
-<span class="co"># GraphFrames requires a checkpoint dir for the iterative algorithm</span>
-spark.sparkContext.setCheckpointDir(<span class="s">"/tmp/checkpoints"</span>)
+<span class="hl"><span class="co"># 3. REQUIRED: give Spark a scratch dir before running (see trap below)</span>
+spark.sparkContext.setCheckpointDir(<span class="s">"/tmp/checkpoints"</span>)</span>
 g = GraphFrame(vertices, edges)
 components_df = g.connectedComponents()
 
-<span class="co"># 4. Result: every record_id now has a "component" id (the cluster id)</span>
 components_df.show()
-<span class="co"># +---------+-----------+
-# | id      | component |
-# +---------+-----------+
-# | A       | 17179869184|
-# | B       | 17179869184|
-# | C       | 17179869184|
-# | D       | 17179869185|
-# | E       | 17179869185|
-# | F       | 17179869186|
-# +---------+-----------+</span></div>
+<span class="co"># +----+-------------+
+# | id |  component  |   &lt;- the circle id (one per person)
+# +----+-------------+
+# | A  | 17179869184 |
+# | B  | 17179869184 |   A, B, C share a component =&gt; one entity
+# | C  | 17179869184 |
+# | D  | 17179869185 |
+# | E  | 17179869185 |
+# | F  | 17179869186 |   F is its own singleton
+# +----+-------------+</span></div>
   </div>
 
-  <div class="trap"><strong>The checkpoint-dir trap:</strong> <code>connectedComponents()</code> runs an <strong>iterative</strong> algorithm internally (multiple rounds of label propagation until labels stop changing). Without a checkpoint directory, Spark's lazy evaluation builds an ever-growing lineage graph across iterations and the job will eventually fail or stall on lineage recomputation. Always call <code>setCheckpointDir()</code> before invoking <code>connectedComponents()</code> — this is the single most common GraphFrames production bug.</div>
+  <div class="trap"><strong>The one bug everyone hits — the checkpoint dir:</strong> <code>connectedComponents()</code> works by repeating a round of "everyone tell your neighbors your current circle label" over and over until labels stop changing. Without a checkpoint directory, Spark's lazy evaluation keeps stacking the whole history of those rounds into an ever-growing plan, and the job eventually stalls or dies recomputing it. Calling <code>setCheckpointDir()</code> first lets Spark snip that history between rounds. Forget it and your job hangs — it's the single most common GraphFrames production failure.</div>
 
-  <h3><span class="bar"></span>Joining components back to build golden records</h3>
-  <p>The `component` column is just an opaque cluster id — join it back onto your standardized data, then group by it to drive the golden-record selection logic from Module 03's window functions:</p>
+  <h3><span class="bar"></span>The handoff to golden records — and the catch hiding in that output</h3>
+  <p>That <code>component</code> column is the payoff: join it back onto your records, group by it, and Module 03's window functions pick the best field values per circle to build the golden record:</p>
 
   <div class="code-wrap">
     <div class="code-header">
-      <span class="code-label">cluster → golden record handoff</span>
+      <span class="code-label">component → golden record</span>
       <button class="code-copy" onclick="copyCode(this)">copy</button>
     </div>
-    <div class="code-block"><span class="co"># Attach the cluster id to every standardized record</span>
-clustered_df = standardized_df.join(
+    <div class="code-block">clustered_df = standardized_df.join(
     components_df, standardized_df.record_id == components_df.id
 ).drop(<span class="s">"id"</span>)
 
-<span class="co"># Module 03's window functions now operate per-cluster instead of per</span>
-<span class="co"># source-record: rank by recency within each component to pick the</span>
-<span class="co"># golden record's field values.</span>
+<span class="co"># Module 03's window, now per-circle: newest record wins each field</span>
 <span class="k">from</span> pyspark.sql.window <span class="k">import</span> Window
 w = Window.partitionBy(<span class="s">"component"</span>).orderBy(F.col(<span class="s">"updated_at"</span>).desc())
 golden_df = clustered_df.withColumn(<span class="s">"rn"</span>, F.row_number().over(w)) \
-                         .filter(F.col(<span class="s">"rn"</span>) == <span class="n">1</span>)</div>
+                        .filter(F.col(<span class="s">"rn"</span>) == <span class="n">1</span>)</div>
   </div>
 
-  <div class="note"><strong>Why this completes the pipeline:</strong> `component` is the column that finally turns "a pile of pairwise verdicts" into "one row per real-world entity." Everything from Module 00 onward — blocking, scoring, thresholds, LSH — exists to produce a trustworthy edge list. This module's `connectedComponents()` call is the step that converts that edge list into the partition of records your golden-record logic actually needs.</div>
+  <div class="warn"><strong>But look hard at that component number: <code>17179869184</code>.</strong> Where did it come from? Not from <em>who</em> is in the circle — it's a label GraphFrames cooked up from the internal order it happened to process partitions and vertices in, <em>this run</em>. It's the circle's answer to "what's your name?", and that name is an accident of how the job ran today. Save it downstream as "customer #17179869184," re-run the pipeline tomorrow with even one new record in the mix, and that exact same trio of people can come back wearing a completely different number. You haven't actually <em>named</em> your people yet — you've tagged them with disappearing ink. Fixing that is Stage 07.</div>
 </div>
 </div>
 
 
-<!-- ══════ STAGE 8 — INTERACTIVE CLUSTER BUILDER ══════ -->
+<!-- ══════ STAGE 7 — ENTITY ID GENERATION (NEW · §14) ══════ -->
+<div class="stage" id="s7">
+<div class="wrap">
+  <p class="sec-eye">Stage 07 · New ground</p>
+  <h2 class="sec-h">Your Entity Is Named 17179869184 — and Won't Be Tomorrow</h2>
+  <p class="sec-sub">The circles are correct. Their names are garbage — temporary, run-specific numbers that reshuffle every time the job runs. A directory whose entries get renumbered each night is useless to everything downstream. We need a name that's computed from <em>who the person is</em>, so it never changes.</p>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — the census badge that survives next year</div>
+    <div class="analogy-body">
+      Picture the census again. This year the office groups the forms into residents correctly, then numbers the residents <em>1, 2, 3…</em> in the order it happened to walk the streets. Next year it walks a different route — so "resident 1" is now a totally different family. Anyone who wrote down "resident 1" last year is now pointing at a stranger. The fix isn't a better counter. It's to stop counting at all and instead give each resident a badge whose number is <em>computed from who's in the household on the form</em> — same people in, same badge out, forever, no matter what order anyone walked the streets. That computed-from-the-contents badge is a <strong>deterministic hash</strong>.
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>What "deterministic" buys you</h3>
+  <p>A hash function is a meat grinder for text: feed it a string, it spits out a fixed-length scramble (say, 64 hex characters). Two properties are all we need, and they're the whole trick:</p>
+  <div class="concept-grid">
+    <div class="cc" style="--acc:var(--amber)">
+      <div class="cc-num">Property 1 · same in → same out</div>
+      <div class="cc-title">Deterministic</div>
+      <div class="cc-body">The same input text <em>always</em> produces the exact same scramble — on any machine, any day, any run. No randomness, no counter, no run-order. This is what makes the badge stable.</div>
+    </div>
+    <div class="cc" style="--acc:var(--teal)">
+      <div class="cc-num">Property 2 · different in → different out</div>
+      <div class="cc-title">Distinct</div>
+      <div class="cc-body">Two different inputs land on two different scrambles (for all practical purposes). So two different people get two different badges automatically — no coordination needed.</div>
+    </div>
+  </div>
+
+  <p>So the recipe writes itself: <strong>build the badge out of the circle's membership.</strong> Take the record_ids in the circle, lay them in a fixed order, glue them into one string, and hash it. Because the badge is computed only from <em>who's inside</em>, the same people always yield the same badge — the run-order that poisoned <code>17179869184</code> never enters the calculation.</p>
+
+  <h3><span class="bar"></span>The fixed-order step is the one people skip — and it's load-bearing</h3>
+  <p>Here's the subtle part. The members of a circle don't arrive in a guaranteed order — one run might hand you <code>[C, A, B]</code>, another <code>[A, B, C]</code>. If you hash them as-is, you'd get two <em>different</em> badges for the <em>same</em> circle, and you're right back to unstable names. So you <strong>sort first</strong>. Sorting makes <code>[C,A,B]</code> and <code>[A,B,C]</code> both collapse to the identical string before hashing:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>Circle members (as they arrive)</th><th>After sorting</th><th>Glued string</th><th>Deterministic badge (entity_id)</th></tr>
+    <tr><td>A, B, C</td><td>A, B, C</td><td><code>"A|B|C"</code></td><td><code>9f2c4a…b71</code></td></tr>
+    <tr class="hl-row"><td>C, A, B <span class="faint">(same circle, different order)</span></td><td>A, B, C</td><td><code>"A|B|C"</code></td><td><code>9f2c4a…b71</code> <span class="badge b-green">identical</span></td></tr>
+    <tr><td>D, E</td><td>D, E</td><td><code>"D|E"</code></td><td><code>4d81f0…2ac</code></td></tr>
+    <tr><td>F</td><td>F</td><td><code>"F"</code></td><td><code>a6b9c3…e05</code></td></tr>
+  </table>
+  </div>
+  <p class="faint" style="font-size:12px">(The 64-hex digests above are shown truncated and are illustrative — the point isn't the exact characters, it's that the <em>top two rows produce the byte-for-byte same badge</em> because sorting erased the order difference before the hash ever ran.)</p>
+
+  <h3><span class="bar"></span>Building it in PySpark</h3>
+  <p>Four small idioms, each doing one job. Read the subgoal note under each before the line, so no piece is a mystery:</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">deterministic entity_id from a circle's members</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># start from Stage 06's output: (id = record, component = circle label this run)</span>
+entity_map = (
+    components_df
+    <span class="co"># JOB: gather every record_id in a circle into ONE list per circle</span>
+    .groupBy(<span class="s">"component"</span>)
+    .agg(F.collect_list(<span class="s">"id"</span>).alias(<span class="s">"members"</span>))
+    <span class="co"># JOB: put that list in a FIXED order so {C,A,B} and {A,B,C} match</span>
+    .withColumn(<span class="s">"members_sorted"</span>, F.array_sort(<span class="s">"members"</span>))
+    <span class="co"># JOB: glue the sorted ids into one string, separated by "|"</span>
+    .withColumn(<span class="s">"member_key"</span>, F.concat_ws(<span class="s">"|"</span>, <span class="s">"members_sorted"</span>))
+    <span class="hl"><span class="co"># JOB: grind that string into a stable 64-char fingerprint = the badge</span>
+    .withColumn(<span class="s">"entity_id"</span>, F.sha2(F.col(<span class="s">"member_key"</span>), <span class="n">256</span>))</span>
+)
+
+<span class="co"># explode back to the durable artifact: one row per record -> its entity_id</span>
+record_to_entity = (
+    entity_map
+    .select(<span class="s">"entity_id"</span>, F.explode(<span class="s">"members_sorted"</span>).alias(<span class="s">"record_id"</span>))
+)</div>
+  </div>
+
+  <div class="note"><strong>One Spark caveat for the table above:</strong> the trace shows the <em>logical</em> result — one badge per circle. Spark doesn't compute these rows top-to-bottom like a person reading a list; it applies <code>sha2</code> across the whole <code>member_key</code> column at once, in parallel, across the cluster. The order you read the rows in is not the order Spark runs them — only the per-circle <em>values</em> are what's guaranteed.</div>
+
+  <p>That last table — <code>record_to_entity</code>, one row per record pointing at its <code>entity_id</code> — is the real prize of this stage. It's the durable <strong>record → entity mapping</strong> every downstream system joins against. Opaque run-specific labels never leave this module; stable fingerprints do.</p>
+
+  <h3><span class="bar"></span>The catch — and the genuine fork in the road</h3>
+  <p>Hashing the member set is beautifully simple and completely stateless. But it has a sharp edge: the badge is computed from <em>exactly who's in the circle</em>, so the moment membership changes, the badge changes. Add one newly-discovered record to A's circle next month, and <code>"A|B|C"</code> becomes <code>"A|B|C|D2"</code> — a <strong>different</strong> string, a <strong>different</strong> badge. The person didn't change, but their ID just did, and everything downstream that saved the old badge is now orphaned. So there are two real strategies, and which one you want depends on what you're promising downstream:</p>
+
+  <div class="herring">
+    <div class="herring-col left">
+      <div class="herring-eye">Option A — hash the member set</div>
+      <h5>Stateless. The ID <em>is</em> the membership.</h5>
+      <p><strong>Win:</strong> dead simple, no history to store, the same circle anywhere computes the same ID with zero coordination. Great for a snapshot, an export, or a join key within a single run.</p>
+      <p><strong>Edge:</strong> add or remove one record and the entity "renames." Bad if downstream systems persist the ID and expect it to outlive membership changes.</p>
+    </div>
+    <div class="herring-col right">
+      <div class="herring-eye">Option B — persist an ID map</div>
+      <h5>Stateful. The ID <em>follows the person</em> across runs.</h5>
+      <p><strong>How:</strong> keep last run's <code>record → entity_id</code> table. Each new run, match new circles to old ones by <em>membership overlap</em>; if a new circle overlaps an existing entity, <strong>reuse that entity_id</strong> and just add the new records. Mint a brand-new ID only for a genuinely new person.</p>
+      <p><strong>Win:</strong> "customer #X" stays #X even as records get added — exactly what a CRM or warehouse foreign key needs.</p>
+    </div>
+  </div>
+
+  <div class="warn"><strong>Cross-cluster / cross-run dedup is the same overlap idea, one level up.</strong> Imagine two source systems each clustered <em>their own</em> records and minted their own entity_ids — and the same real person exists in both. Now you have two different IDs for one human. You reconcile them exactly the way Option B reconciles runs: line the two ID maps up, find entities whose members (or strongly-matching keys like SSN) overlap, and collapse them onto one canonical entity_id in a master map. Whether the duplicate came from "yesterday's run" or "the other system," the cure is the same — match by overlap, keep one ID, retire the other.</div>
+
+  <p>Either way, your people now carry names that mean something stable. Which means we can finally do something we couldn't before: <strong>treat a whole person as a single dot</strong> and start grouping <em>people</em> — not records — into something bigger. That's Stage 08.</p>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 8 — SECONDARY CLUSTERING (NEW · §15) ══════ -->
 <div class="stage" id="s8">
 <div class="wrap">
-  <p class="sec-eye">Stage 08</p>
-  <h2 class="sec-h">Interactive Cluster Builder — Union-Find Live</h2>
-  <p class="sec-sub">Click candidate match pairs to add them as edges, one at a time, and watch union-find merge clusters live — including a transitive merge where two existing clusters fuse the moment a single bridge edge connects them.</p>
+  <p class="sec-eye">Stage 08 · New ground</p>
+  <h2 class="sec-h">You Found Individuals. You Still Haven't Found Households.</h2>
+  <p class="sec-sub">Two things are still unfinished. First, the whole clustering pass only used the confident <em>match</em> lines — it quietly threw away every <em>review</em>-band slip. Second, and bigger: people who are <em>not the same person</em> can still belong together — a family under one roof. Resolving that needs the same machinery again, but pointed at a completely different relationship.</p>
+
+  <h3><span class="bar"></span>The leftover slips — possible-match clustering</h3>
+  <p>Remember Module 06's three bands: <em>match</em>, <em>review</em>, <em>no-match</em>. Stage 06 only turned <em>match</em> slips into lines, on purpose — you do <strong>not</strong> want shaky <em>review</em>-band guesses fusing your confident entities (that's the bridge-edge nightmare from Stage 05, invited in deliberately). But those <em>review</em> slips aren't trash; they're "maybe duplicates" worth a second, <em>separate</em> look:</p>
+
+  <ul style="margin-left:18px;margin-bottom:14px;font-size:14px;color:var(--muted);line-height:1.8">
+    <li>Run a <strong>second clustering pass over only the <em>review</em>-band lines</strong> — kept completely apart from the trusted entity graph. The circles it forms are "possible duplicate groups," surfaced to a human review queue, never auto-merged into the real entities.</li>
+    <li>Or, after a human confirms some review slips, promote just those confirmed lines into the main graph and re-cluster. Either way the rule is the same: <strong>confident lines build entities; shaky lines build a review worklist.</strong></li>
+  </ul>
+
+  <div class="analogy">
+    <div class="analogy-eye">Analogy — from residents to households</div>
+    <div class="analogy-body">
+      Back to the census. Pass one grouped <em>forms</em> into <em>residents</em> — that's done; every resident now wears a stable badge from Stage 07. But the census also wants to know <em>households</em>: which residents live under one roof. A household is <strong>not</strong> one person — it's several distinct people who share an address and a last name. So you run the grouping again, except now <em>each resident (with their badge) is a single dot</em>, and you draw a line between two residents when they <em>share a roof</em>, not when they're the same human. Same circle-finding machinery, brand-new meaning for "dot" and "line."
+    </div>
+  </div>
+
+  <h3><span class="bar"></span>Household clustering — same algorithm, new dots, new lines</h3>
+  <p>This is the key mental move of the stage, so let's make the swap explicit. Compare the two passes side by side:</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th></th><th>Pass 1 — finding people (Stages 01–07)</th><th>Pass 2 — finding households (now)</th></tr>
+    <tr><td><strong>A dot is…</strong></td><td>one record</td><td class="new-col">one resolved person (an entity_id)</td></tr>
+    <tr><td><strong>A line means…</strong></td><td>"same person" (a <em>match</em> verdict)</td><td class="new-col">"same household" (shared address + last name)</td></tr>
+    <tr><td><strong>A circle is…</strong></td><td>a master entity (one human)</td><td class="new-col">a household (several humans, one roof)</td></tr>
+    <tr><td><strong>Algorithm</strong></td><td>connected components</td><td class="new-col">connected components — <em>identical</em></td></tr>
+  </table>
+  </div>
+
+  <p>Because the algorithm is literally the same <code>connectedComponents()</code>, you don't learn anything new about <em>how</em> — you only change <em>what you feed it</em>. The dots are now your entities; the lines come from a self-join that pairs entities sharing a normalized address and surname. This is what "<strong>clustering on top of clustering</strong>" means, and why it's called <strong>secondary clustering</strong> — it runs on the <em>output</em> of the first clustering, not on raw records.</p>
+
+  <div class="code-wrap">
+    <div class="code-header">
+      <span class="code-label">household clustering — entities as dots, "shared roof" as lines</span>
+      <button class="code-copy" onclick="copyCode(this)">copy</button>
+    </div>
+    <div class="code-block"><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="co"># entities = one row per resolved person: (entity_id, last_name, address_norm)</span>
+<span class="co"># JOB: draw a "same household" line between two DIFFERENT entities that</span>
+<span class="co">#      share a normalized address AND a last name</span>
+left  = entities.alias(<span class="s">"l"</span>)
+right = entities.alias(<span class="s">"r"</span>)
+household_edges = (
+    left.join(right,
+        (F.col(<span class="s">"l.address_norm"</span>) == F.col(<span class="s">"r.address_norm"</span>)) &amp;
+        (F.col(<span class="s">"l.last_name"</span>)    == F.col(<span class="s">"r.last_name"</span>)) &amp;
+        (F.col(<span class="s">"l.entity_id"</span>)    &lt; F.col(<span class="s">"r.entity_id"</span>)))   <span class="co"># &lt; avoids self/dup pairs</span>
+    .select(F.col(<span class="s">"l.entity_id"</span>).alias(<span class="s">"src"</span>),
+            F.col(<span class="s">"r.entity_id"</span>).alias(<span class="s">"dst"</span>))
+)
+
+<span class="hl"><span class="co"># SAME machinery as Stage 06 — only the dots and lines changed</span>
+g2 = GraphFrame(entities.select(F.col(<span class="s">"entity_id"</span>).alias(<span class="s">"id"</span>)),
+                household_edges)
+households = g2.connectedComponents()   <span class="co"># gives each entity a household id</span></span></div>
+  </div>
+
+  <div class="trap"><strong>The mistake that defines this stage — never collapse a household into a person.</strong> A household clusters <em>distinct people</em> who share a roof; it is emphatically <strong>not</strong> a signal to merge them into one golden record. Jon, his wife, and his teenage kid share 200 Pine Ave and the surname Smith — three entities, one household, <em>three</em> separate humans with three separate SSNs. Merge them and you've fused a family into a person: a classic, embarrassing MDM data-quality bug. Households <em>link</em> entities (entity-to-entity relationships); they never <em>dissolve</em> them.</div>
+
+  <h3><span class="bar"></span>Cluster aggregation — rolling people up into the household record</h3>
+  <p>Once each entity carries a <code>household</code> id, the last move is to <strong>aggregate</strong>: group the entities by household to produce a household-level row — size, the shared address, the list of member entity_ids, maybe a designated head-of-household. This is the same group-and-summarize you already know, just one level up the ladder (records → entities → households):</p>
+
+  <div class="data-table-wrap">
+  <table class="data-table">
+    <tr><th>household_id</th><th>member entity_ids</th><th>size</th><th>shared address</th></tr>
+    <tr><td><code>hh_77c1…</code></td><td>9f2c4a… (Jon), 1b3e90… (Jane), c4d2aa… (Teen)</td><td>3</td><td>200 Pine Ave, Austin TX</td></tr>
+    <tr><td><code>hh_42a9…</code></td><td>4d81f0… (Maria)</td><td>1</td><td>15 Elm St, Austin TX</td></tr>
+  </table>
+  </div>
+
+  <div class="note"><strong>The same pattern generalizes to any "entity-to-entity" link, not just households.</strong> Swap the line rule and you get a different relationship graph over the very same entity dots: "same employer," "same insurance policy," "shares a bank account," "corporate parent ↔ subsidiary." Secondary clustering is the reusable engine — <em>resolve individuals once, then keep re-clustering those resolved entities under whatever relationship you need.</em> You now have the full back half of the pipeline: slips → people → stable names → households and beyond.</div>
+</div>
+</div>
+
+
+<!-- ══════ STAGE 9 — INTERACTIVE CLUSTER BUILDER ══════ -->
+<div class="stage" id="s9">
+<div class="wrap">
+  <p class="sec-eye">Stage 09</p>
+  <h2 class="sec-h">Watch a Single Bridge Line Fuse Two Crowds — Live</h2>
+  <p class="sec-sub">Stage 05's climax is easier to <em>feel</em> than to read. Add match lines one at a time and watch union-find merge circles in real time — then add the one bridge line that fuses two separate circles into a single oversized entity the instant it lands.</p>
 
   <div class="gc-widget">
-    <div class="gc-label">7 records · click a pair below to add the match edge</div>
+    <div class="gc-label">7 records · click a pair below to add the match line</div>
     <div class="gc-layout">
       <div class="gc-canvas-wrap">
         <canvas id="gc-canvas" class="gc-canvas" width="600" height="450"></canvas>
       </div>
       <div class="gc-controls">
         <div class="gc-stat-row">
-          <div class="gc-stat"><div class="gc-stat-label">Clusters</div><div class="gc-stat-val" id="gc-cluster-count">7</div></div>
-          <div class="gc-stat"><div class="gc-stat-label">Edges added</div><div class="gc-stat-val" id="gc-edge-count">0</div></div>
+          <div class="gc-stat"><div class="gc-stat-label">Circles</div><div class="gc-stat-val" id="gc-cluster-count">7</div></div>
+          <div class="gc-stat"><div class="gc-stat-label">Lines added</div><div class="gc-stat-val" id="gc-edge-count">0</div></div>
         </div>
         <div class="gc-pair-list" id="gc-pair-list"></div>
-        <button class="gc-reset" onclick="gcReset()">Reset all edges</button>
+        <button class="gc-reset" onclick="gcReset()">Reset all lines</button>
         <div class="gc-cluster-readout" id="gc-cluster-readout"></div>
       </div>
     </div>
   </div>
 
-  <div class="note"><strong>Try this sequence to see the climax in action:</strong> Add <code>A–B</code>, then <code>D–E</code>, then <code>F–G</code> — three separate small clusters, no surprises. Now add <code>B–C</code>: cluster {A,B} absorbs C. Finally add <code>C–D</code> — watch the {A,B,C} cluster and the {D,E} cluster <strong>instantly fuse into one 5-record cluster</strong>, even though A and D (or A and E) never had a direct edge. That single C–D edge is the bridge-edge scenario from Stage 05, made visible.</div>
+  <div class="note"><strong>Do this exact sequence to see the bridge-edge climax:</strong> add <code>A–B</code>, then <code>D–E</code>, then <code>F–G</code> — three calm little circles, nothing surprising, count drops 7 → 4. Now add <code>B–C</code>: the {A,B} circle quietly absorbs C (transitive closure, the good kind). Finally add <code>C–D</code> and watch it — the entire {A,B,C} circle and the {D,E} circle <strong>fuse into one 5-record blob in a single click</strong>, even though A and D (or A and E) were never directly connected. That one C–D line is the bridge edge from Stage 05, made visible. Now imagine it was a 60%-confidence mistake.</div>
 </div>
 </div>
 
 
-<!-- ══════ STAGE 9 — SELF-TEST ══════ -->
-<div class="stage" id="s9">
+<!-- ══════ STAGE 10 — SELF-TEST ══════ -->
+<div class="stage" id="s10">
 <div class="wrap">
-  <p class="sec-eye">Stage 09</p>
+  <p class="sec-eye">Stage 10</p>
   <h2 class="sec-h">Self-Test — Scenario Recognition</h2>
-  <p class="sec-sub">Test your operational understanding of graph clustering. Each question presents a scenario from a real Master Data Management pipeline and asks which action or fact applies.</p>
+  <p class="sec-sub">One scenario at a time, straight from a real MDM pipeline. Pick the action or fact that applies — covering the whole arc: circles, the bridge-edge gotcha, GraphFrames, stable entity IDs, and household clustering.</p>
 
   <div class="quiz-grid" id="quiz-grid"></div>
 
   <div class="unlock" style="margin-top:34px">
     <span class="unlock-icon">✓</span>
-    <div class="unlock-body"><strong>Module 08 complete.</strong> You now understand how matched pairs become master entities: model records and verdicts as a graph, find connected components via BFS/DFS or union-find, recognize and guard against transitive closure's bridge-edge risk, choose between hand-rolled union-find and GraphFrames based on scale, and run <code>connectedComponents()</code> in production PySpark. Next up: <strong>Module 10 · Spark Performance (Remaining Levers)</strong>, where you optimize the full pipeline beyond shuffle/join/skew.</div>
+    <div class="unlock-body"><strong>Module 08 complete.</strong> You can now carry a pile of pairwise verdicts all the way to a stable directory: model records and matches as a graph, find circles with BFS/DFS or union-find, respect transitive closure and guard the bridge-edge risk, run <code>connectedComponents()</code> in production, mint <strong>deterministic entity IDs</strong> that survive re-runs (and dedup across runs/sources), then re-cluster those entities into <strong>households</strong> and other entity-to-entity links. Next up: <strong>Module 10 · Spark Performance (Remaining Levers)</strong>, where you optimize the whole pipeline beyond shuffle/join/skew.</div>
   </div>
 
   <div class="concept-grid" style="margin-top:26px">
@@ -712,10 +899,11 @@ golden_df = clustered_df.withColumn(<span class="s">"rn"</span>, F.row_number().
       <div class="cc-num">Honest Gaps</div>
       <div class="cc-title">What this module didn't cover</div>
       <div class="cc-body">
-        <strong>Weighted/probabilistic clustering:</strong> Real production systems sometimes weight edges by match confidence and use community-detection algorithms (e.g. label propagation with edge weights, or graph cuts) instead of treating every match edge as equally binding. We treated all match edges as equally strong, which is the simpler and more common starting point but not the only approach.<br><br>
-        <strong>Cluster-splitting / cluster review workflows:</strong> We named the bridge-edge mitigation (flag oversized clusters for review) but didn't build the actual review-queue logic or a "split this cluster" operational tool — that's a natural follow-on to Module 06's review queue concept, applied at the cluster level instead of the pair level.<br><br>
-        <strong>GraphFrames internals:</strong> We used <code>connectedComponents()</code> as a black box. The actual algorithm (a distributed variant of Hash-to-Min / Alternating-update label propagation) and its convergence/iteration-count behavior at scale weren't traced.<br><br>
-        <strong>Graph algorithms beyond connectivity:</strong> Centrality measures, shortest-path, or community detection beyond connected components — useful for fraud-ring detection or relationship graphs, but out of scope for straightforward entity-resolution clustering.
+        <strong>Weighted / probabilistic clustering:</strong> we treated every match line as equally binding. Real systems sometimes weight lines by match confidence and use community-detection (edge-weighted label propagation, graph cuts) so a weak line is less able to fuse a crowd — a softer answer to Stage 05's bridge-edge risk than a hard post-hoc size check.<br><br>
+        <strong>Entity-ID stability in depth:</strong> we framed hash-the-set vs persist-a-map and the overlap-reconciliation idea, but didn't build the full survivorship logic (what happens when one entity <em>splits</em> into two across runs, or how to keep an audit trail of ID merges/retirements over time).<br><br>
+        <strong>Cluster-splitting / review tooling:</strong> we flag oversized clusters and route review-band groups to a queue, but didn't build the operational "split this cluster" workflow at the cluster level.<br><br>
+        <strong>GraphFrames internals:</strong> <code>connectedComponents()</code> stayed a black box. Its actual distributed label-propagation algorithm and convergence/iteration behavior at scale weren't traced.<br><br>
+        <strong>Graph algorithms beyond connectivity:</strong> centrality, shortest-path, fraud-ring community detection — useful on the same entity graph, but out of scope for straightforward resolution and household linking.
       </div>
     </div>
   </div>
@@ -958,6 +1146,61 @@ const questions = [
     ],
     correct: 2,
     explain: 'Every node belongs to exactly one connected component, even nodes with zero edges. An isolated record becomes a singleton component — a perfectly valid one-record entity, not an error or a special case requiring separate handling.'
+  },
+  {
+    prompt: 'GraphFrames gives cluster {A,B,C} the component id <code>17179869184</code> today. You re-run the pipeline tomorrow with new records added elsewhere. Why is it risky to store <code>17179869184</code> downstream as the permanent customer id?',
+    opts: [
+      'The number is too large for most databases to store as a key',
+      'The component id is assigned from internal run-order, not from membership — the same trio can get a different number on the next run',
+      'GraphFrames recycles component ids, so two different clusters will collide on it',
+      'It is risk-free; connectedComponents() guarantees the same component id across runs'
+    ],
+    correct: 1,
+    explain: 'connectedComponents() labels are derived from internal partition/vertex processing order, not from who is in the cluster. Add records anywhere and the same people can come back with a different component id — so it is unstable as a durable key. That is exactly why you replace it with a deterministic, membership-derived entity_id.'
+  },
+  {
+    prompt: 'When building a deterministic <code>entity_id</code> by hashing a cluster\'s member record_ids, why do you <code>array_sort</code> the members before concatenating and hashing?',
+    opts: [
+      'Sorting makes the hash function run faster on large clusters',
+      'So the same set of members always produces the identical string — [C,A,B] and [A,B,C] both become "A|B|C" — giving the same hash regardless of member order',
+      'Sorting removes duplicate record_ids from the cluster',
+      'The sha2 function only accepts input that is already sorted'
+    ],
+    correct: 1,
+    explain: 'collect_list can return members in any order across runs. Without sorting, the same cluster could hash to different ids on different runs. Sorting first guarantees order-independence: the same membership set always yields the same string, hence the same deterministic entity_id.'
+  },
+  {
+    prompt: 'You build entity_ids by hashing the member set (Option A, stateless). Next month one newly-ingested record correctly joins an existing person\'s cluster. What happens to that person\'s entity_id, and what is the standard fix if downstream systems must keep a stable id?',
+    opts: [
+      'The id is unchanged; adding a record never affects a hash-of-the-set id',
+      'The id changes (the member string changed), so to keep stability you persist a record→entity_id map and reuse the old id for the overlapping cluster',
+      'The id changes, and the only fix is to never add new records to existing clusters',
+      'The id stays the same, but you must manually rename all downstream foreign keys'
+    ],
+    correct: 1,
+    explain: 'Hashing the member set means the id is the membership — add a record and the string (and thus the hash) changes, "renaming" the entity. If downstream keys must be stable, switch to a persisted record→entity_id map: match new clusters to existing entities by membership overlap and reuse the prior entity_id, minting a new id only for genuinely new entities.'
+  },
+  {
+    prompt: 'In household (secondary) clustering, what are the "nodes" and "edges", compared to the first clustering pass?',
+    opts: [
+      'Nodes and edges are identical to pass 1 — raw records and match verdicts',
+      'Nodes are resolved entities (entity_ids) and an edge means "shares an address + last name" (same household), not "is the same person"',
+      'Nodes are households and edges are golden records',
+      'Nodes are raw records but edges now mean "different person, same address"'
+    ],
+    correct: 1,
+    explain: 'Secondary clustering reuses the same connected-components machinery but on the OUTPUT of the first pass: nodes are resolved entities (one per person, carrying their entity_id), and edges encode a different relationship — shared roof (address + last name) — producing household clusters rather than person clusters.'
+  },
+  {
+    prompt: 'Jon, his spouse, and his teen all resolve to three separate entities but share 200 Pine Ave and the surname Smith, so household clustering groups them into one household. What must you NOT do with that household?',
+    opts: [
+      'Assign the household a single household_id',
+      'Aggregate the household to a row listing its three member entity_ids and shared address',
+      'Merge the three entities into one golden record / one person',
+      'Use the household grouping for marketing or address-based analytics'
+    ],
+    correct: 2,
+    explain: 'A household links distinct people who share a roof — it is not evidence they are the same person. Merging the three entities into one golden record fuses a family into a single human (three SSNs collapsed into one), a serious MDM data-quality bug. Households relate entities (entity-to-entity); they never dissolve them.'
   }
 ];
 
